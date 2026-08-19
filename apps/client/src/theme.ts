@@ -46,6 +46,11 @@ export const theme = createTheme({
   primaryColor: "blue",
   primaryShade: 5,
   defaultRadius: 8,
+  fontFamily: '"DM Sans", system-ui, sans-serif',
+  fontFamilyMonospace: '"JetBrains Mono", "Courier New", monospace',
+  headings: {
+    fontFamily: '"Fraunces", Georgia, serif',
+  },
   components: {
     Tooltip: Tooltip.extend({
       defaultProps: {
