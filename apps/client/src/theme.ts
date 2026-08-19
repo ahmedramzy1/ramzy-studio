@@ -8,17 +8,21 @@ import {
   v8CssVariablesResolver,
 } from "@mantine/core";
 
+// Ramzy Studio signal palette, sourced from the Ahmed Ramzy design system.
+// Mantine requires 10 shades; the design system currently defines 9 signal
+// shades, so the darkest shade is intentionally repeated rather than inventing
+// a new colour outside the source-of-truth palette.
 const blue: MantineColorsTuple = [
-  "#e7f3ff",
-  "#d0e4ff",
-  "#a1c6fa",
-  "#6ea6f6",
-  "#458bf2",
-  "#2b7af1",
-  "#0b60d8",
-  "#1b72f2",
-  "#0056c1",
-  "#004aac",
+  "#EEF1FF",
+  "#D8DEFF",
+  "#B4BFFF",
+  "#8FA3FF",
+  "#6B84FF",
+  "#3B5BFF",
+  "#2A44CC",
+  "#1D30A3",
+  "#12207A",
+  "#0A1452",
 ];
 
 const red: MantineColorsTuple = [
@@ -39,7 +43,9 @@ export const theme = createTheme({
     blue,
     red,
   },
-  defaultRadius: 'sm',
+  primaryColor: "blue",
+  primaryShade: 5,
+  defaultRadius: 8,
   components: {
     Tooltip: Tooltip.extend({
       defaultProps: {
