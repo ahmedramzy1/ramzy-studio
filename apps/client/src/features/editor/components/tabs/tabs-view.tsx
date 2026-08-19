@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -9,14 +8,16 @@ import { TextSelection } from "@tiptap/pm/state";
 const MIN_TABS = 2;
 const MAX_TABS = 8;
 
-export default function TabsView({ node, editor, getPos }: NodeViewProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  useEffect(() => {
-    setActiveIndex((current) =>
-      Math.max(0, Math.min(current, Math.max(0, node.childCount - 1))),
-    );
-  }, [node.childCount]);
+export default function TabsView({
+  node,
+  editor,
+  getPos,
+  updateAttributes,
+}: NodeViewProps) {
+  const activeIndex = Math.max(
+    0,
+    Math.min(Number(node.attrs.activeIndex ?? 0), Math.max(0, node.childCount - 1)),
+  );
 
   const getParentPos = () => {
     const pos = getPos();
@@ -36,17 +37,25 @@ export default function TabsView({ node, editor, getPos }: NodeViewProps) {
     return parentPos + 1 + offset;
   };
 
-  const activateTab = (index: number) => {
-    setActiveIndex(index);
-
+  const moveSelectionIntoTab = (index: number) => {
     if (!editor.isEditable) return;
     const tabPos = getTabPos(index);
     if (tabPos === null) return;
 
-    const insideTab = tabPos + 1;
-    const selection = TextSelection.near(editor.state.doc.resolve(insideTab), 1);
+    const maxPos = editor.state.doc.content.size;
+    const targetPos = Math.min(tabPos + 2, maxPos);
+    const selection = TextSelection.near(
+      editor.state.doc.resolve(targetPos),
+      1,
+    );
     editor.view.dispatch(editor.state.tr.setSelection(selection));
     editor.view.focus();
+  };
+
+  const activateTab = (index: number) => {
+    const nextIndex = Math.max(0, Math.min(index, node.childCount - 1));
+    updateAttributes({ activeIndex: nextIndex });
+    requestAnimationFrame(() => moveSelectionIntoTab(nextIndex));
   };
 
   const renameTab = (index: number) => {
@@ -73,10 +82,24 @@ export default function TabsView({ node, editor, getPos }: NodeViewProps) {
     if (tabPos === null) return;
 
     const tab = node.child(index);
-    editor.view.dispatch(editor.state.tr.delete(tabPos, tabPos + tab.nodeSize));
-    setActiveIndex((current) =>
-      Math.max(0, Math.min(current, node.childCount - 2)),
+    const nextActiveIndex = Math.max(
+      0,
+      Math.min(
+        index < activeIndex ? activeIndex - 1 : activeIndex,
+        node.childCount - 2,
+      ),
     );
+
+    const parentPos = getParentPos();
+    if (parentPos === null) return;
+
+    const tr = editor.state.tr
+      .delete(tabPos, tabPos + tab.nodeSize)
+      .setNodeMarkup(parentPos, undefined, {
+        ...node.attrs,
+        activeIndex: nextActiveIndex,
+      });
+    editor.view.dispatch(tr);
   };
 
   const addTab = () => {
@@ -94,9 +117,17 @@ export default function TabsView({ node, editor, getPos }: NodeViewProps) {
         attrs: { title: `Tab ${newIndex + 1}` },
         content: [{ type: "paragraph" }],
       })
+      .command(({ tr }) => {
+        const mappedParentPos = tr.mapping.map(parentPos);
+        tr.setNodeMarkup(mappedParentPos, undefined, {
+          ...node.attrs,
+          activeIndex: newIndex,
+        });
+        return true;
+      })
       .run();
 
-    requestAnimationFrame(() => activateTab(newIndex));
+    requestAnimationFrame(() => moveSelectionIntoTab(newIndex));
   };
 
   return (
