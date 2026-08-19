@@ -32,6 +32,7 @@ const RAMZY_COLOR_INTENSITIES = ["soft", "medium", "strong"] as const;
 
 type RamzyColorFamily = (typeof RAMZY_COLOR_FAMILIES)[number];
 type RamzyColorIntensity = (typeof RAMZY_COLOR_INTENSITIES)[number];
+type ColorGrid = "text" | "highlight";
 
 const FAMILY_LABELS: Record<RamzyColorFamily, string> = {
   ink: "Ink",
@@ -53,7 +54,9 @@ const INTENSITY_LABELS: Record<RamzyColorIntensity, string> = {
 export interface BubbleColorMenuItem {
   name: string;
   color: string;
-  token?: string;
+  token: string;
+  family: RamzyColorFamily;
+  intensity: RamzyColorIntensity;
 }
 
 interface ColorSelectorProps {
@@ -62,61 +65,60 @@ interface ColorSelectorProps {
   setIsOpen: Dispatch<SetStateAction<boolean>>;
 }
 
-function createRamzyColors(kind: "text" | "highlight"): BubbleColorMenuItem[] {
-  return [
-    { name: "Default", color: "" },
-    ...RAMZY_COLOR_FAMILIES.flatMap((family) =>
-      RAMZY_COLOR_INTENSITIES.map((intensity) => {
-        const token = `${family}-${intensity}`;
-        return {
-          name: `${FAMILY_LABELS[family]} · ${INTENSITY_LABELS[intensity]}`,
-          token,
-          color: `var(--ramzy-${kind}-${token})`,
-        };
-      }),
-    ),
-  ];
+function createRamzyColors(kind: ColorGrid): BubbleColorMenuItem[] {
+  return RAMZY_COLOR_INTENSITIES.flatMap((intensity) =>
+    RAMZY_COLOR_FAMILIES.map((family) => {
+      const token = `${family}-${intensity}`;
+      return {
+        name: `${FAMILY_LABELS[family]} · ${INTENSITY_LABELS[intensity]}`,
+        token,
+        family,
+        intensity,
+        color: `var(--ramzy-${kind}-${token})`,
+      };
+    }),
+  );
 }
 
 const TEXT_COLORS = createRamzyColors("text");
 const HIGHLIGHT_COLORS = createRamzyColors("highlight");
-const COLOR_GRID_COLS = 5;
+const COLOR_GRID_COLS = RAMZY_COLOR_FAMILIES.length;
+const COLOR_GRID_ROWS = RAMZY_COLOR_INTENSITIES.length;
 
-function focusSwatch(grid: "text" | "highlight", index: number) {
-  const el = document.querySelector<HTMLElement>(
-    `[data-color-grid="${grid}"][data-color-index="${index}"]`,
-  );
-  el?.focus();
+function focusSwatch(grid: ColorGrid, index: number) {
+  document
+    .querySelector<HTMLElement>(
+      `[data-color-grid="${grid}"][data-color-index="${index}"]`,
+    )
+    ?.focus();
 }
 
 function handleColorKeyNav(
   e: React.KeyboardEvent<HTMLDivElement>,
   index: number,
-  grid: "text" | "highlight",
+  grid: ColorGrid,
 ) {
-  const total =
-    grid === "text" ? TEXT_COLORS.length : HIGHLIGHT_COLORS.length;
+  const row = Math.floor(index / COLOR_GRID_COLS);
   const col = index % COLOR_GRID_COLS;
 
   if (e.key === "ArrowRight") {
     e.preventDefault();
-    if (index < total - 1) focusSwatch(grid, index + 1);
+    if (col < COLOR_GRID_COLS - 1) focusSwatch(grid, index + 1);
     return;
   }
 
   if (e.key === "ArrowLeft") {
     e.preventDefault();
-    if (index > 0) focusSwatch(grid, index - 1);
+    if (col > 0) focusSwatch(grid, index - 1);
     return;
   }
 
   if (e.key === "ArrowDown") {
     e.preventDefault();
-    const next = index + COLOR_GRID_COLS;
-    if (next < total) {
-      focusSwatch(grid, next);
+    if (row < COLOR_GRID_ROWS - 1) {
+      focusSwatch(grid, index + COLOR_GRID_COLS);
     } else if (grid === "text") {
-      focusSwatch("highlight", Math.min(col, HIGHLIGHT_COLORS.length - 1));
+      focusSwatch("highlight", col);
     } else {
       document
         .querySelector<HTMLElement>('[data-color-grid="remove"]')
@@ -127,17 +129,14 @@ function handleColorKeyNav(
 
   if (e.key === "ArrowUp") {
     e.preventDefault();
-    const prev = index - COLOR_GRID_COLS;
-    if (prev >= 0) {
-      focusSwatch(grid, prev);
+    if (row > 0) {
+      focusSwatch(grid, index - COLOR_GRID_COLS);
     } else if (grid === "highlight") {
-      const lastRowStart =
-        Math.floor((TEXT_COLORS.length - 1) / COLOR_GRID_COLS) *
-        COLOR_GRID_COLS;
-      focusSwatch(
-        "text",
-        Math.min(lastRowStart + col, TEXT_COLORS.length - 1),
-      );
+      focusSwatch("text", (COLOR_GRID_ROWS - 1) * COLOR_GRID_COLS + col);
+    } else {
+      document
+        .querySelector<HTMLElement>('[data-color-grid="default"]')
+        ?.focus();
     }
   }
 }
@@ -181,9 +180,129 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
     ({ color }) => editorState[`highlight_${color}`],
   );
 
+  const resetColors = () => {
+    if (!isEditorReady(editor)) return;
+    editor.commands.unsetColor();
+    editor.commands.unsetHighlight();
+    setIsOpen(false);
+  };
+
+  const renderGrid = (kind: ColorGrid) => {
+    const colors = kind === "text" ? TEXT_COLORS : HIGHLIGHT_COLORS;
+
+    return (
+      <Box>
+        <Text size="sm" fw={600} mb="xs">
+          {t(kind === "text" ? "Text color" : "Highlight color")}
+        </Text>
+
+        <SimpleGrid cols={COLOR_GRID_COLS} spacing={4} verticalSpacing={4}>
+          {colors.map(({ name, color, token }, index) => {
+            const isActive = !!editorState[`${kind}_${color}`];
+            const applyColor = () => {
+              if (!isEditorReady(editor)) return;
+
+              if (kind === "text") {
+                editor.chain().focus().setColor(color).run();
+              } else {
+                editor
+                  .chain()
+                  .focus()
+                  .toggleMark("highlight", { color, colorName: token })
+                  .run();
+              }
+              setIsOpen(false);
+            };
+
+            return (
+              <Tooltip key={`${kind}-${token}`} label={t(name)} withArrow>
+                <Box
+                  role="button"
+                  tabIndex={0}
+                  data-autofocus={kind === "text" && index === 0 ? true : undefined}
+                  data-color-grid={kind}
+                  data-color-index={index}
+                  className={classes.colorSwatch}
+                  aria-label={t(name)}
+                  aria-pressed={isActive}
+                  onClick={applyColor}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      applyColor();
+                      return;
+                    }
+                    handleColorKeyNav(e, index, kind);
+                  }}
+                  style={{
+                    width: rem(28),
+                    height: rem(28),
+                    borderRadius: rem(kind === "text" ? 6 : 4),
+                    border: isActive
+                      ? "2px solid var(--mantine-color-gray-8)"
+                      : "1px solid var(--mantine-color-gray-4)",
+                    backgroundColor:
+                      kind === "highlight"
+                        ? color
+                        : "var(--mantine-color-body)",
+                    cursor: "pointer",
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: rem(16),
+                    fontWeight: 600,
+                    color:
+                      kind === "text"
+                        ? color
+                        : "var(--mantine-color-gray-8)",
+                  }}
+                >
+                  {kind === "highlight" && isActive ? (
+                    <IconCheck size={16} color="var(--mantine-color-gray-9)" />
+                  ) : (
+                    "A"
+                  )}
+                </Box>
+              </Tooltip>
+            );
+          })}
+        </SimpleGrid>
+
+        <Box
+          mt={4}
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${COLOR_GRID_COLS}, ${rem(28)})`,
+            gap: rem(4),
+          }}
+          aria-hidden
+        >
+          {RAMZY_COLOR_FAMILIES.map((family) => (
+            <Text
+              key={`${kind}-${family}-label`}
+              size="xs"
+              ta="center"
+              c="dimmed"
+              style={{
+                fontSize: rem(9),
+                lineHeight: 1.1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={FAMILY_LABELS[family]}
+            >
+              {FAMILY_LABELS[family].slice(0, 1)}
+            </Text>
+          ))}
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Popover
-      width={220}
+      width={286}
       opened={isOpen}
       onChange={setIsOpen}
       trapFocus
@@ -212,163 +331,38 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
 
       <Popover.Dropdown onMouseDown={(e) => e.preventDefault()}>
         <Stack gap="md" p="2px">
-          <Box>
-            <Text size="sm" fw={600} mb="xs">
-              {t("Text color")}
-            </Text>
-            <SimpleGrid cols={COLOR_GRID_COLS} spacing="xs">
-              {TEXT_COLORS.map(({ name, color }, index) => {
-                const applyTextColor = () => {
-                  if (!isEditorReady(editor)) return;
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            fullWidth
+            data-color-grid="default"
+            onClick={resetColors}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                focusSwatch("text", 0);
+              }
+            }}
+          >
+            {t("Default color")}
+          </Button>
 
-                  if (!color) {
-                    editor.commands.unsetColor();
-                  } else {
-                    editor.chain().focus().setColor(color).run();
-                  }
-                  setIsOpen(false);
-                };
-
-                return (
-                  <Tooltip key={name} label={t(name)} withArrow>
-                    <Box
-                      role="button"
-                      tabIndex={0}
-                      data-autofocus={index === 0 ? true : undefined}
-                      data-color-grid="text"
-                      data-color-index={index}
-                      className={classes.colorSwatch}
-                      aria-label={t(name)}
-                      aria-pressed={!!editorState[`text_${color}`]}
-                      onClick={applyTextColor}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          applyTextColor();
-                          return;
-                        }
-                        handleColorKeyNav(e, index, "text");
-                      }}
-                      style={{
-                        width: rem(28),
-                        height: rem(28),
-                        borderRadius: rem(6),
-                        border: editorState[`text_${color}`]
-                          ? "2px solid var(--mantine-color-gray-8)"
-                          : "1px solid var(--mantine-color-gray-4)",
-                        cursor: "pointer",
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: rem(16),
-                        fontWeight: 600,
-                        color: color || "var(--mantine-color-gray-8)",
-                      }}
-                    >
-                      A
-                    </Box>
-                  </Tooltip>
-                );
-              })}
-            </SimpleGrid>
-          </Box>
-
-          <Box>
-            <Text size="sm" fw={600} mb="xs">
-              {t("Highlight color")}
-            </Text>
-            <SimpleGrid cols={COLOR_GRID_COLS} spacing="xs">
-              {HIGHLIGHT_COLORS.map(({ name, color, token }, index) => {
-                const applyHighlight = () => {
-                  if (!isEditorReady(editor)) return;
-
-                  if (!color) {
-                    editor.commands.unsetHighlight();
-                  } else {
-                    editor
-                      .chain()
-                      .focus()
-                      .toggleMark("highlight", {
-                        color,
-                        colorName: token || "",
-                      })
-                      .run();
-                  }
-                  setIsOpen(false);
-                };
-
-                return (
-                  <Tooltip key={name} label={t(name)} withArrow>
-                    <Box
-                      role="button"
-                      tabIndex={0}
-                      data-color-grid="highlight"
-                      data-color-index={index}
-                      className={classes.colorSwatch}
-                      aria-label={t(name)}
-                      aria-pressed={!!editorState[`highlight_${color}`]}
-                      onClick={applyHighlight}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          applyHighlight();
-                          return;
-                        }
-                        handleColorKeyNav(e, index, "highlight");
-                      }}
-                      style={{
-                        width: rem(28),
-                        height: rem(28),
-                        borderRadius: rem(4),
-                        backgroundColor:
-                          color || "var(--mantine-color-gray-2)",
-                        border: "1px solid var(--mantine-color-gray-4)",
-                        cursor: "pointer",
-                        position: "relative",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: rem(16),
-                        fontWeight: 600,
-                        color: "var(--mantine-color-gray-8)",
-                      }}
-                    >
-                      {editorState[`highlight_${color}`] ? (
-                        <IconCheck
-                          size={16}
-                          color="var(--mantine-color-green-7)"
-                        />
-                      ) : (
-                        "A"
-                      )}
-                    </Box>
-                  </Tooltip>
-                );
-              })}
-            </SimpleGrid>
-          </Box>
+          {renderGrid("text")}
+          {renderGrid("highlight")}
 
           <Button
             variant="default"
             fullWidth
             data-color-grid="remove"
             className={classes.removeColor}
-            onClick={() => {
-              if (isEditorReady(editor)) {
-                editor.commands.unsetColor();
-                editor.commands.unsetHighlight();
-              }
-              setIsOpen(false);
-            }}
+            onClick={resetColors}
             onKeyDown={(e) => {
               if (e.key === "ArrowUp") {
                 e.preventDefault();
-                const lastRowStart =
-                  Math.floor(
-                    (HIGHLIGHT_COLORS.length - 1) / COLOR_GRID_COLS,
-                  ) * COLOR_GRID_COLS;
-                focusSwatch("highlight", lastRowStart);
+                focusSwatch(
+                  "highlight",
+                  (COLOR_GRID_ROWS - 1) * COLOR_GRID_COLS,
+                );
               }
             }}
           >
