@@ -120,6 +120,7 @@ import { countWords } from "alfaaz";
 import AutoJoiner from "@/features/editor/extensions/autojoiner.ts";
 import GlobalDragHandle from "@/features/editor/extensions/drag-handle.ts";
 import { CleanStyles } from "@/features/editor/extensions/clean-styles.ts";
+import { Tabs, Tab } from "@/features/editor/extensions/tabs";
 
 const lowlight = createLowlight(common);
 lowlight.register("mermaid", plaintext);
@@ -426,6 +427,8 @@ export const mainExtensions = [
   }).configure(),
   Columns,
   Column,
+  Tabs,
+  Tab,
   Footnotes,
   Footnote,
   FootnoteReference,

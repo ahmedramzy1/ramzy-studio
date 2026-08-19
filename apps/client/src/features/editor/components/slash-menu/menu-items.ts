@@ -393,6 +393,18 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       },
     },
     {
+      title: "Tabs",
+      description: "Organize content into switchable tabs.",
+      searchTerms: ["tabs", "tabbed", "sections", "switch"],
+      icon: IconAppWindow,
+      command: ({ editor, range }: CommandProps) =>
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertTabs({ count: 3 })
+          .run(),
+    },    {
       title: "Toggle block",
       description: "Insert collapsible block.",
       searchTerms: ["collapsible", "block", "toggle", "details", "expand"],
