@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import { Fragment } from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import TabsView from "@/features/editor/components/tabs/tabs-view";
 
@@ -59,6 +60,21 @@ export const Tabs = Node.create({
   defining: true,
   isolating: true,
 
+  addAttributes() {
+    return {
+      activeIndex: {
+        default: 0,
+        parseHTML: (element) => {
+          const value = Number(element.getAttribute("data-active-index"));
+          return Number.isInteger(value) ? value : 0;
+        },
+        renderHTML: (attributes) => ({
+          "data-active-index": attributes.activeIndex ?? 0,
+        }),
+      },
+    };
+  },
+
   parseHTML() {
     return [{ tag: 'div[data-type="tabs"]' }];
   },
@@ -90,7 +106,10 @@ export const Tabs = Node.create({
             ),
           );
 
-          const tabsNode = this.type.create(null, Fragment.from(tabs));
+          const tabsNode = this.type.create(
+            { activeIndex: 0 },
+            Fragment.from(tabs),
+          );
           const stepsBefore = tr.steps.length;
           tr.replaceSelectionWith(tabsNode);
 
@@ -107,6 +126,56 @@ export const Tabs = Node.create({
           return true;
         },
     };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("ramzyTabsVisibility"),
+        props: {
+          decorations: (state) => {
+            const decorations: Decoration[] = [];
+
+            state.doc.descendants((node, pos) => {
+              if (node.type.name !== "tabs") return true;
+
+              const requestedIndex = Number(node.attrs.activeIndex ?? 0);
+              const activeIndex = Math.max(
+                0,
+                Math.min(
+                  Number.isInteger(requestedIndex) ? requestedIndex : 0,
+                  Math.max(0, node.childCount - 1),
+                ),
+              );
+
+              let childOffset = 0;
+              node.forEach((child, _offset, index) => {
+                if (child.type.name !== "tab") {
+                  childOffset += child.nodeSize;
+                  return;
+                }
+
+                const childPos = pos + 1 + childOffset;
+                const isActive = index === activeIndex;
+                decorations.push(
+                  Decoration.node(childPos, childPos + child.nodeSize, {
+                    class: isActive
+                      ? "ramzy-tab--active"
+                      : "ramzy-tab--inactive",
+                    "aria-hidden": isActive ? "false" : "true",
+                  }),
+                );
+                childOffset += child.nodeSize;
+              });
+
+              return false;
+            });
+
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
   },
 
   addNodeView() {
