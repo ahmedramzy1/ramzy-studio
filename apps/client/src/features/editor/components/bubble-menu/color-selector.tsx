@@ -5,7 +5,6 @@ import {
   Button,
   Popover,
   rem,
-  SimpleGrid,
   Stack,
   Text,
   Tooltip,
@@ -196,104 +195,114 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
           {t(kind === "text" ? "Text color" : "Highlight color")}
         </Text>
 
-        <SimpleGrid cols={COLOR_GRID_COLS} spacing={4} verticalSpacing={4}>
-          {colors.map(({ name, color, token }, index) => {
-            const isActive = !!editorState[`${kind}_${color}`];
-            const applyColor = () => {
-              if (!isEditorReady(editor)) return;
-
-              if (kind === "text") {
-                editor.chain().focus().setColor(color).run();
-              } else {
-                editor
-                  .chain()
-                  .focus()
-                  .toggleMark("highlight", { color, colorName: token })
-                  .run();
-              }
-              setIsOpen(false);
-            };
-
-            return (
-              <Tooltip key={`${kind}-${token}`} label={t(name)} withArrow>
-                <Box
-                  role="button"
-                  tabIndex={0}
-                  data-autofocus={kind === "text" && index === 0 ? true : undefined}
-                  data-color-grid={kind}
-                  data-color-index={index}
-                  className={classes.colorSwatch}
-                  aria-label={t(name)}
-                  aria-pressed={isActive}
-                  onClick={applyColor}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      applyColor();
-                      return;
-                    }
-                    handleColorKeyNav(e, index, kind);
-                  }}
-                  style={{
-                    width: rem(28),
-                    height: rem(28),
-                    borderRadius: rem(kind === "text" ? 6 : 4),
-                    border: isActive
-                      ? "2px solid var(--mantine-color-gray-8)"
-                      : "1px solid var(--mantine-color-gray-4)",
-                    backgroundColor:
-                      kind === "highlight"
-                        ? color
-                        : "var(--mantine-color-body)",
-                    cursor: "pointer",
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: rem(16),
-                    fontWeight: 600,
-                    color:
-                      kind === "text"
-                        ? color
-                        : "var(--mantine-color-gray-8)",
-                  }}
-                >
-                  {kind === "highlight" && isActive ? (
-                    <IconCheck size={16} color="var(--mantine-color-gray-9)" />
-                  ) : (
-                    "A"
-                  )}
-                </Box>
-              </Tooltip>
-            );
-          })}
-        </SimpleGrid>
-
         <Box
-          mt={4}
           style={{
             display: "grid",
-            gridTemplateColumns: `repeat(${COLOR_GRID_COLS}, ${rem(28)})`,
-            gap: rem(4),
+            gridTemplateColumns: `${rem(56)} repeat(${COLOR_GRID_COLS}, ${rem(32)})`,
+            columnGap: rem(5),
+            rowGap: rem(5),
+            alignItems: "center",
           }}
-          aria-hidden
         >
+          <Box aria-hidden />
           {RAMZY_COLOR_FAMILIES.map((family) => (
             <Text
-              key={`${kind}-${family}-label`}
+              key={`${kind}-${family}-header`}
               size="xs"
               ta="center"
               c="dimmed"
-              style={{
-                fontSize: rem(9),
-                lineHeight: 1.1,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-              title={FAMILY_LABELS[family]}
+              fw={500}
+              style={{ fontSize: rem(9), lineHeight: 1.1 }}
             >
-              {FAMILY_LABELS[family].slice(0, 1)}
+              {FAMILY_LABELS[family]}
             </Text>
+          ))}
+
+          {RAMZY_COLOR_INTENSITIES.map((intensity, rowIndex) => (
+            <React.Fragment key={`${kind}-${intensity}`}>
+              <Text
+                size="xs"
+                c="dimmed"
+                fw={500}
+                style={{ fontSize: rem(10), lineHeight: 1.1 }}
+              >
+                {INTENSITY_LABELS[intensity]}
+              </Text>
+
+              {RAMZY_COLOR_FAMILIES.map((family, colIndex) => {
+                const index = rowIndex * COLOR_GRID_COLS + colIndex;
+                const { name, color, token } = colors[index];
+                const isActive = !!editorState[`${kind}_${color}`];
+
+                const applyColor = () => {
+                  if (!isEditorReady(editor)) return;
+
+                  if (kind === "text") {
+                    editor.chain().focus().setColor(color).run();
+                  } else {
+                    editor
+                      .chain()
+                      .focus()
+                      .toggleMark("highlight", { color, colorName: token })
+                      .run();
+                  }
+                  setIsOpen(false);
+                };
+
+                return (
+                  <Tooltip key={`${kind}-${family}-${intensity}`} label={t(name)} withArrow>
+                    <Box
+                      role="button"
+                      tabIndex={0}
+                      data-autofocus={kind === "text" && index === 0 ? true : undefined}
+                      data-color-grid={kind}
+                      data-color-index={index}
+                      className={classes.colorSwatch}
+                      aria-label={t(name)}
+                      aria-pressed={isActive}
+                      onClick={applyColor}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          applyColor();
+                          return;
+                        }
+                        handleColorKeyNav(e, index, kind);
+                      }}
+                      style={{
+                        width: rem(32),
+                        height: rem(28),
+                        borderRadius: rem(kind === "text" ? 6 : 4),
+                        border: isActive
+                          ? "2px solid var(--mantine-color-gray-8)"
+                          : "1px solid var(--mantine-color-gray-4)",
+                        backgroundColor:
+                          kind === "highlight"
+                            ? color
+                            : "var(--mantine-color-body)",
+                        cursor: "pointer",
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: rem(16),
+                        fontWeight: 600,
+                        color:
+                          kind === "text"
+                            ? color
+                            : "var(--mantine-color-gray-8)",
+                      }}
+                    >
+                      {kind === "highlight" && isActive ? (
+                        <IconCheck size={16} color="var(--mantine-color-gray-9)" />
+                      ) : (
+                        "A"
+                      )}
+                    </Box>
+                  </Tooltip>
+                );
+              })}
+            </React.Fragment>
           ))}
         </Box>
       </Box>
@@ -302,7 +311,7 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
 
   return (
     <Popover
-      width={286}
+      width={390}
       opened={isOpen}
       onChange={setIsOpen}
       trapFocus
