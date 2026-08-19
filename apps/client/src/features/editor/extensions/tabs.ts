@@ -166,7 +166,10 @@ export const Tabs = Node.create({
       const renameTab = (index: number) => {
         if (!editor.isEditable) return;
         const tab = currentNode.child(index);
-        const nextTitle = window.prompt("Rename tab", tab.attrs.title || `Tab ${index + 1}`);
+        const nextTitle = window.prompt(
+          "Rename tab",
+          tab.attrs.title || `Tab ${index + 1}`,
+        );
         if (!nextTitle?.trim()) return;
 
         const tabPos = getTabPos(index);
@@ -223,7 +226,10 @@ export const Tabs = Node.create({
           trigger.className = "ramzy-tabs__trigger";
           trigger.textContent = tab.attrs.title || `Tab ${index + 1}`;
           trigger.setAttribute("role", "tab");
-          trigger.setAttribute("aria-selected", index === activeIndex ? "true" : "false");
+          trigger.setAttribute(
+            "aria-selected",
+            index === activeIndex ? "true" : "false",
+          );
           if (index === activeIndex) trigger.dataset.active = "true";
           trigger.addEventListener("click", () => setActiveIndex(index));
           trigger.addEventListener("dblclick", () => renameTab(index));
@@ -274,11 +280,33 @@ export const Tabs = Node.create({
           queueMicrotask(syncPanels);
           return true;
         },
-        ignoreMutation: (mutation) =>
-          mutation.type === "attributes" &&
-          (mutation.attributeName === "hidden" ||
-            mutation.attributeName === "role" ||
-            mutation.attributeName === "aria-hidden"),
+        ignoreMutation: (mutation) => {
+          const target = mutation.target as globalThis.Node;
+
+          // The tab strip is UI owned by this node view, not ProseMirror
+          // document content. Ignoring its child/attribute mutations prevents
+          // ProseMirror's DOM observer from trying to reconcile our own UI
+          // render back into the document, which can create an update loop.
+          if (target === tabList || tabList.contains(target)) {
+            return true;
+          }
+
+          // Panel visibility/accessibility attributes are also node-view UI.
+          if (
+            mutation.type === "attributes" &&
+            (mutation.attributeName === "hidden" ||
+              mutation.attributeName === "role" ||
+              mutation.attributeName === "aria-hidden")
+          ) {
+            return true;
+          }
+
+          return false;
+        },
+        stopEvent: (event) => {
+          const target = event.target as globalThis.Node | null;
+          return !!target && (target === tabList || tabList.contains(target));
+        },
         destroy: () => observer.disconnect(),
       };
     };
