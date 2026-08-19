@@ -4,6 +4,7 @@ import {
   NodeViewWrapper,
   type NodeViewProps,
 } from "@tiptap/react";
+import { TextSelection } from "@tiptap/pm/state";
 
 const MIN_TABS = 2;
 const MAX_TABS = 8;
@@ -33,6 +34,19 @@ export default function TabsView({ node, editor, getPos }: NodeViewProps) {
       offset += node.child(i).nodeSize;
     }
     return parentPos + 1 + offset;
+  };
+
+  const activateTab = (index: number) => {
+    setActiveIndex(index);
+
+    if (!editor.isEditable) return;
+    const tabPos = getTabPos(index);
+    if (tabPos === null) return;
+
+    const insideTab = tabPos + 1;
+    const selection = TextSelection.near(editor.state.doc.resolve(insideTab), 1);
+    editor.view.dispatch(editor.state.tr.setSelection(selection));
+    editor.view.focus();
   };
 
   const renameTab = (index: number) => {
@@ -82,7 +96,7 @@ export default function TabsView({ node, editor, getPos }: NodeViewProps) {
       })
       .run();
 
-    setActiveIndex(newIndex);
+    requestAnimationFrame(() => activateTab(newIndex));
   };
 
   return (
@@ -110,7 +124,7 @@ export default function TabsView({ node, editor, getPos }: NodeViewProps) {
                 role="tab"
                 aria-selected={isActive}
                 data-active={isActive ? "true" : undefined}
-                onClick={() => setActiveIndex(index)}
+                onClick={() => activateTab(index)}
                 onDoubleClick={() => renameTab(index)}
               >
                 {title}
