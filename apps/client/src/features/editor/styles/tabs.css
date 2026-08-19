@@ -1,0 +1,115 @@
+.ramzy-tabs {
+  margin: 16px 0;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-default);
+  background: var(--mantine-color-body);
+  overflow: hidden;
+}
+
+.ramzy-tabs__list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  scrollbar-width: thin;
+}
+
+.ramzy-tabs__item {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.ramzy-tabs__trigger,
+.ramzy-tabs__add,
+.ramzy-tabs__remove {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--mantine-color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ramzy-tabs__trigger {
+  position: relative;
+  padding: 7px 10px 9px;
+  border-radius: 6px 6px 0 0;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ramzy-tabs__trigger:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.ramzy-tabs__trigger[data-active="true"] {
+  color: var(--mantine-primary-color-filled);
+}
+
+.ramzy-tabs__trigger[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: var(--mantine-primary-color-filled);
+}
+
+.ramzy-tabs__remove {
+  width: 22px;
+  height: 22px;
+  margin-left: -5px;
+  border-radius: 4px;
+  color: var(--mantine-color-dimmed);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.ramzy-tabs__remove:hover,
+.ramzy-tabs__add:hover {
+  background: var(--mantine-color-default-hover);
+  color: var(--mantine-color-text);
+}
+
+.ramzy-tabs__add {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  margin: 0 4px 7px;
+  border-radius: 6px;
+  color: var(--mantine-color-dimmed);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.ramzy-tabs__content {
+  padding: 16px;
+  min-height: 56px;
+}
+
+.ramzy-tabs__content > [data-type="tab"] {
+  margin: 0;
+}
+
+.ramzy-tabs__content > [data-type="tab"][hidden] {
+  display: none !important;
+}
+
+.ramzy-tabs__content > [data-type="tab"] > :first-child {
+  margin-top: 0;
+}
+
+.ramzy-tabs__content > [data-type="tab"] > :last-child {
+  margin-bottom: 0;
+}
+
+.ramzy-tabs:has(.ProseMirror-selectednode),
+.ramzy-tabs:focus-within {
+  border-color: var(--mantine-primary-color-filled);
+}
