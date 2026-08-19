@@ -90,8 +90,8 @@
 }
 
 .ramzy-tabs__content {
-  padding: 16px;
-  min-height: 56px;
+  padding: 10px 16px 12px;
+  min-height: 40px;
   overflow: visible;
 }
 
@@ -117,6 +117,10 @@
 
 .ramzy-tabs__content > [data-type="tab"] > :last-child {
   margin-bottom: 0;
+}
+
+.ramzy-tabs__content > [data-type="tab"] > p:only-child {
+  min-height: 20px;
 }
 
 .ramzy-tabs:focus-within {
