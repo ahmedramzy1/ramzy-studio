@@ -38,6 +38,13 @@ const red: MantineColorsTuple = [
   "#93151b",
 ];
 
+// Canonical radius for bordered surfaces across Ramzy Studio. Mantine
+// components inherit this through `defaultRadius`; custom/editor surfaces use
+// the matching `--ramzy-radius-bordered` CSS token below. Keeping the value in
+// one place prevents tables, tabs, cards, popovers, inputs, etc. from drifting
+// into unrelated corner geometries as the product grows.
+export const RAMZY_BORDERED_RADIUS = 8;
+
 export const theme = createTheme({
   colors: {
     blue,
@@ -45,7 +52,7 @@ export const theme = createTheme({
   },
   primaryColor: "blue",
   primaryShade: 5,
-  defaultRadius: 8,
+  defaultRadius: RAMZY_BORDERED_RADIUS,
   fontFamily: '"DM Sans", system-ui, sans-serif',
   fontFamilyMonospace: '"JetBrains Mono", "Courier New", monospace',
   headings: {
@@ -84,9 +91,9 @@ export const theme = createTheme({
           root: {
             ...(props.variant === "subtle" &&
               props.color === "dark" && {
-                "--ai-color": "var(--mantine-color-default-color)",
-                "--ai-hover": "var(--mantine-color-default-hover)",
-              }),
+              "--ai-color": "var(--mantine-color-default-color)",
+              "--ai-hover": "var(--mantine-color-default-hover)",
+            }),
           },
         };
       },
@@ -99,6 +106,7 @@ export const mantineCssResolver: CSSVariablesResolver = (theme) => ({
   variables: {
     ...v8CssVariablesResolver(theme).variables,
     "--input-error-size": theme.fontSizes.sm,
+    "--ramzy-radius-bordered": `${RAMZY_BORDERED_RADIUS}px`,
   },
   light: {
     ...v8CssVariablesResolver(theme).light,
