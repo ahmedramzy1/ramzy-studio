@@ -14,7 +14,7 @@ import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
 import { useTranslation } from "react-i18next";
 
-const RAMZY_COLOR_FAMILIES = [
+export const RAMZY_COLOR_FAMILIES = [
   "ink",
   "cobalt",
   "azure",
@@ -25,12 +25,12 @@ const RAMZY_COLOR_FAMILIES = [
   "violet",
 ] as const;
 
-const RAMZY_COLOR_INTENSITIES = ["soft", "medium", "strong"] as const;
+export const RAMZY_COLOR_INTENSITIES = ["soft", "medium", "strong"] as const;
 
 type RamzyColorFamily = (typeof RAMZY_COLOR_FAMILIES)[number];
 type RamzyColorIntensity = (typeof RAMZY_COLOR_INTENSITIES)[number];
 
-const FAMILY_LABELS: Record<RamzyColorFamily, string> = {
+export const FAMILY_LABELS: Record<RamzyColorFamily, string> = {
   ink: "Ink",
   cobalt: "Cobalt",
   azure: "Azure",
@@ -41,7 +41,7 @@ const FAMILY_LABELS: Record<RamzyColorFamily, string> = {
   violet: "Violet",
 };
 
-const INTENSITY_LABELS: Record<RamzyColorIntensity, string> = {
+export const INTENSITY_LABELS: Record<RamzyColorIntensity, string> = {
   soft: "Soft",
   medium: "Medium",
   strong: "Strong",
