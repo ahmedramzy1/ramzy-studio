@@ -272,7 +272,7 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
                       style={{
                         width: rem(32),
                         height: rem(28),
-                        borderRadius: rem(kind === "text" ? 6 : 4),
+                        borderRadius: rem(6),
                         border: isActive
                           ? "2px solid var(--mantine-color-gray-8)"
                           : "1px solid var(--mantine-color-gray-4)",
