@@ -4,6 +4,7 @@ import { useTableHandleState } from "./hooks/use-table-handle-state";
 import { ColumnHandle } from "./column-handle";
 import { RowHandle } from "./row-handle";
 import { CellChevron } from "./cell-chevron";
+import { InsertAffordances } from "./insert-affordances";
 
 interface TableHandlesLayerProps {
   editor: Editor | null;
@@ -39,6 +40,14 @@ export const TableHandlesLayer = React.memo(function TableHandlesLayer({
         tableNode={state.tableNode!}
         tablePos={state.tablePos!}
       />
+      {!state.dragging && (
+        <InsertAffordances
+          editor={editor}
+          cellPos={state.hoveringCell.cellPos}
+          colAnchorPos={state.hoveringCell.colFirstCellPos}
+          rowAnchorPos={state.hoveringCell.rowFirstCellPos}
+        />
+      )}
     </>
   );
 });
