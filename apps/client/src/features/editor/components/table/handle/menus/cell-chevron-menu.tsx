@@ -1,7 +1,7 @@
 import React from "react";
 import type { Editor } from "@tiptap/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { ColorSwatch, Menu } from "@mantine/core";
+import { ColorSwatch, Menu, Text } from "@mantine/core";
 import {
   IconBoxMargin,
   IconColumnInsertRight,
@@ -15,7 +15,13 @@ import {
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { useTableClear } from "../hooks/use-table-clear";
-import { TABLE_COLORS } from "../../table-background-color";
+import {
+  FAMILY_LABELS,
+  INTENSITY_LABELS,
+  RAMZY_COLOR_FAMILIES,
+  RAMZY_COLOR_INTENSITIES,
+  TABLE_COLORS,
+} from "../../table-background-color";
 import { AlignmentSubmenu } from "./alignment-submenu";
 
 interface CellChevronMenuProps {
@@ -38,7 +44,7 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
     cellPos,
   });
 
-  const setBackground = (color: string, name: string) => {
+  const setBackground = (color: string, name: string | null) => {
     editor
       .chain()
       .focus()
@@ -62,36 +68,92 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
           </Menu.Sub.Item>
         </Menu.Sub.Target>
         <Menu.Sub.Dropdown>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 8,
-              padding: 8,
-            }}
-          >
-            {TABLE_COLORS.map((c) => (
-              <button
-                key={c.name}
-                type="button"
-                onClick={() => setBackground(c.color, c.name)}
-                aria-label={t(c.name)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              >
-                <ColorSwatch
-                  color={c.color || "#ffffff"}
-                  size={22}
-                  style={{
-                    border: c.color === "" ? "1px solid #e5e7eb" : undefined,
-                  }}
-                />
-              </button>
-            ))}
+          <div style={{ padding: 10, minWidth: 340 }}>
+            <button
+              type="button"
+              onClick={() => setBackground("", null)}
+              style={{
+                width: "100%",
+                border: "none",
+                background: "transparent",
+                padding: "4px 6px 10px",
+                cursor: "pointer",
+                textAlign: "left",
+                color: "var(--mantine-color-text)",
+                fontSize: 12,
+              }}
+            >
+              {t("Default color")}
+            </button>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "54px repeat(8, 26px)",
+                columnGap: 5,
+                rowGap: 6,
+                alignItems: "center",
+              }}
+            >
+              <span />
+              {RAMZY_COLOR_FAMILIES.map((family) => (
+                <Text
+                  key={`${family}-label`}
+                  size="xs"
+                  c="dimmed"
+                  ta="center"
+                  fw={500}
+                  style={{ fontSize: 8, lineHeight: 1 }}
+                >
+                  {FAMILY_LABELS[family]}
+                </Text>
+              ))}
+
+              {RAMZY_COLOR_INTENSITIES.map((intensity) => (
+                <React.Fragment key={intensity}>
+                  <Text
+                    size="xs"
+                    c="dimmed"
+                    fw={500}
+                    style={{ fontSize: 10, lineHeight: 1 }}
+                  >
+                    {INTENSITY_LABELS[intensity]}
+                  </Text>
+
+                  {RAMZY_COLOR_FAMILIES.map((family) => {
+                    const color = TABLE_COLORS.find(
+                      (item) =>
+                        item.family === family && item.intensity === intensity,
+                    );
+
+                    if (!color) return <span key={`${family}-${intensity}`} />;
+
+                    return (
+                      <button
+                        key={color.token}
+                        type="button"
+                        onClick={() => setBackground(color.color, color.token)}
+                        aria-label={t(color.name)}
+                        title={t(color.name)}
+                        style={{
+                          border: "none",
+                          background: "transparent",
+                          padding: 0,
+                          cursor: "pointer",
+                          width: 26,
+                          height: 26,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <ColorSwatch color={color.color} size={22} />
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </Menu.Sub.Dropdown>
       </Menu.Sub>
