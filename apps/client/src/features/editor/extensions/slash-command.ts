@@ -7,6 +7,29 @@ import { openTableSizePicker } from '@/features/editor/components/slash-menu/ope
 
 export const slashMenuPluginKey = new PluginKey('slash-command');
 
+const getRamzySuggestionItems = (options: any) => {
+  const groups = getSuggestionItems(options);
+
+  return Object.fromEntries(
+    Object.entries(groups).map(([group, items]) => [
+      group,
+      (items as any[]).map((item) => {
+        if (item.title !== 'Table') return item;
+
+        // Override the actual Table item's command at the source. This keeps
+        // the picker working regardless of whether selection came from mouse,
+        // Enter, or TipTap's suggestion lifecycle.
+        return {
+          ...item,
+          command: ({ editor, range }: any) => {
+            openTableSizePicker(editor, range);
+          },
+        };
+      }),
+    ]),
+  );
+};
+
 // @ts-ignore
 const Command = Extension.create({
   name: 'slash-command',
@@ -16,13 +39,6 @@ const Command = Extension.create({
       suggestion: {
         char: '/',
         command: ({ editor, range, props }) => {
-          // Table creation needs to outlive the slash-menu suggestion popup.
-          // Route it through a standalone picker before inserting the table.
-          if (props?.title === 'Table') {
-            openTableSizePicker(editor, range);
-            return;
-          }
-
           props.command({ editor, range, props });
         },
         allow: ({ state, range }) => {
@@ -50,7 +66,7 @@ const Command = Extension.create({
 
 const SlashCommand = Command.configure({
   suggestion: {
-    items: getSuggestionItems,
+    items: getRamzySuggestionItems,
     render: renderItems,
   },
 });
