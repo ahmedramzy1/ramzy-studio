@@ -3,6 +3,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 import renderItems from '@/features/editor/components/slash-menu/render-items';
 import getSuggestionItems from '@/features/editor/components/slash-menu/menu-items';
+import { openTableSizePicker } from '@/features/editor/components/slash-menu/open-table-size-picker';
 
 export const slashMenuPluginKey = new PluginKey('slash-command');
 
@@ -15,6 +16,13 @@ const Command = Extension.create({
       suggestion: {
         char: '/',
         command: ({ editor, range, props }) => {
+          // Table creation needs to outlive the slash-menu suggestion popup.
+          // Route it through a standalone picker before inserting the table.
+          if (props?.title === 'Table') {
+            openTableSizePicker(editor, range);
+            return;
+          }
+
           props.command({ editor, range, props });
         },
         allow: ({ state, range }) => {
