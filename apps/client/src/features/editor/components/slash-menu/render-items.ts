@@ -49,6 +49,7 @@ const renderItems = () => {
       getReferenceClientRect = props.clientRect;
 
       popup = document.createElement("div");
+      popup.setAttribute("data-slash-command-popup", "true");
       popup.style.zIndex = "199";
       popup.style.position = "absolute";
       popup.style.top = "0";
@@ -67,7 +68,7 @@ const renderItems = () => {
           },
         },
         popup,
-        updatePosition
+        updatePosition,
       );
     },
     onUpdate: (props: {
