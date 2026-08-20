@@ -2,6 +2,13 @@
   margin-top: 1rem;
   margin-bottom: 1rem;
   overflow-x: auto;
+  border-radius: var(--ramzy-radius-bordered, 8px);
+  background: var(--mantine-color-body);
+  /* The table engine owns the internal cell grid. The wrapper owns the outer
+     surface so every table gets the same visible Ramzy Studio radius without
+     rounding individual cells. */
+  box-shadow: inset 0 0 0 1px var(--mantine-color-default-border);
+
   & table {
     overflow-x: hidden;
     min-width: 700px !important;
