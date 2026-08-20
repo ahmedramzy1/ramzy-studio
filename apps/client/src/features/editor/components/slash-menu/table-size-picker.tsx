@@ -63,6 +63,7 @@ export function TableSizePicker({ onSelect, onBack }: TableSizePickerProps) {
             variant="subtle"
             size="sm"
             aria-label={t("Back")}
+            onMouseDown={(event) => event.preventDefault()}
             onClick={onBack}
           >
             <IconArrowLeft size={16} />
@@ -116,6 +117,7 @@ export function TableSizePicker({ onSelect, onBack }: TableSizePickerProps) {
                 setRows(cellRow);
                 setCols(cellCol);
               }}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => onSelect(cellRow, cellCol)}
               onKeyDown={handleKeyDown}
               style={{
