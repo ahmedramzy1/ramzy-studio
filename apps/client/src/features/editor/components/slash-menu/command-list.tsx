@@ -201,6 +201,7 @@ const CommandList = ({
                       role="option"
                       aria-selected={itemIndex === selectedIndex}
                       aria-disabled={disabled}
+                      onMouseDown={(event) => event.preventDefault()}
                       onClick={() => selectItem(itemIndex)}
                       className={clsx(classes.menuBtn, {
                         [classes.selectedItem]: itemIndex === selectedIndex,
