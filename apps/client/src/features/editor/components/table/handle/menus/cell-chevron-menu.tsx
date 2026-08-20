@@ -1,9 +1,10 @@
 import React from "react";
 import type { Editor } from "@tiptap/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { ColorSwatch, Menu, Text } from "@mantine/core";
+import { Box, Menu, Text } from "@mantine/core";
 import {
   IconBoxMargin,
+  IconCheck,
   IconColumnInsertRight,
   IconColumnRemove,
   IconEraser,
@@ -44,6 +45,11 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
     cellPos,
   });
 
+  const currentColor =
+    editor.getAttributes("tableCell").backgroundColor ||
+    editor.getAttributes("tableHeader").backgroundColor ||
+    "";
+
   const setBackground = (color: string, name: string | null) => {
     editor
       .chain()
@@ -68,7 +74,7 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
           </Menu.Sub.Item>
         </Menu.Sub.Target>
         <Menu.Sub.Dropdown>
-          <div style={{ padding: 10, minWidth: 340 }}>
+          <div style={{ padding: 10, minWidth: 380 }}>
             <button
               type="button"
               onClick={() => setBackground("", null)}
@@ -86,12 +92,16 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
               {t("Default color")}
             </button>
 
+            <Text size="sm" fw={600} mb="xs">
+              {t("Cell background")}
+            </Text>
+
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "54px repeat(8, 26px)",
+                gridTemplateColumns: "56px repeat(8, 32px)",
                 columnGap: 5,
-                rowGap: 6,
+                rowGap: 5,
                 alignItems: "center",
               }}
             >
@@ -103,7 +113,7 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
                   c="dimmed"
                   ta="center"
                   fw={500}
-                  style={{ fontSize: 8, lineHeight: 1 }}
+                  style={{ fontSize: 9, lineHeight: 1.1 }}
                 >
                   {FAMILY_LABELS[family]}
                 </Text>
@@ -115,7 +125,7 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
                     size="xs"
                     c="dimmed"
                     fw={500}
-                    style={{ fontSize: 10, lineHeight: 1 }}
+                    style={{ fontSize: 10, lineHeight: 1.1 }}
                   >
                     {INTENSITY_LABELS[intensity]}
                   </Text>
@@ -128,26 +138,49 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
 
                     if (!color) return <span key={`${family}-${intensity}`} />;
 
+                    const isActive = currentColor === color.color;
+
                     return (
                       <button
                         key={color.token}
                         type="button"
                         onClick={() => setBackground(color.color, color.token)}
                         aria-label={t(color.name)}
+                        aria-pressed={isActive}
                         title={t(color.name)}
                         style={{
                           border: "none",
                           background: "transparent",
                           padding: 0,
                           cursor: "pointer",
-                          width: 26,
-                          height: 26,
+                          width: 32,
+                          height: 28,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
-                        <ColorSwatch color={color.color} size={22} />
+                        <Box
+                          style={{
+                            width: 32,
+                            height: 28,
+                            borderRadius: 6,
+                            border: isActive
+                              ? "2px solid var(--mantine-color-gray-8)"
+                              : "1px solid var(--mantine-color-gray-4)",
+                            backgroundColor: color.color,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {isActive && (
+                            <IconCheck
+                              size={16}
+                              color="var(--mantine-color-gray-9)"
+                            />
+                          )}
+                        </Box>
                       </button>
                     );
                   })}
