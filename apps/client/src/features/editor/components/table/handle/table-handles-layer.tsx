@@ -44,8 +44,6 @@ export const TableHandlesLayer = React.memo(function TableHandlesLayer({
         <InsertAffordances
           editor={editor}
           cellPos={state.hoveringCell.cellPos}
-          colAnchorPos={state.hoveringCell.colFirstCellPos}
-          rowAnchorPos={state.hoveringCell.rowFirstCellPos}
         />
       )}
     </>
