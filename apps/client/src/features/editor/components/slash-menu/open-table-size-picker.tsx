@@ -11,6 +11,23 @@ export function openTableSizePicker(editor: Editor, range: Range) {
     .querySelectorAll<HTMLElement>("[data-ramzy-table-size-picker]")
     .forEach((node) => node.remove());
 
+  // This picker is a second step of the slash command, not another popup.
+  // Hide the slash menu while it is active so the two surfaces never stack.
+  const slashPopups = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-slash-command-popup='true']"),
+  );
+  const slashPopupDisplayValues = slashPopups.map((node) => node.style.display);
+  slashPopups.forEach((node) => {
+    node.style.display = "none";
+  });
+
+  const restoreSlashMenu = () => {
+    slashPopups.forEach((node, index) => {
+      if (!node.isConnected) return;
+      node.style.display = slashPopupDisplayValues[index] ?? "";
+    });
+  };
+
   const coords = editor.view.coordsAtPos(range.from);
   const width = 286;
   const viewportPadding = 12;
@@ -110,12 +127,16 @@ export function openTableSizePicker(editor: Editor, range: Range) {
   let closed = false;
   const cells: HTMLButtonElement[] = [];
 
-  const close = () => {
+  const close = (shouldRestoreSlashMenu = false) => {
     if (closed) return;
     closed = true;
     document.removeEventListener("mousedown", handleOutsideMouseDown, true);
     document.removeEventListener("keydown", handleKeyDown, true);
     host.remove();
+
+    if (shouldRestoreSlashMenu) {
+      restoreSlashMenu();
+    }
   };
 
   const updateGrid = () => {
@@ -146,7 +167,7 @@ export function openTableSizePicker(editor: Editor, range: Range) {
         withHeaderRow: true,
       })
       .run();
-    close();
+    close(false);
   };
 
   for (let index = 0; index < MAX_ROWS * MAX_COLS; index += 1) {
@@ -183,19 +204,21 @@ export function openTableSizePicker(editor: Editor, range: Range) {
   }
 
   back.addEventListener("click", () => {
-    close();
+    close(true);
     editor.commands.focus();
   });
 
   const handleOutsideMouseDown = (event: MouseEvent) => {
-    if (!host.contains(event.target as Node)) close();
+    if (!host.contains(event.target as Node)) {
+      close(true);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
-      close();
+      close(true);
       editor.commands.focus();
       return;
     }
