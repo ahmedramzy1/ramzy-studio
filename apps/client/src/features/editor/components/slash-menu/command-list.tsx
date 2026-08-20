@@ -20,13 +20,10 @@ import { useTranslation } from "react-i18next";
 import { useHasFeature } from "@/ee/hooks/use-feature";
 import { Feature } from "@/ee/features";
 import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
-import { TableSizePicker } from "./table-size-picker";
 
 const CommandList = ({
   items,
   command,
-  editor,
-  range,
 }: {
   items: SlashMenuGroupedItemsType;
   command: any;
@@ -35,36 +32,21 @@ const CommandList = ({
 }) => {
   const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [showTablePicker, setShowTablePicker] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [countAnnouncement, setCountAnnouncement] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
 
   const hasBases = useHasFeature(Feature.BASES);
   const upgradeLabel = useUpgradeLabel();
-  // Without the bases entitlement the item stays visible but inert; an
-  // expired license the client can't detect falls through to a handled
-  // create failure.
   const isItemDisabled = (item: SlashMenuItemType) =>
     !hasBases && item.requiresBases === true;
 
-  const flatItems = useMemo(() => {
-    return Object.values(items).flat();
-  }, [items]);
+  const flatItems = useMemo(() => Object.values(items).flat(), [items]);
 
   const selectItem = useCallback(
     (index: number) => {
       const item = flatItems[index];
-      if (!item || isItemDisabled(item)) return;
-
-      // Ramzy Studio keeps Docmost's native table command, but adds the
-      // Confluence-style dimension picker before the command executes.
-      if (item.title === "Table") {
-        setShowTablePicker(true);
-        return;
-      }
-
-      command(item);
+      if (item && !isItemDisabled(item)) command(item);
     },
     [command, flatItems, hasBases],
   );
@@ -72,39 +54,26 @@ const CommandList = ({
   useEffect(() => {
     const navigationKeys = ["ArrowUp", "ArrowDown", "Enter"];
     const onKeyDown = (e: KeyboardEvent) => {
-      if (showTablePicker) return;
+      if (!navigationKeys.includes(e.key)) return;
 
-      if (navigationKeys.includes(e.key)) {
-        e.preventDefault();
-
-        if (e.key === "ArrowUp") {
-          setSelectedIndex(
-            (selectedIndex + flatItems.length - 1) % flatItems.length,
-          );
-          return true;
-        }
-
-        if (e.key === "ArrowDown") {
-          setSelectedIndex((selectedIndex + 1) % flatItems.length);
-          return true;
-        }
-
-        if (e.key === "Enter") {
-          selectItem(selectedIndex);
-          return true;
-        }
-        return false;
+      e.preventDefault();
+      if (e.key === "ArrowUp") {
+        setSelectedIndex(
+          (selectedIndex + flatItems.length - 1) % flatItems.length,
+        );
+      } else if (e.key === "ArrowDown") {
+        setSelectedIndex((selectedIndex + 1) % flatItems.length);
+      } else if (e.key === "Enter") {
+        selectItem(selectedIndex);
       }
     };
+
     document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [flatItems, selectedIndex, setSelectedIndex, selectItem, showTablePicker]);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [flatItems, selectedIndex, selectItem]);
 
   useEffect(() => {
     setSelectedIndex(0);
-    setShowTablePicker(false);
   }, [flatItems]);
 
   useEffect(() => {
@@ -119,40 +88,18 @@ const CommandList = ({
 
   useEffect(() => {
     const item = flatItems[selectedIndex];
-    if (!item) {
-      setSelectionAnnouncement("");
-      return;
-    }
-    setSelectionAnnouncement(`${t(item.title)}, ${t(item.description)}`);
+    setSelectionAnnouncement(
+      item ? `${t(item.title)}, ${t(item.description)}` : "",
+    );
   }, [selectedIndex, flatItems, t]);
 
   useEffect(() => {
-    if (showTablePicker) return;
-
     viewportRef.current
       ?.querySelector(`[data-item-index="${selectedIndex}"]`)
       ?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex, showTablePicker]);
+  }, [selectedIndex]);
 
   if (flatItems.length === 0) return null;
-
-  if (showTablePicker) {
-    return (
-      <Paper id="slash-command" shadow="md" p={0} withBorder>
-        <TableSizePicker
-          onBack={() => setShowTablePicker(false)}
-          onSelect={(rows, cols) => {
-            editor
-              .chain()
-              .focus()
-              .deleteRange(range)
-              .insertTable({ rows, cols, withHeaderRow: true })
-              .run();
-          }}
-        />
-      </Paper>
-    );
-  }
 
   return (
     <Paper
@@ -188,6 +135,7 @@ const CommandList = ({
                 flatIndex += 1;
                 const itemIndex = flatIndex;
                 const disabled = isItemDisabled(item);
+
                 return (
                   <Tooltip
                     key={itemIndex}
@@ -221,7 +169,6 @@ const CommandList = ({
                           <Text size="sm" fw={500}>
                             {t(item.title)}
                           </Text>
-
                           <Text c="dimmed" size="xs">
                             {t(item.description)}
                           </Text>
