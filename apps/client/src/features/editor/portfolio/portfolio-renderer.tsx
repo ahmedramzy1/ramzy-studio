@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from "react";
+import React, { useLayoutEffect, useMemo, useState } from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import {
   RamzyPortfolioRenderer,
@@ -16,11 +16,11 @@ export interface RamzyStudioPortfolioRendererProps {
   printMode?: boolean;
   onCreate?: (editor: Editor) => void;
   /**
-   * External preview surfaces pass the same short-lived session used by Build.
-   * This keeps Ramzy-hosted assets, transclusions and API lookups routed to
-   * Ramzy Studio even when the editable surface itself is unmounted.
+   * External admin preview surfaces pass the same short-lived session used by
+   * Build. Public readonly surfaces can instead pass apiUrl only.
    */
   session?: RamzyPortfolioSession;
+  apiUrl?: string;
   /**
    * External hosts need Ramzy Studio's Mantine/query/i18n provider stack.
    * Standalone Ramzy Studio already owns those providers and opts out.
@@ -42,29 +42,42 @@ export function RamzyStudioPortfolioRenderer({
   printMode = false,
   onCreate,
   session,
+  apiUrl,
   withProviders = true,
 }: RamzyStudioPortfolioRendererProps) {
-  const [hostReady, setHostReady] = useState(!session);
+  const hostConfig = useMemo(() => {
+    if (session) {
+      return {
+        apiUrl: session.apiUrl,
+        collaborationUrl: session.collaborationUrl,
+        accessToken: session.accessToken,
+      };
+    }
+
+    const normalizedApiUrl = apiUrl?.trim();
+    if (normalizedApiUrl) {
+      return { apiUrl: normalizedApiUrl };
+    }
+
+    return null;
+  }, [apiUrl, session]);
+
+  const [hostReady, setHostReady] = useState(!hostConfig);
 
   useLayoutEffect(() => {
-    if (!session) {
+    if (!hostConfig) {
       setHostReady(true);
       return;
     }
 
-    const cleanup = setPortfolioRuntimeHostConfig({
-      apiUrl: session.apiUrl,
-      collaborationUrl: session.collaborationUrl,
-      accessToken: session.accessToken,
-    });
-
+    const cleanup = setPortfolioRuntimeHostConfig(hostConfig);
     setHostReady(true);
 
     return () => {
       setHostReady(false);
       cleanup();
     };
-  }, [session?.accessToken, session?.apiUrl, session?.collaborationUrl]);
+  }, [hostConfig]);
 
   if (!hostReady) {
     return null;
