@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
         entry: path.resolve(process.cwd(), "src/portfolio-runtime/index.ts"),
         formats: ["es"],
         fileName: "index",
+        cssFileName: "style",
       },
       rolldownOptions: {
         external: [
