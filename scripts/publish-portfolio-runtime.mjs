@@ -11,13 +11,49 @@ const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ramzy-portfolio-runtime-'
 const isWindows = process.platform === 'win32';
 const pnpm = isWindows ? 'pnpm.cmd' : 'pnpm';
 
+function quoteWindowsArg(value) {
+  const arg = String(value);
+  if (!/[\s"&|<>^]/.test(arg)) return arg;
+  return `"${arg.replace(/"/g, '\\"')}"`;
+}
+
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: options.cwd ?? root,
-    stdio: options.capture ? 'pipe' : 'inherit',
-    encoding: 'utf8',
-    shell: false,
-  });
+  const cwd = options.cwd ?? root;
+  const stdio = options.capture ? 'pipe' : 'inherit';
+
+  // Newer Node versions on Windows do not reliably spawn .cmd shims directly.
+  // Route only .cmd commands through cmd.exe; native executables such as git
+  // continue to use spawnSync directly so argument handling stays predictable.
+  const shouldUseCmd = isWindows && command.toLowerCase().endsWith('.cmd');
+  const result = shouldUseCmd
+    ? spawnSync(
+        process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe',
+        [
+          '/d',
+          '/s',
+          '/c',
+          [command, ...args].map(quoteWindowsArg).join(' '),
+        ],
+        {
+          cwd,
+          stdio,
+          encoding: 'utf8',
+          windowsHide: true,
+        },
+      )
+    : spawnSync(command, args, {
+        cwd,
+        stdio,
+        encoding: 'utf8',
+        shell: false,
+        windowsHide: isWindows,
+      });
+
+  if (result.error) {
+    throw new Error(
+      `${command} ${args.join(' ')} could not start: ${result.error.message}`,
+    );
+  }
 
   if (result.status !== 0) {
     const detail = result.stderr?.trim() || result.stdout?.trim();
@@ -89,7 +125,15 @@ try {
   run('git', ['add', '--all'], { cwd: tempDir });
   run(
     'git',
-    ['-c', 'user.name=Ramzy Studio Runtime', '-c', 'user.email=runtime@local.invalid', 'commit', '-m', `Portfolio runtime from ${sourceCommit}`],
+    [
+      '-c',
+      'user.name=Ramzy Studio Runtime',
+      '-c',
+      'user.email=runtime@local.invalid',
+      'commit',
+      '-m',
+      `Portfolio runtime from ${sourceCommit}`,
+    ],
     { cwd: tempDir },
   );
   run('git', ['remote', 'add', 'origin', sourceRemote], { cwd: tempDir });
