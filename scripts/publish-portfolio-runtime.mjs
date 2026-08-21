@@ -128,6 +128,7 @@ export interface RamzyStudioPortfolioRendererProps {
   printMode?: boolean;
   onCreate?: (editor: unknown) => void;
   session?: RamzyPortfolioSession;
+  apiUrl?: string;
   withProviders?: boolean;
 }
 
