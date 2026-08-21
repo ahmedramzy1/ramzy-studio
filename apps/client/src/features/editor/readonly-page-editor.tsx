@@ -85,6 +85,7 @@ export default function ReadonlyPageEditor({
         pageId={pageId}
         shareId={shareId}
         printMode={printMode}
+        withProviders={false}
         onCreate={(editor) => {
           // Docmost-specific host state remains outside the reusable renderer.
           // @ts-ignore
