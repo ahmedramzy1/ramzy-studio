@@ -1,3 +1,5 @@
+import type { JSONContent } from '@tiptap/core';
+
 export interface RamzyPortfolioUser {
   id: string;
   name: string;
@@ -8,17 +10,31 @@ export interface RamzyPortfolioUser {
 /**
  * Host-facing session used by the portfolio editor runtime.
  *
- * ahmedramzy.com authenticates the admin with its own identity provider. A
- * server-side exchange then returns this short-lived Ramzy Studio session; the
+ * ahmedramzy.com authenticates the admin with its own identity provider. Ramzy
+ * Studio verifies that identity and returns these short-lived credentials; the
  * browser never needs a second Docmost login screen or an integration secret.
  */
 export interface RamzyPortfolioSession {
-  token: string;
+  accessToken: string;
+  collaborationToken: string;
   user: RamzyPortfolioUser;
+  apiUrl: string;
   collaborationUrl: string;
   expiresAt: string;
 }
 
+export interface RamzyPortfolioDocument {
+  id: string;
+  title: string;
+  content: JSONContent | null;
+  updatedAt?: string | Date;
+}
+
 export interface RamzyPortfolioSessionRequest {
   pageId: string;
+}
+
+export interface RamzyPortfolioSessionResponse {
+  session: RamzyPortfolioSession;
+  document: RamzyPortfolioDocument;
 }
