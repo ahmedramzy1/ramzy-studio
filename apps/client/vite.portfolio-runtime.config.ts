@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import * as path from "path";
 
 const workspaceRoot = path.resolve(process.cwd(), "..", "..");
+const clientSourceRoot = path.resolve(process.cwd(), "src");
+const portfolioRuntimeRoot = path.resolve(clientSourceRoot, "portfolio-runtime");
 
 const hostExternals = new Set([
   "react",
@@ -46,9 +48,26 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     resolve: {
-      alias: {
-        "@": path.resolve(process.cwd(), "src"),
-      },
+      alias: [
+        {
+          find: /^use-sync-external-store\/shim\/with-selector$/,
+          replacement: path.resolve(
+            portfolioRuntimeRoot,
+            "react-external-store-selector.ts",
+          ),
+        },
+        {
+          find: /^use-sync-external-store\/shim$/,
+          replacement: path.resolve(
+            portfolioRuntimeRoot,
+            "react-external-store-shim.ts",
+          ),
+        },
+        {
+          find: "@",
+          replacement: clientSourceRoot,
+        },
+      ],
     },
     build: {
       outDir: "dist-portfolio-runtime",
@@ -61,10 +80,10 @@ export default defineConfig(({ mode }) => {
         cssFileName: "style",
       },
       rolldownOptions: {
-        external: (id: string) =>
-          hostExternals.has(id) ||
-          id === "use-sync-external-store" ||
-          id.startsWith("use-sync-external-store/"),
+        // React and the host router stay external so ahmedramzy.com owns one
+        // runtime instance. Legacy external-store shims are aliased above to
+        // native ESM bridges and are bundled into the Ramzy runtime instead.
+        external: (id: string) => hostExternals.has(id),
       },
     },
   };
