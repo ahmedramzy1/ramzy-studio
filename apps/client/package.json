@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:portfolio-runtime": "vite build --config vite.portfolio-runtime.config.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.tsx\" \"src/**/*.ts\"",
@@ -37,7 +38,7 @@
     "@tanstack/react-virtual": "3.14.3",
     "alfaaz": "1.1.0",
     "axios": "1.18.1",
-    "blueimp-load-image": "5.16.0",
+    "blueimp-load-image": "5.16.6",
     "clsx": "2.1.1",
     "file-saver": "2.0.5",
     "highlightjs-sap-abap": "0.3.0",
