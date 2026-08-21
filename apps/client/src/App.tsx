@@ -28,6 +28,7 @@ import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-selec
 import SharedPage from "@/pages/share/shared-page.tsx";
 import PortfolioEmbedPage from "@/pages/share/portfolio-embed-page.tsx";
 import PortfolioEditorPage from "@/pages/portfolio/portfolio-editor-page.tsx";
+import PortfolioPreviewPage from "@/pages/portfolio/portfolio-preview-page.tsx";
 import PdfRenderPage from "@/ee/pdf-export/pdf-render-page.tsx";
 import Shares from "@/pages/settings/shares/shares.tsx";
 import ShareLayout from "@/features/share/components/share-layout.tsx";
@@ -81,6 +82,10 @@ export default function App() {
         <Route
           path={"/portfolio/edit/p/:pageSlug"}
           element={<PortfolioEditorPage />}
+        />
+        <Route
+          path={"/portfolio/preview/p/:pageSlug"}
+          element={<PortfolioPreviewPage />}
         />
 
         <Route
