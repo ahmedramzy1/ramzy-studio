@@ -1,0 +1,75 @@
+name: Ramzy Studio Quality
+
+on:
+  push:
+    branches:
+      - main
+      - ramzy/phase1-integration
+  pull_request:
+
+concurrency:
+  group: ramzy-studio-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  editor-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build editor extensions
+        run: pnpm run editor-ext:build
+
+      - name: Lint client
+        run: pnpm --filter ./apps/client run lint
+
+      - name: Test client
+        run: pnpm --filter ./apps/client run test
+
+      - name: Build client
+        run: pnpm --filter ./apps/client run build
+
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test server
+        run: pnpm --filter ./apps/server run test -- --runInBand
+
+      - name: Build server
+        run: pnpm --filter ./apps/server run build
