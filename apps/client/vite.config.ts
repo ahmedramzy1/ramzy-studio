@@ -57,6 +57,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      host: "0.0.0.0",
+      port: 5177,
+      strictPort: true,
       proxy: {
         "/api": {
           target: APP_URL,
