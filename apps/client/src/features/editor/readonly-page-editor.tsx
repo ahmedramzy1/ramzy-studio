@@ -3,7 +3,10 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { EditorProvider } from "@tiptap/react";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { Document } from "@tiptap/extension-document";
-import { Heading, UniqueID } from "@docmost/editor-ext";
+import {
+  createPortfolioReadonlyExtensions,
+  Heading,
+} from "@docmost/editor-ext";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { useAtom } from "jotai";
@@ -24,8 +27,8 @@ interface PageEditorProps {
    */
   shareId?: string;
   /**
-   * Public portfolio embeds already render the project title in the website
-   * shell, so they can opt into the native Docmost body renderer only.
+   * Portfolio surfaces already render the project title in the website shell,
+   * so they can opt into the native Ramzy Studio body renderer only.
    */
   showTitle?: boolean;
 }
@@ -55,23 +58,18 @@ export default function ReadonlyPageEditor({
     isComponentMounted.current = true;
   }, []);
 
-  const extensions = useMemo(() => {
-    const excludedExtensions = new Set([
-      "uniqueID",
-      ...(printMode ? ["tableHeaderPin", "tableReadonlySort"] : []),
-    ]);
-    const filteredExtensions = mainExtensions.filter(
-      (ext) => !excludedExtensions.has(ext.name),
-    );
-
-    return [
-      ...filteredExtensions,
-      UniqueID.configure({
-        types: ["heading", "paragraph"],
-        updateDocument: false,
+  /**
+   * Preview/public rendering now gets its readonly behaviour from the shared
+   * editor-extension package. The complete Ramzy Studio extension set is still
+   * injected here, so extracting the policy cannot silently drop a node type.
+   */
+  const extensions = useMemo(
+    () =>
+      createPortfolioReadonlyExtensions(mainExtensions, {
+        printMode,
       }),
-    ];
-  }, [printMode]);
+    [printMode],
+  );
 
   const titleExtensions = [
     Document.extend({
