@@ -3,6 +3,10 @@ import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
 import renderItems from '@/features/editor/components/slash-menu/render-items';
 import getSuggestionItems from '@/features/editor/components/slash-menu/menu-items';
+import {
+  getPortfolioSuggestionItems,
+  isPortfolioAuthoringMode,
+} from '@/features/editor/components/slash-menu/portfolio-menu';
 
 export const slashMenuPluginKey = new PluginKey('slash-command');
 
@@ -42,7 +46,10 @@ const Command = Extension.create({
 
 const SlashCommand = Command.configure({
   suggestion: {
-    items: getSuggestionItems,
+    items: ({ query }: { query: string }) =>
+      isPortfolioAuthoringMode()
+        ? getPortfolioSuggestionItems({ query })
+        : getSuggestionItems({ query }),
     render: renderItems,
   },
 });
