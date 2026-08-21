@@ -65,6 +65,52 @@ function run(command, args, options = {}) {
   return result.stdout?.trim() ?? '';
 }
 
+function listJavaScriptFiles(directory) {
+  const files = [];
+
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...listJavaScriptFiles(absolutePath));
+      continue;
+    }
+
+    if (/\.(?:mjs|js)$/.test(entry.name)) {
+      files.push(absolutePath);
+    }
+  }
+
+  return files;
+}
+
+function assertBrowserSafeBundle(directory) {
+  const violations = [];
+
+  for (const file of listJavaScriptFiles(directory)) {
+    const source = fs.readFileSync(file, 'utf8');
+    const relative = path.relative(directory, file);
+
+    if (
+      /(?:from\s*|import\s*)["']use-sync-external-store(?:\/|["'])/.test(source) ||
+      /require\s*\(\s*["']use-sync-external-store(?:\/|["'])/.test(source)
+    ) {
+      violations.push(`${relative}: leaked use-sync-external-store dependency`);
+    }
+
+    if (/require\s*\(\s*["']react["']\s*\)/.test(source)) {
+      violations.push(`${relative}: contains browser-unsafe require('react')`);
+    }
+  }
+
+  if (violations.length > 0) {
+    throw new Error(
+      `Portfolio runtime browser-safety check failed:\n${violations
+        .map((violation) => `- ${violation}`)
+        .join('\n')}`,
+    );
+  }
+}
+
 function writePublicTypes() {
   const declarations = `import type { ComponentType } from 'react';
 
@@ -165,9 +211,6 @@ function writePackageManifest(entry) {
       },
       './style.css': './style.css',
     },
-    dependencies: {
-      'use-sync-external-store': '1.6.0',
-    },
     peerDependencies: {
       react: '^19.2.0',
       'react-dom': '^19.2.0',
@@ -190,6 +233,7 @@ try {
   }
 
   fs.cpSync(sourceDir, tempDir, { recursive: true });
+  assertBrowserSafeBundle(tempDir);
 
   const entry = fs.existsSync(path.join(tempDir, 'index.mjs'))
     ? 'index.mjs'
