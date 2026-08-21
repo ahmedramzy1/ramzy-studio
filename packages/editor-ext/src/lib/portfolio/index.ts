@@ -19,6 +19,12 @@ export {
   type PortfolioOutlineOptions,
 } from "./outline";
 
+export type {
+  RamzyPortfolioSession,
+  RamzyPortfolioSessionRequest,
+  RamzyPortfolioUser,
+} from "./session";
+
 /**
  * Versioned contract for hosts that consume the Ramzy Studio portfolio engine.
  *
