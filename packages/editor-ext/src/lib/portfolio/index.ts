@@ -14,7 +14,8 @@ export {
 } from "./extension-profile";
 
 export {
-  extractPortfolioOutline,
+  getPortfolioOutline,
+  getPortfolioOutline as extractPortfolioOutline,
   type PortfolioOutlineItem,
   type PortfolioOutlineOptions,
 } from "./outline";
