@@ -23,6 +23,11 @@ interface PageEditorProps {
    * that isn't itself shared.
    */
   shareId?: string;
+  /**
+   * Public portfolio embeds already render the project title in the website
+   * shell, so they can opt into the native Docmost body renderer only.
+   */
+  showTitle?: boolean;
 }
 
 export default function ReadonlyPageEditor({
@@ -31,6 +36,7 @@ export default function ReadonlyPageEditor({
   pageId,
   printMode = false,
   shareId,
+  showTitle = true,
 }: PageEditorProps) {
   const [, setReadOnlyEditor] = useAtom(readOnlyEditorAtom);
   const isComponentMounted = useRef(false);
@@ -81,15 +87,17 @@ export default function ReadonlyPageEditor({
 
   return (
     <TransclusionLookupProvider shareId={shareId}>
-      <div className="page-title">
-        <EditorProvider
-          editable={false}
-          immediatelyRender={true}
-          textDirection="auto"
-          extensions={titleExtensions}
-          content={title}
-        ></EditorProvider>
-      </div>
+      {showTitle && (
+        <div className="page-title">
+          <EditorProvider
+            editable={false}
+            immediatelyRender={true}
+            textDirection="auto"
+            extensions={titleExtensions}
+            content={title}
+          ></EditorProvider>
+        </div>
+      )}
 
       <EditorProvider
         editable={false}
@@ -111,7 +119,9 @@ export default function ReadonlyPageEditor({
           }
         }}
       ></EditorProvider>
-      <div style={{ paddingBottom: "20vh" }}></div>
+      {!showTitle && !printMode ? null : (
+        <div style={{ paddingBottom: "20vh" }}></div>
+      )}
     </TransclusionLookupProvider>
   );
 }
