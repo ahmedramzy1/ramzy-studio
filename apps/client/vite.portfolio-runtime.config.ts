@@ -57,6 +57,10 @@ export default defineConfig(({ mode }) => {
           "react-dom",
           "react/jsx-runtime",
           "react/jsx-dev-runtime",
+          // ahmedramzy.com already owns the exact same router major/version.
+          // Keeping one router instance preserves context for any editor node
+          // view that uses navigation primitives inside the host application.
+          "react-router-dom",
         ],
       },
     },
