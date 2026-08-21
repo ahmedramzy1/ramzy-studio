@@ -1,9 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Center, Loader, Text } from "@mantine/core";
 import ReadonlyPageEditor from "@/features/editor/readonly-page-editor";
 import { usePageQuery } from "@/features/page/queries/page-query";
 import { extractPageSlugId } from "@/lib";
+
+const RESIZE_MESSAGE = "ramzy-studio:portfolio-surface-resize";
 
 /**
  * Clean portfolio preview surface for an authenticated Ramzy Studio document.
@@ -13,6 +15,7 @@ import { extractPageSlugId } from "@/lib";
 export default function PortfolioPreviewPage() {
   const { pageSlug = "" } = useParams();
   const [searchParams] = useSearchParams();
+  const rootRef = useRef<HTMLElement | null>(null);
   const pageId = extractPageSlugId(pageSlug);
   const { data: page, isLoading, isError } = usePageQuery({ pageId });
   const requestedTheme = searchParams.get("theme");
@@ -25,11 +28,13 @@ export default function PortfolioPreviewPage() {
     const previousHtmlBackground = html.style.background;
     const previousBodyBackground = body.style.background;
     const previousBodyMargin = body.style.margin;
+    const previousBodyOverflow = body.style.overflow;
 
     html.setAttribute("data-mantine-color-scheme", theme);
     html.style.background = "var(--mantine-color-body)";
     body.style.background = "var(--mantine-color-body)";
     body.style.margin = "0";
+    body.style.overflow = "hidden";
 
     return () => {
       if (previousScheme) html.setAttribute("data-mantine-color-scheme", previousScheme);
@@ -37,8 +42,42 @@ export default function PortfolioPreviewPage() {
       html.style.background = previousHtmlBackground;
       body.style.background = previousBodyBackground;
       body.style.margin = previousBodyMargin;
+      body.style.overflow = previousBodyOverflow;
     };
   }, [theme]);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || !page) return;
+
+    const notifyParent = () => {
+      const height = Math.max(
+        root.scrollHeight,
+        root.getBoundingClientRect().height,
+        document.documentElement.scrollHeight,
+      );
+
+      window.parent.postMessage(
+        {
+          type: RESIZE_MESSAGE,
+          pageId,
+          mode: "preview",
+          height: Math.ceil(height),
+        },
+        "*",
+      );
+    };
+
+    notifyParent();
+    const observer = new ResizeObserver(notifyParent);
+    observer.observe(root);
+    const delayed = window.setTimeout(notifyParent, 250);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(delayed);
+    };
+  }, [page, pageId]);
 
   if (isLoading) {
     return (
@@ -60,10 +99,11 @@ export default function PortfolioPreviewPage() {
 
   return (
     <main
+      ref={rootRef}
       data-ramzy-portfolio-preview="true"
       style={{
         width: "100%",
-        minHeight: "100vh",
+        minHeight: 1,
         background: "var(--mantine-color-body)",
       }}
     >
@@ -71,7 +111,7 @@ export default function PortfolioPreviewPage() {
         style={{
           width: "min(1200px, 100%)",
           margin: "0 auto",
-          padding: "32px 0 120px",
+          padding: "32px 0 72px",
         }}
       >
         <ReadonlyPageEditor
