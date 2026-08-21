@@ -11,7 +11,7 @@
     "server:build": "nx run server:build",
     "client:build": "nx run client:build",
     "editor-ext:build": "nx run @docmost/editor-ext:build",
-    "portfolio-runtime:build": "pnpm --filter client run build:portfolio-runtime",
+    "portfolio-runtime:build": "pnpm run editor-ext:build && pnpm --filter client run build:portfolio-runtime",
     "client:dev": "nx run client:dev",
     "server:dev": "nx run server:start:dev",
     "server:start": "nx run server:start:prod",
@@ -84,7 +84,7 @@
   "devDependencies": {
     "@nx/js": "23.1.1",
     "@types/bytes": "3.1.5",
-    "@types/qrcode": "1.5.6",
+    "@types/qrcode": "1.5.4",
     "@types/turndown": "5.0.6",
     "concurrently": "10.0.4",
     "nx": "23.1.1",
