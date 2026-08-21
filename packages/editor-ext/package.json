@@ -10,6 +10,21 @@
   "main": "dist/index.js",
   "module": "./src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./portfolio": {
+      "types": "./dist/lib/portfolio/index.d.ts",
+      "default": "./dist/lib/portfolio/index.js"
+    }
+  },
+  "peerDependencies": {
+    "@tiptap/core": "3.29.2",
+    "@tiptap/react": "3.29.2",
+    "react": "19.2.7"
+  },
   "dependencies": {
     "marked": "17.0.5"
   }
