@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Headers,
   HttpCode,
   HttpStatus,
   NotFoundException,
@@ -20,6 +21,7 @@ import { PageHistoryService } from '../../core/page/services/page-history.servic
 import { PageService } from '../../core/page/services/page.service';
 import { ShareInfoDto } from '../../core/share/dto/share.dto';
 import { ShareService } from '../../core/share/share.service';
+import { PortfolioSessionService } from './portfolio-session.service';
 
 type CreatePortfolioPublicationDto = {
   pageId?: string;
@@ -29,6 +31,10 @@ type CreatePortfolioPublicationDto = {
 type PublicPortfolioPublicationDto = {
   pageId?: string;
   publicationId?: string;
+};
+
+type PortfolioSessionExchangeDto = {
+  pageId?: string;
 };
 
 /**
@@ -47,7 +53,24 @@ export class PortfolioController {
     private readonly pageService: PageService,
     private readonly pageHistoryService: PageHistoryService,
     private readonly pageAccessService: PageAccessService,
+    private readonly portfolioSessionService: PortfolioSessionService,
   ) {}
+
+  /**
+   * Exchange ahmedramzy.com's existing Supabase admin session for a short-lived
+   * Ramzy Studio authoring session. This endpoint deliberately bypasses Docmost
+   * cookie auth because Supabase is the identity being verified here.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/session/exchange')
+  async exchangeSession(
+    @Body() dto: PortfolioSessionExchangeDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1] ?? '';
+    return this.portfolioSessionService.exchange(dto.pageId ?? '', bearer);
+  }
 
   @Public()
   @HttpCode(HttpStatus.OK)
