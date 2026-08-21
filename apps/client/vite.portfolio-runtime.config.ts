@@ -4,6 +4,14 @@ import * as path from "path";
 
 const workspaceRoot = path.resolve(process.cwd(), "..", "..");
 
+const hostExternals = new Set([
+  "react",
+  "react-dom",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-router-dom",
+]);
+
 export default defineConfig(({ mode }) => {
   const {
     APP_URL,
@@ -53,16 +61,10 @@ export default defineConfig(({ mode }) => {
         cssFileName: "style",
       },
       rolldownOptions: {
-        external: [
-          "react",
-          "react-dom",
-          "react/jsx-runtime",
-          "react/jsx-dev-runtime",
-          // ahmedramzy.com already owns the exact same router major/version.
-          // Keeping one router instance preserves context for any editor node
-          // view that uses navigation primitives inside the host application.
-          "react-router-dom",
-        ],
+        external: (id: string) =>
+          hostExternals.has(id) ||
+          id === "use-sync-external-store" ||
+          id.startsWith("use-sync-external-store/"),
       },
     },
   };
