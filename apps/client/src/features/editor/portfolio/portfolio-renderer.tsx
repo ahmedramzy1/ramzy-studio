@@ -1,9 +1,9 @@
-import "@/features/editor/styles/index.css";
 import React from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { RamzyPortfolioRenderer } from "@docmost/editor-ext/portfolio";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
+import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 
 export interface RamzyStudioPortfolioRendererProps {
   content: JSONContent | null | undefined;
@@ -11,6 +11,11 @@ export interface RamzyStudioPortfolioRendererProps {
   shareId?: string;
   printMode?: boolean;
   onCreate?: (editor: Editor) => void;
+  /**
+   * External hosts need Ramzy Studio's Mantine/query/i18n provider stack.
+   * Standalone Ramzy Studio already owns those providers and opts out.
+   */
+  withProviders?: boolean;
 }
 
 /**
@@ -26,8 +31,9 @@ export function RamzyStudioPortfolioRenderer({
   shareId,
   printMode = false,
   onCreate,
+  withProviders = true,
 }: RamzyStudioPortfolioRendererProps) {
-  return (
+  const renderer = (
     <TransclusionLookupProvider shareId={shareId}>
       <RamzyPortfolioRenderer
         content={content}
@@ -38,4 +44,10 @@ export function RamzyStudioPortfolioRenderer({
       />
     </TransclusionLookupProvider>
   );
+
+  if (!withProviders) {
+    return renderer;
+  }
+
+  return <PortfolioRuntimeProviders>{renderer}</PortfolioRuntimeProviders>;
 }
