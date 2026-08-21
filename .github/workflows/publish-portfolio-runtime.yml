@@ -1,0 +1,105 @@
+name: Publish Portfolio Runtime
+
+on:
+  push:
+    branches:
+      - ramzy/phase1-integration
+    paths:
+      - "apps/client/src/portfolio-runtime/**"
+      - "apps/client/src/features/editor/**"
+      - "apps/client/src/lib/**"
+      - "apps/client/vite.portfolio-runtime.config.ts"
+      - "packages/editor-ext/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/publish-portfolio-runtime.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ramzy-portfolio-runtime-publish
+  cancel-in-progress: true
+
+jobs:
+  publish-dist-branch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build portfolio runtime
+        run: pnpm run portfolio-runtime:build
+
+      - name: Assemble distributable package
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_DIR="$GITHUB_WORKSPACE/apps/client/dist-portfolio-runtime"
+          DIST_DIR="$RUNNER_TEMP/ramzy-portfolio-runtime"
+          rm -rf "$DIST_DIR"
+          mkdir -p "$DIST_DIR"
+          cp -R "$SOURCE_DIR"/. "$DIST_DIR"/
+
+          if [ -f "$DIST_DIR/index.mjs" ]; then
+            ENTRY="index.mjs"
+          elif [ -f "$DIST_DIR/index.js" ]; then
+            ENTRY="index.js"
+          else
+            echo "Portfolio runtime entry was not produced" >&2
+            exit 1
+          fi
+
+          cat > "$DIST_DIR/package.json" <<EOF
+          {
+            "name": "@ramzy-studio/portfolio-runtime",
+            "version": "0.1.0",
+            "type": "module",
+            "main": "./$ENTRY",
+            "module": "./$ENTRY",
+            "exports": {
+              ".": "./$ENTRY",
+              "./style.css": "./style.css"
+            },
+            "peerDependencies": {
+              "react": "^19.2.0",
+              "react-dom": "^19.2.0",
+              "react-router-dom": "^7.18.0"
+            }
+          }
+          EOF
+
+          printf '%s\n' "$GITHUB_SHA" > "$DIST_DIR/RAMZY_RUNTIME_SOURCE_COMMIT"
+
+      - name: Publish distribution branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DIST_DIR="$RUNNER_TEMP/ramzy-portfolio-runtime"
+          cd "$DIST_DIR"
+          git init -b portfolio-runtime-dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "Portfolio runtime from ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin portfolio-runtime-dist
