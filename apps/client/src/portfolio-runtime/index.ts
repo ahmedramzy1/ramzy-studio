@@ -9,5 +9,10 @@ export {
   extractPortfolioOutline,
   type PortfolioOutlineItem,
   type PortfolioOutlineOptions,
+  type RamzyPortfolioDocument,
+  type RamzyPortfolioSession,
+  type RamzyPortfolioSessionRequest,
+  type RamzyPortfolioSessionResponse,
+  type RamzyPortfolioUser,
   RAMZY_PORTFOLIO_ENGINE_API_VERSION,
 } from "@docmost/editor-ext/portfolio";
