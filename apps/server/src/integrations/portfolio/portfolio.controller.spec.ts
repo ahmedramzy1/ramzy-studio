@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { PortfolioController } from './portfolio.controller';
 
-describe('PortfolioController publication contract', () => {
+describe('PortfolioController contract', () => {
   const shareService = {
     getSharedPage: jest.fn(),
   };
@@ -15,16 +15,37 @@ describe('PortfolioController publication contract', () => {
   const pageAccessService = {
     validateCanEdit: jest.fn(),
   };
+  const portfolioSessionService = {
+    exchange: jest.fn(),
+  };
 
   const controller = new PortfolioController(
     shareService as any,
     pageService as any,
     pageHistoryService as any,
     pageAccessService as any,
+    portfolioSessionService as any,
   );
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('exchanges the website admin bearer token for a page-scoped authoring session', async () => {
+    portfolioSessionService.exchange.mockResolvedValue({
+      session: { accessToken: 'studio-access' },
+      document: { id: 'page-1' },
+    });
+
+    await controller.exchangeSession(
+      { pageId: 'page-1' },
+      'Bearer supabase-admin-token',
+    );
+
+    expect(portfolioSessionService.exchange).toHaveBeenCalledWith(
+      'page-1',
+      'supabase-admin-token',
+    );
   });
 
   it('publishes the exact live editor JSON after validating edit access', async () => {
