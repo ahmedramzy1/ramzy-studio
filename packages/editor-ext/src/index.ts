@@ -41,3 +41,4 @@ export {
 export * from "./lib/base-embed";
 export * from "./lib/portfolio/extension-profile";
 export * from "./lib/portfolio/outline";
+export * from "./lib/portfolio/renderer";
