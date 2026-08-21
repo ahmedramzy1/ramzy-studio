@@ -47,7 +47,10 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
 export function isPortfolioAuthoringMode(): boolean {
   if (typeof window === "undefined") return false;
 
-  return new URLSearchParams(window.location.search).get("portfolio") === "1";
+  return (
+    window.location.pathname.startsWith("/portfolio/edit/") ||
+    new URLSearchParams(window.location.search).get("portfolio") === "1"
+  );
 }
 
 export function getPortfolioSuggestionItems({
