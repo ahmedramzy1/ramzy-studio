@@ -4,34 +4,50 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { Workspace } from '@docmost/db/types/entity.types';
+import { Page, User, Workspace } from '@docmost/db/types/entity.types';
+import { AuthUser } from '../../common/decorators/auth-user.decorator';
 import { AuthWorkspace } from '../../common/decorators/auth-workspace.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { getPageTitle } from '../../common/helpers';
 import { jsonToHtml } from '../../collaboration/collaboration.util';
+import { PageAccessService } from '../../core/page/page-access/page-access.service';
+import { PageHistoryService } from '../../core/page/services/page-history.service';
+import { PageService } from '../../core/page/services/page.service';
 import { ShareInfoDto } from '../../core/share/dto/share.dto';
 import { ShareService } from '../../core/share/share.service';
 
+type CreatePortfolioPublicationDto = {
+  pageId?: string;
+  content?: Page['content'];
+};
+
+type PublicPortfolioPublicationDto = {
+  pageId?: string;
+  publicationId?: string;
+};
+
 /**
- * Public, read-only bridge for ahmedramzy.com during the portfolio-editor
- * migration.
+ * Portfolio-specific bridge for ahmedramzy.com.
  *
- * The canonical case-study payload is the native Ramzy Studio document JSON.
- * `html` remains temporarily for backwards compatibility with the earlier
- * bridge experiment and will be removed once the shared readonly renderer is
- * consumed directly by the portfolio website.
- *
- * ShareService remains the access authority: a page must already be publicly
- * shared in Ramzy Studio before this public endpoint can return it.
+ * Draft editing uses the live Ramzy Studio page document. Publishing creates an
+ * explicit immutable PageHistory snapshot and the public portfolio reads that
+ * exact snapshot by publicationId. This keeps ordinary Docmost autosave/history
+ * timing independent from portfolio release semantics.
  */
 @UseGuards(JwtAuthGuard)
 @Controller('portfolio')
 export class PortfolioController {
-  constructor(private readonly shareService: ShareService) {}
+  constructor(
+    private readonly shareService: ShareService,
+    private readonly pageService: PageService,
+    private readonly pageHistoryService: PageHistoryService,
+    private readonly pageAccessService: PageAccessService,
+  ) {}
 
   @Public()
   @HttpCode(HttpStatus.OK)
@@ -63,6 +79,101 @@ export class PortfolioController {
       },
       // Deprecated compatibility field. Do not build new rendering against it.
       html: page.content ? jsonToHtml(page.content) : '',
+    };
+  }
+
+  /**
+   * Create the exact immutable document revision that a portfolio Publish
+   * Changes operation will point at.
+   *
+   * The editor supplies its current native JSON so this operation does not
+   * depend on Hocuspocus' debounced persistence or background history cadence.
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('/publications/create')
+  async createPublication(
+    @Body() dto: CreatePortfolioPublicationDto,
+    @AuthUser() user: User,
+  ) {
+    const pageId = dto.pageId?.trim();
+
+    if (!pageId) {
+      throw new BadRequestException('pageId is required');
+    }
+
+    if (!dto.content || typeof dto.content !== 'object') {
+      throw new BadRequestException('content must be a Ramzy Studio document');
+    }
+
+    const page = await this.pageService.findById(pageId, true);
+
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Page not found');
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    const publication =
+      await this.pageHistoryService.createPortfolioPublicationSnapshot(
+        page,
+        dto.content,
+        user.id,
+      );
+
+    return {
+      publication: {
+        id: publication.id,
+        pageId: publication.pageId,
+        createdAt: publication.createdAt,
+      },
+    };
+  }
+
+  /**
+   * Return one immutable published document revision. The page must still be
+   * publicly shared and the requested publication must belong to that page.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/publications/public')
+  async getPublicPublication(
+    @Body() dto: PublicPortfolioPublicationDto,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const pageId = dto.pageId?.trim();
+    const publicationId = dto.publicationId?.trim();
+
+    if (!pageId || !publicationId) {
+      throw new BadRequestException('pageId and publicationId are required');
+    }
+
+    const { page, share } = await this.shareService.getSharedPage(
+      { pageId },
+      workspace.id,
+    );
+
+    const publication = await this.pageHistoryService.findById(publicationId);
+
+    if (!publication || publication.pageId !== page.id) {
+      throw new NotFoundException('Portfolio publication not found');
+    }
+
+    return {
+      page: {
+        id: page.id,
+        slugId: page.slugId,
+        title: getPageTitle(publication.title ?? page.title),
+      },
+      publication: {
+        id: publication.id,
+        pageId: publication.pageId,
+        createdAt: publication.createdAt,
+        content: publication.content ?? null,
+      },
+      share: {
+        id: share.id,
+        key: share.key,
+      },
     };
   }
 }
