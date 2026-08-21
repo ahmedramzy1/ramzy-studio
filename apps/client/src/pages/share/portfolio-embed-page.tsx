@@ -111,7 +111,7 @@ export default function PortfolioEmbedPage() {
       data-ramzy-portfolio-embed="true"
       style={{ width: "100%", background: "transparent" }}
     >
-      <Container fluid size={900} p={0}>
+      <Container size={900} p={0}>
         <ReadonlyPageEditor
           key={data.page.id}
           title={data.page.title}
