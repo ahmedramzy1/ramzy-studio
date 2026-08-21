@@ -1,10 +1,26 @@
 import axios, { AxiosInstance } from "axios";
 import APP_ROUTE from "@/lib/app-route.ts";
 import { isCloud } from "@/lib/config.ts";
+import {
+  getPortfolioRuntimeHostConfig,
+  isPortfolioRuntimeHost,
+} from "@/lib/portfolio-runtime-config";
 
 const api: AxiosInstance = axios.create({
   baseURL: "/api",
   withCredentials: true,
+});
+
+api.interceptors.request.use((request) => {
+  const runtime = getPortfolioRuntimeHostConfig();
+
+  if (runtime) {
+    request.baseURL = runtime.apiUrl;
+    request.withCredentials = false;
+    request.headers.Authorization = `Bearer ${runtime.accessToken}`;
+  }
+
+  return request;
 });
 
 api.interceptors.response.use(
@@ -29,6 +45,10 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401: {
+          // The host application owns authentication for the embedded runtime.
+          // Never redirect ahmedramzy.com to Docmost's standalone login screen.
+          if (isPortfolioRuntimeHost()) return Promise.reject(error);
+
           const url = new URL(error.request.responseURL)?.pathname;
           if (url === "/api/auth/collab-token") return;
           if (window.location.pathname.startsWith("/share/")) return;
