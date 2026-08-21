@@ -165,6 +165,9 @@ function writePackageManifest(entry) {
       },
       './style.css': './style.css',
     },
+    dependencies: {
+      'use-sync-external-store': '1.6.0',
+    },
     peerDependencies: {
       react: '^19.2.0',
       'react-dom': '^19.2.0',
