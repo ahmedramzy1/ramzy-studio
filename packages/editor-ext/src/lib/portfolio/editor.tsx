@@ -4,7 +4,11 @@ import { EditorContent, useEditor } from "@tiptap/react";
 
 export interface RamzyPortfolioEditorProps {
   pageId: string;
-  content: JSONContent | null | undefined;
+  /**
+   * Initial JSON for non-collaborative hosts. Leave undefined when a
+   * collaboration extension (for example Yjs/Hocuspocus) owns the document.
+   */
+  content?: JSONContent | null;
   extensions: AnyExtension[];
   editable: boolean;
   ariaLabel?: string;
@@ -33,23 +37,29 @@ export function RamzyPortfolioEditor({
   onUpdate,
   onEditorChange,
 }: RamzyPortfolioEditorProps) {
+  const mergedEditorProps: EditorOptions["editorProps"] = {
+    ...editorProps,
+    scrollThreshold: editorProps?.scrollThreshold ?? 80,
+    scrollMargin: editorProps?.scrollMargin ?? 80,
+    attributes: {
+      "aria-label": ariaLabel,
+      ...(editorProps?.attributes ?? {}),
+    },
+  };
+
   const editor = useEditor(
     {
       extensions,
-      content: content ?? { type: "doc", content: [] },
+      // Collaborative hosts deliberately omit `content`: the Yjs document is
+      // the single source of truth and must not compete with a JSON snapshot.
+      ...(content !== undefined
+        ? { content: content ?? { type: "doc", content: [] } }
+        : {}),
       editable,
       textDirection: "auto",
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
-      editorProps: {
-        ...editorProps,
-        scrollThreshold: editorProps?.scrollThreshold ?? 80,
-        scrollMargin: editorProps?.scrollMargin ?? 80,
-        attributes: {
-          "aria-label": ariaLabel,
-          ...(editorProps?.attributes ?? {}),
-        },
-      },
+      editorProps: mergedEditorProps,
       onCreate({ editor }) {
         // Page-aware extensions consume this stable identity from storage rather
         // than depending on a router implementation.
