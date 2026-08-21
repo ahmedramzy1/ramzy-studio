@@ -17,11 +17,16 @@ import { ShareInfoDto } from '../../core/share/dto/share.dto';
 import { ShareService } from '../../core/share/share.service';
 
 /**
- * Public, read-only bridge for ahmedramzy.com.
+ * Public, read-only bridge for ahmedramzy.com during the portfolio-editor
+ * migration.
  *
- * The portfolio never receives private Docmost pages. ShareService remains the
- * authority: a page must already be publicly shared in Ramzy Studio before it
- * can be returned here, and public attachment URLs are resolved by Docmost.
+ * The canonical case-study payload is the native Ramzy Studio document JSON.
+ * `html` remains temporarily for backwards compatibility with the earlier
+ * bridge experiment and will be removed once the shared readonly renderer is
+ * consumed directly by the portfolio website.
+ *
+ * ShareService remains the access authority: a page must already be publicly
+ * shared in Ramzy Studio before this public endpoint can return it.
  */
 @UseGuards(JwtAuthGuard)
 @Controller('portfolio')
@@ -50,11 +55,13 @@ export class PortfolioController {
         slugId: page.slugId,
         title: getPageTitle(page.title),
         updatedAt: page.updatedAt,
+        content: page.content ?? null,
       },
       share: {
         id: share.id,
         key: share.key,
       },
+      // Deprecated compatibility field. Do not build new rendering against it.
       html: page.content ? jsonToHtml(page.content) : '',
     };
   }
