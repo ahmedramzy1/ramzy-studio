@@ -1,11 +1,11 @@
 import "@/features/editor/styles/index.css";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { EditorProvider } from "@tiptap/react";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { Document } from "@tiptap/extension-document";
 import {
-  createPortfolioReadonlyExtensions,
   Heading,
+  RamzyPortfolioRenderer,
 } from "@docmost/editor-ext";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
@@ -58,19 +58,6 @@ export default function ReadonlyPageEditor({
     isComponentMounted.current = true;
   }, []);
 
-  /**
-   * Preview/public rendering now gets its readonly behaviour from the shared
-   * editor-extension package. The complete Ramzy Studio extension set is still
-   * injected here, so extracting the policy cannot silently drop a node type.
-   */
-  const extensions = useMemo(
-    () =>
-      createPortfolioReadonlyExtensions(mainExtensions, {
-        printMode,
-      }),
-    [printMode],
-  );
-
   const titleExtensions = [
     Document.extend({
       content: "heading",
@@ -97,26 +84,21 @@ export default function ReadonlyPageEditor({
         </div>
       )}
 
-      <EditorProvider
-        editable={false}
-        immediatelyRender={true}
-        textDirection="auto"
-        extensions={extensions}
+      <RamzyPortfolioRenderer
         content={content}
-        onCreate={({ editor }) => {
-          if (editor) {
-            if (pageId) {
-              // @ts-ignore
-              editor.storage.pageId = pageId;
-            }
-            // @ts-ignore
-            setReadOnlyEditor(editor);
+        pageId={pageId}
+        printMode={printMode}
+        baseExtensions={mainExtensions}
+        onCreate={(editor) => {
+          // Docmost-specific host state remains outside the reusable renderer.
+          // @ts-ignore
+          setReadOnlyEditor(editor);
 
-            handleScrollTo(editor);
-            editorCreated.current = true;
-          }
+          handleScrollTo(editor);
+          editorCreated.current = true;
         }}
-      ></EditorProvider>
+      />
+
       {!showTitle && !printMode ? null : (
         <div style={{ paddingBottom: "20vh" }}></div>
       )}
