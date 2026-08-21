@@ -65,6 +65,89 @@ function run(command, args, options = {}) {
   return result.stdout?.trim() ?? '';
 }
 
+function writePublicTypes() {
+  const declarations = `import type { ComponentType } from 'react';
+
+export type RamzyPortfolioDocument = Record<string, unknown>;
+
+export interface RamzyPortfolioUser {
+  id: string;
+  name: string;
+  email?: string;
+  avatarUrl?: string | null;
+}
+
+export interface RamzyPortfolioSession {
+  accessToken: string;
+  collaborationToken: string;
+  user: RamzyPortfolioUser;
+  apiUrl: string;
+  collaborationUrl: string;
+  expiresAt: string;
+}
+
+export interface RamzyPortfolioSessionRequest {
+  pageId: string;
+  websiteAccessToken?: string;
+}
+
+export interface RamzyPortfolioSessionResponse {
+  session: RamzyPortfolioSession;
+  document: {
+    id: string;
+    title: string;
+    content: RamzyPortfolioDocument | null;
+    updatedAt?: string;
+  };
+}
+
+export interface PortfolioOutlineItem {
+  id: string;
+  label: string;
+  level: number;
+}
+
+export interface PortfolioOutlineOptions {
+  levels?: number[];
+}
+
+export interface RamzyStudioPortfolioEditorProps {
+  pageId: string;
+  session: RamzyPortfolioSession;
+  initialContent?: RamzyPortfolioDocument | null;
+  editable?: boolean;
+  onCreate?: (editor: unknown) => void;
+  onUpdate?: (content: RamzyPortfolioDocument, editor: unknown) => void;
+  onSessionExpired?: () => void;
+}
+
+export interface RamzyStudioPortfolioRendererProps {
+  content: RamzyPortfolioDocument | null | undefined;
+  pageId?: string;
+  shareId?: string;
+  printMode?: boolean;
+  onCreate?: (editor: unknown) => void;
+  session?: RamzyPortfolioSession;
+  withProviders?: boolean;
+}
+
+export interface RamzyPortfolioEditorProps extends RamzyStudioPortfolioEditorProps {}
+
+export declare const RamzyStudioPortfolioEditor: ComponentType<RamzyStudioPortfolioEditorProps>;
+export declare const RamzyStudioPortfolioRenderer: ComponentType<RamzyStudioPortfolioRendererProps>;
+export declare const RamzyPortfolioEditor: ComponentType<RamzyPortfolioEditorProps>;
+
+export declare function extractPortfolioOutline(
+  document: RamzyPortfolioDocument | null | undefined,
+  options?: PortfolioOutlineOptions,
+): PortfolioOutlineItem[];
+
+export declare const RAMZY_PORTFOLIO_ENGINE_API_VERSION: 1;
+`;
+
+  fs.writeFileSync(path.join(tempDir, 'index.d.ts'), declarations);
+}
+
 function writePackageManifest(entry) {
   const manifest = {
     name: '@ramzy-studio/portfolio-runtime',
@@ -72,8 +155,13 @@ function writePackageManifest(entry) {
     type: 'module',
     main: `./${entry}`,
     module: `./${entry}`,
+    types: './index.d.ts',
     exports: {
-      '.': `./${entry}`,
+      '.': {
+        types: './index.d.ts',
+        import: `./${entry}`,
+        default: `./${entry}`,
+      },
       './style.css': './style.css',
     },
     peerDependencies: {
@@ -109,6 +197,7 @@ try {
     throw new Error('Runtime build did not produce index.mjs or index.js');
   }
 
+  writePublicTypes();
   writePackageManifest(entry);
 
   const sourceCommit = run('git', ['rev-parse', 'HEAD'], { capture: true });
