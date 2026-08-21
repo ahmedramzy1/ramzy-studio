@@ -17,7 +17,12 @@ api.interceptors.request.use((request) => {
   if (runtime) {
     request.baseURL = runtime.apiUrl;
     request.withCredentials = false;
-    request.headers.Authorization = `Bearer ${runtime.accessToken}`;
+
+    if (runtime.accessToken) {
+      request.headers.Authorization = `Bearer ${runtime.accessToken}`;
+    } else if (request.headers.Authorization) {
+      delete request.headers.Authorization;
+    }
   }
 
   return request;
