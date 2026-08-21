@@ -29,8 +29,12 @@ export default function PortfolioEmbedPage() {
     const previousBodyBackground = body.style.background;
     const previousBodyMargin = body.style.margin;
     const previousBodyOverflow = body.style.overflow;
+    const previousHtmlColorScheme = html.style.colorScheme;
+    const previousBodyColorScheme = body.style.colorScheme;
 
     html.setAttribute("data-mantine-color-scheme", theme);
+    html.style.colorScheme = theme;
+    body.style.colorScheme = theme;
     html.style.background = "transparent";
     body.style.background = "transparent";
     body.style.margin = "0";
@@ -46,6 +50,8 @@ export default function PortfolioEmbedPage() {
       body.style.background = previousBodyBackground;
       body.style.margin = previousBodyMargin;
       body.style.overflow = previousBodyOverflow;
+      html.style.colorScheme = previousHtmlColorScheme;
+      body.style.colorScheme = previousBodyColorScheme;
     };
   }, [theme]);
 
@@ -108,6 +114,7 @@ export default function PortfolioEmbedPage() {
   return (
     <div
       ref={rootRef}
+      className="ramzy-portfolio-embed"
       data-ramzy-portfolio-embed="true"
       style={{ width: "100%", background: "transparent" }}
     >
@@ -121,6 +128,29 @@ export default function PortfolioEmbedPage() {
           showTitle={false}
         />
       </Container>
+
+      <style>{`
+        html,
+        body,
+        #root,
+        .ramzy-portfolio-embed {
+          background: transparent !important;
+        }
+
+        .ramzy-portfolio-embed .ProseMirror {
+          background: transparent !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+
+        .ramzy-portfolio-embed .ProseMirror > :first-child {
+          margin-top: 0 !important;
+        }
+
+        .ramzy-portfolio-embed .ProseMirror > :last-child {
+          margin-bottom: 0 !important;
+        }
+      `}</style>
     </div>
   );
 }
