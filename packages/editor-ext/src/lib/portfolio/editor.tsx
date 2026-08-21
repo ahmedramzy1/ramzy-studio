@@ -42,13 +42,13 @@ export function RamzyPortfolioEditor({
       immediatelyRender: true,
       shouldRerenderOnTransaction: false,
       editorProps: {
-        scrollThreshold: 80,
-        scrollMargin: 80,
+        ...editorProps,
+        scrollThreshold: editorProps?.scrollThreshold ?? 80,
+        scrollMargin: editorProps?.scrollMargin ?? 80,
         attributes: {
           "aria-label": ariaLabel,
           ...(editorProps?.attributes ?? {}),
         },
-        ...editorProps,
       },
       onCreate({ editor }) {
         // Page-aware extensions consume this stable identity from storage rather
