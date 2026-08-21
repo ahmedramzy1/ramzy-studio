@@ -1,18 +1,14 @@
 import "@/features/editor/styles/index.css";
 import React, { useCallback, useEffect, useRef } from "react";
 import { EditorProvider } from "@tiptap/react";
-import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { Document } from "@tiptap/extension-document";
-import {
-  Heading,
-  RamzyPortfolioRenderer,
-} from "@docmost/editor-ext";
+import { Heading } from "@docmost/editor-ext";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { useAtom } from "jotai";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useEditorScroll } from "./hooks/use-editor-scroll";
-import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
+import { RamzyStudioPortfolioRenderer } from "@/features/editor/portfolio/portfolio-renderer";
 
 interface PageEditorProps {
   title: string;
@@ -71,7 +67,7 @@ export default function ReadonlyPageEditor({
   ];
 
   return (
-    <TransclusionLookupProvider shareId={shareId}>
+    <>
       {showTitle && (
         <div className="page-title">
           <EditorProvider
@@ -84,11 +80,11 @@ export default function ReadonlyPageEditor({
         </div>
       )}
 
-      <RamzyPortfolioRenderer
+      <RamzyStudioPortfolioRenderer
         content={content}
         pageId={pageId}
+        shareId={shareId}
         printMode={printMode}
-        baseExtensions={mainExtensions}
         onCreate={(editor) => {
           // Docmost-specific host state remains outside the reusable renderer.
           // @ts-ignore
@@ -102,6 +98,6 @@ export default function ReadonlyPageEditor({
       {!showTitle && !printMode ? null : (
         <div style={{ paddingBottom: "20vh" }}></div>
       )}
-    </TransclusionLookupProvider>
+    </>
   );
 }
