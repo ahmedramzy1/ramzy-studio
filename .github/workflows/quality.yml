@@ -46,6 +46,9 @@ jobs:
       - name: Build client
         run: pnpm --filter ./apps/client run build
 
+      - name: Build portfolio runtime
+        run: pnpm --filter ./apps/client run build:portfolio-runtime
+
   server:
     runs-on: ubuntu-latest
     timeout-minutes: 20
