@@ -1,18 +1,18 @@
-import { defineConfig, loadEnv } from "vite";
+import {
+  defineConfig,
+  esmExternalRequirePlugin,
+  loadEnv,
+} from "vite";
 import react from "@vitejs/plugin-react";
 import * as path from "path";
 
 const workspaceRoot = path.resolve(process.cwd(), "..", "..");
-const clientSourceRoot = path.resolve(process.cwd(), "src");
-const portfolioRuntimeRoot = path.resolve(clientSourceRoot, "portfolio-runtime");
 
-const hostExternals = new Set([
-  "react",
-  "react-dom",
-  "react/jsx-runtime",
-  "react/jsx-dev-runtime",
-  "react-router-dom",
-]);
+const hostExternals = [
+  /^react(?:\/|$)/,
+  /^react-dom(?:\/|$)/,
+  /^react-router-dom(?:\/|$)/,
+];
 
 export default defineConfig(({ mode }) => {
   const {
@@ -46,28 +46,19 @@ export default defineConfig(({ mode }) => {
       },
       APP_VERSION: JSON.stringify(process.env.npm_package_version),
     },
-    plugins: [react()],
+    plugins: [
+      // Rolldown intentionally preserves CommonJS require() semantics for
+      // externals by default. A browser library cannot execute require('react'),
+      // so let Rolldown's official bridge own React/router externals and turn
+      // any CJS require() calls into ESM imports. This handles every bundled
+      // dependency, not only use-sync-external-store.
+      esmExternalRequirePlugin({ external: hostExternals }),
+      react(),
+    ],
     resolve: {
-      alias: [
-        {
-          find: /^use-sync-external-store\/shim\/with-selector$/,
-          replacement: path.resolve(
-            portfolioRuntimeRoot,
-            "react-external-store-selector.ts",
-          ),
-        },
-        {
-          find: /^use-sync-external-store\/shim$/,
-          replacement: path.resolve(
-            portfolioRuntimeRoot,
-            "react-external-store-shim.ts",
-          ),
-        },
-        {
-          find: "@",
-          replacement: clientSourceRoot,
-        },
-      ],
+      alias: {
+        "@": path.resolve(process.cwd(), "src"),
+      },
     },
     build: {
       outDir: "dist-portfolio-runtime",
@@ -78,12 +69,6 @@ export default defineConfig(({ mode }) => {
         formats: ["es"],
         fileName: "index",
         cssFileName: "style",
-      },
-      rolldownOptions: {
-        // React and the host router stay external so ahmedramzy.com owns one
-        // runtime instance. Legacy external-store shims are aliased above to
-        // native ESM bridges and are bundled into the Ramzy runtime instead.
-        external: (id: string) => hostExternals.has(id),
       },
     },
   };
