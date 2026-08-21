@@ -21,8 +21,10 @@ export {
 } from "./outline";
 
 export type {
+  RamzyPortfolioDocument,
   RamzyPortfolioSession,
   RamzyPortfolioSessionRequest,
+  RamzyPortfolioSessionResponse,
   RamzyPortfolioUser,
 } from "./session";
 
