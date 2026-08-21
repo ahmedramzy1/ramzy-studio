@@ -1,3 +1,5 @@
+import "@/features/editor/styles/index.css";
+
 export {
   RamzyStudioPortfolioEditor,
   type RamzyStudioPortfolioEditorProps,
