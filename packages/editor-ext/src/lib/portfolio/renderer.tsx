@@ -8,6 +8,7 @@ export interface RamzyPortfolioRendererProps {
   baseExtensions: AnyExtension[];
   pageId?: string;
   printMode?: boolean;
+  ariaLabel?: string;
   onCreate?: (editor: Editor) => void;
 }
 
@@ -19,14 +20,15 @@ export interface RamzyPortfolioRendererProps {
  * the complete Ramzy extension set; this component applies the shared readonly
  * policy and renders the native TipTap document directly.
  *
- * Build will use the same base extension profile, which is the key parity
- * invariant for Preview and the published portfolio.
+ * Build uses the same base extension profile, which is the key parity invariant
+ * for Preview and the published portfolio.
  */
 export function RamzyPortfolioRenderer({
   content,
   baseExtensions,
   pageId,
   printMode = false,
+  ariaLabel = "Portfolio document content",
   onCreate,
 }: RamzyPortfolioRendererProps) {
   const extensions = useMemo(
@@ -44,6 +46,11 @@ export function RamzyPortfolioRenderer({
       textDirection="auto"
       extensions={extensions}
       content={content ?? { type: "doc", content: [] }}
+      editorProps={{
+        attributes: {
+          "aria-label": ariaLabel,
+        },
+      }}
       onCreate={({ editor }) => {
         if (pageId) {
           // Page-aware nodes use shared editor storage rather than route state.
