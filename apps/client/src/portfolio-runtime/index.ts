@@ -1,4 +1,9 @@
 export {
+  RamzyStudioPortfolioEditor,
+  type RamzyStudioPortfolioEditorProps,
+} from "@/features/editor/portfolio/portfolio-editor";
+
+export {
   RamzyStudioPortfolioRenderer,
   type RamzyStudioPortfolioRendererProps,
 } from "@/features/editor/portfolio/portfolio-renderer";
