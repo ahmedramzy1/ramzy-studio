@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:portfolio-runtime": "vite build --config vite.portfolio-runtime.config.ts",
+    "build:portfolio-runtime:watch": "vite build --config vite.portfolio-runtime.config.ts --watch",
     "lint": "eslint .",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.tsx\" \"src/**/*.ts\"",
