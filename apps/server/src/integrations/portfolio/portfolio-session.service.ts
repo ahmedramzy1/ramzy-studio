@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -13,6 +14,8 @@ import { SpaceRepo } from '@docmost/db/repos/space/space.repo';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
 import { Page, User } from '@docmost/db/types/entity.types';
 import { getPageTitle, isUserDisabled } from '../../common/helpers';
+import { createYdocFromJson } from '../../common/helpers/prosemirror/utils';
+import { jsonToText } from '../../collaboration/collaboration.util';
 import { TokenService } from '../../core/auth/services/token.service';
 import { PageAccessService } from '../../core/page/page-access/page-access.service';
 import { PageService } from '../../core/page/services/page.service';
@@ -148,6 +151,62 @@ export class PortfolioSessionService {
     return {
       projectId,
       ...(await this.buildSessionResponse(page, user)),
+    };
+  }
+
+  /**
+   * Persist a draft authored by the embedded portfolio editor without requiring
+   * a WebSocket collaboration handshake. The same canonical ProseMirror JSON,
+   * text index and Yjs snapshot are written that Docmost pages use normally, so
+   * opening the document later in standalone Ramzy Studio remains lossless.
+   */
+  async saveDraft(
+    pageIdInput: string,
+    content: Page['content'],
+    user: User,
+  ) {
+    const pageId = pageIdInput?.trim();
+
+    if (!pageId) {
+      throw new BadRequestException('pageId is required');
+    }
+
+    if (!content || typeof content !== 'object') {
+      throw new BadRequestException('content must be a Ramzy Studio document');
+    }
+
+    const page = await this.pageService.findById(pageId, true);
+
+    if (!page || page.deletedAt) {
+      throw new NotFoundException('Ramzy Studio page not found');
+    }
+
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    const contributors = new Set<string>(page.contributorIds ?? []);
+    contributors.add(user.id);
+    const updatedAt = new Date();
+
+    await this.db
+      .updateTable('pages')
+      .set({
+        content,
+        textContent: jsonToText(content),
+        ydoc: createYdocFromJson(content),
+        lastUpdatedById: user.id,
+        contributorIds: Array.from(contributors),
+        updatedAt,
+      })
+      .where('id', '=', page.id)
+      .executeTakeFirst();
+
+    return {
+      document: {
+        id: page.id,
+        title: getPageTitle(page.title),
+        content,
+        updatedAt,
+      },
     };
   }
 
