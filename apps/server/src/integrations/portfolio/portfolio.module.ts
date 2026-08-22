@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CollaborationModule } from '../../collaboration/collaboration.module';
 import { TokenModule } from '../../core/auth/token.module';
 import { PageModule } from '../../core/page/page.module';
 import { ShareModule } from '../../core/share/share.module';
@@ -10,6 +11,7 @@ import { PortfolioSessionService } from './portfolio-session.service';
     ShareModule,
     PageModule,
     TokenModule,
+    CollaborationModule,
   ],
   controllers: [PortfolioController],
   providers: [PortfolioSessionService],
