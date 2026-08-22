@@ -1,0 +1,64 @@
+name: Diagnose Portfolio Runtime Publish
+
+on:
+  push:
+    branches:
+      - ramzy/phase1-integration
+    paths:
+      - ".github/workflows/diagnose-portfolio-runtime-publish.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ramzy-portfolio-runtime-publish
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ramzy/phase1-integration
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Configure Git authentication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh auth setup-git
+
+      - name: Publish runtime and capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          pnpm run portfolio-runtime:publish-git > publish.log 2>&1
+          status=$?
+          cat publish.log
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+
+          cp publish.log .github/portfolio-runtime-publish-failure.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/portfolio-runtime-publish-failure.log
+          git commit -m "Record portfolio runtime publish failure" || true
+          git push origin HEAD:ramzy/phase1-integration || true
+          exit "$status"
