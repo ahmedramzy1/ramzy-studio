@@ -14,6 +14,36 @@ const hostExternals = [
   /^react-router-dom(?:\/|$)/,
 ];
 
+// ProseMirror decoration objects rely on instanceof checks. If Rolldown/Vite
+// resolves the same package through more than one pnpm/peer path, a DecorationSet
+// produced by one copy is not recognized by another. The failure first surfaces
+// when Suggestion opens the slash menu as `localsInner` on an undefined member.
+// Keep the complete TipTap/ProseMirror identity graph on one module instance in
+// the reusable portfolio runtime.
+const editorSingletons = [
+  "@tiptap/core",
+  "@tiptap/pm",
+  "@tiptap/react",
+  "@tiptap/suggestion",
+  "prosemirror-changeset",
+  "prosemirror-collab",
+  "prosemirror-commands",
+  "prosemirror-dropcursor",
+  "prosemirror-gapcursor",
+  "prosemirror-history",
+  "prosemirror-inputrules",
+  "prosemirror-keymap",
+  "prosemirror-model",
+  "prosemirror-schema-list",
+  "prosemirror-state",
+  "prosemirror-tables",
+  "prosemirror-trailing-node",
+  "prosemirror-transform",
+  "prosemirror-view",
+  "y-prosemirror",
+  "yjs",
+];
+
 export default defineConfig(({ mode }) => {
   const {
     APP_URL,
@@ -63,6 +93,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(process.cwd(), "src"),
       },
+      dedupe: editorSingletons,
     },
     build: {
       outDir: "dist-portfolio-runtime",
