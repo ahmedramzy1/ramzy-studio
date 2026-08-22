@@ -79,10 +79,9 @@ export class PortfolioController {
 
   /**
    * First-open bootstrap for portfolio projects that do not yet own a Ramzy
-   * Studio document. The website's Supabase admin identity is verified, a new
-   * Studio page is created in the configured portfolio space, public sharing is
-   * prepared for future publication rendering, and the authoring session is
-   * returned in one round-trip.
+   * Studio document. The website's Supabase admin identity is verified and a
+   * private Studio page is created in the configured portfolio space. Public
+   * sharing is deliberately deferred until Publish Changes.
    */
   @Public()
   @HttpCode(HttpStatus.OK)
@@ -134,7 +133,8 @@ export class PortfolioController {
 
   /**
    * Create the exact immutable document revision that a portfolio Publish
-   * Changes operation will point at.
+   * Changes operation will point at. The page becomes publicly shareable only
+   * at this moment; drafts remain private while BUILD is in progress.
    *
    * The editor supplies its current native JSON so this operation does not
    * depend on Hocuspocus' debounced persistence or background history cadence.
@@ -162,6 +162,17 @@ export class PortfolioController {
     }
 
     await this.pageAccessService.validateCanEdit(page, user);
+
+    await this.shareService.createShare({
+      authUserId: user.id,
+      workspaceId: page.workspaceId,
+      page,
+      createShareDto: {
+        pageId: page.id,
+        includeSubPages: false,
+        searchIndexing: false,
+      },
+    });
 
     const publication =
       await this.pageHistoryService.createPortfolioPublicationSnapshot(
