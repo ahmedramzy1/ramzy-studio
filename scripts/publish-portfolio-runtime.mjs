@@ -133,6 +133,7 @@ function writePublicTypes() {
   const declarations = `import type { ComponentType } from 'react';
 
 export type RamzyPortfolioDocument = Record<string, unknown>;
+export type RamzyPortfolioSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export interface RamzyPortfolioUser {
   id: string;
@@ -183,6 +184,7 @@ export interface RamzyStudioPortfolioEditorProps {
   onCreate?: (editor: unknown) => void;
   onUpdate?: (content: RamzyPortfolioDocument, editor: unknown) => void;
   onSessionExpired?: () => void;
+  onSaveStateChange?: (state: RamzyPortfolioSaveState, error?: string) => void;
 }
 
 export interface RamzyStudioPortfolioRendererProps {
