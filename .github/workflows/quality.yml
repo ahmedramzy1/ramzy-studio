@@ -6,7 +6,7 @@ on:
       - main
       - ramzy/phase1-integration
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -83,43 +83,3 @@ jobs:
 
       - name: Build server
         run: pnpm --filter ./apps/server run build
-
-  publish-runtime:
-    if: >-
-      github.event_name == 'pull_request' &&
-      github.event.action == 'closed' &&
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'ramzy/phase1-integration'
-    needs: [editor-client, server]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout validated integration source
-        uses: actions/checkout@v4
-        with:
-          ref: ramzy/phase1-integration
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Configure Git authentication
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh auth setup-git
-
-      - name: Build, validate, and publish portfolio runtime
-        run: pnpm run portfolio-runtime:publish-git
