@@ -100,6 +100,19 @@ function assertBrowserSafeBundle(directory) {
     if (/require\s*\(\s*["']react["']\s*\)/.test(source)) {
       violations.push(`${relative}: contains browser-unsafe require('react')`);
     }
+
+    // The portfolio runtime is a reusable library, never the standalone Ramzy
+    // Studio application. These strings uniquely belong to Studio's catch-all
+    // Error404 route. If they appear here, the full App/router dependency graph
+    // has leaked into the runtime and importing the package could replace the
+    // host application's React root.
+    if (/404 page not found/i.test(source)) {
+      violations.push(`${relative}: leaked Ramzy Studio Error404 app shell`);
+    }
+
+    if (/Take me back to homepage/i.test(source)) {
+      violations.push(`${relative}: leaked Ramzy Studio catch-all router UI`);
+    }
   }
 
   if (violations.length > 0) {
