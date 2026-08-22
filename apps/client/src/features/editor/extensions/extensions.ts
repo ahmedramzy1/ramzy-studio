@@ -11,7 +11,7 @@ import SubScript from "@tiptap/extension-subscript";
 import { Typography } from "@tiptap/extension-typography";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
-import { Youtube } from "@tiptap/extension-youtube";
+import Youtube from "@/features/editor/extensions/interactive-youtube";
 import SlashCommand, {
   SlashCommandExtension as Command,
 } from "@/features/editor/extensions/slash-command";
