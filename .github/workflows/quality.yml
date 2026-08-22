@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - ramzy/phase1-integration
+      - ramzy/runtime-hardening
   pull_request:
 
 concurrency:
