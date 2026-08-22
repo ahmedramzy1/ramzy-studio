@@ -29,6 +29,10 @@ import SearchAndReplaceDialog from "@/features/editor/components/search-and-repl
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
+import {
+  PortfolioDraftSaveError,
+  savePortfolioDraft,
+} from "./portfolio-draft-save";
 
 export type RamzyPortfolioSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -125,28 +129,18 @@ function DirectPortfolioEditor({
 
   const persistDraft = useCallback(
     async (content: JSONContent, version: number) => {
-      const apiBase = session.apiUrl.replace(/\/+$/, "");
-      const response = await fetch(`${apiBase}/portfolio/draft/save`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-        body: JSON.stringify({ pageId, content }),
-      });
-
-      if (response.status === 401) {
-        onSessionExpired?.();
-        throw new Error("Ramzy Studio session expired. Reconnecting…");
-      }
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const message =
-          body && typeof body === "object" && "message" in body
-            ? String(body.message)
-            : `Ramzy Studio autosave failed (${response.status})`;
-        throw new Error(message);
+      try {
+        await savePortfolioDraft({
+          apiUrl: session.apiUrl,
+          accessToken: session.accessToken,
+          pageId,
+          content,
+        });
+      } catch (error) {
+        if (error instanceof PortfolioDraftSaveError && error.sessionExpired) {
+          onSessionExpired?.();
+        }
+        throw error;
       }
 
       lastSavedJsonRef.current = JSON.stringify(content);
@@ -169,6 +163,8 @@ function DirectPortfolioEditor({
       const version = ++saveVersionRef.current;
       if (mountedRef.current) onSaveStateChange?.("saving");
 
+      // Serialize writes so an older request can never finish after a newer one
+      // and overwrite the newest document state.
       saveChainRef.current = saveChainRef.current
         .catch(() => undefined)
         .then(() => persistDraft(content, version))
