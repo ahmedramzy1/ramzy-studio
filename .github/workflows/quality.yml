@@ -13,58 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lockfile-repair:
-    if: github.event_name == 'pull_request' && github.head_ref == 'ramzy/runtime-hardening'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout hardening branch
-        uses: actions/checkout@v4
-        with:
-          ref: ramzy/runtime-hardening
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.22.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Regenerate lockfile from workspace manifests
-        run: pnpm install --lockfile-only --no-frozen-lockfile
-
-      - name: Commit repaired lockfile when needed
-        shell: bash
-        run: |
-          if git diff --quiet -- pnpm-lock.yaml; then
-            echo "pnpm-lock.yaml is already current."
-            exit 0
-          fi
-
-          git config user.name "Ramzy Studio CI"
-          git config user.email "runtime@local.invalid"
-          git add pnpm-lock.yaml
-          git commit -m "Regenerate pnpm lockfile"
-          git push origin HEAD:ramzy/runtime-hardening
-
   editor-client:
-    needs: lockfile-repair
-    if: always() && (needs.lockfile-repair.result == 'success' || needs.lockfile-repair.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -96,16 +51,12 @@ jobs:
         run: pnpm --filter ./apps/client run build:portfolio-runtime
 
   server:
-    needs: lockfile-repair
-    if: always() && (needs.lockfile-repair.result == 'success' || needs.lockfile-repair.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
