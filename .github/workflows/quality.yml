@@ -8,7 +8,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# Post-merge runtime publication is owned by the default-branch release workflow.
+# Successful integration push runs trigger the default-branch workflow_run publisher.
 permissions:
   contents: read
 
