@@ -1,6 +1,7 @@
 import { Extension } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion, { SuggestionOptions } from '@tiptap/suggestion';
+import { TabPanel, Tabs } from '@docmost/editor-ext';
 import renderItems from '@/features/editor/components/slash-menu/render-items';
 import getSuggestionItems from '@/features/editor/components/slash-menu/menu-items';
 import {
@@ -13,6 +14,10 @@ export const slashMenuPluginKey = new PluginKey('slash-command');
 // @ts-ignore
 const Command = Extension.create({
   name: 'slash-command',
+
+  addExtensions() {
+    return [Tabs, TabPanel];
+  },
 
   addOptions() {
     return {

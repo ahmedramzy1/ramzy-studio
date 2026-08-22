@@ -1,5 +1,9 @@
+import { IconAppWindow } from "@tabler/icons-react";
 import getSuggestionItems from "@/features/editor/components/slash-menu/menu-items";
-import type { SlashMenuGroupedItemsType } from "@/features/editor/components/slash-menu/types";
+import type {
+  SlashMenuGroupedItemsType,
+  SlashMenuItemType,
+} from "@/features/editor/components/slash-menu/types";
 
 /**
  * Portfolio Mode deliberately exposes only commands that help author a strong
@@ -44,6 +48,26 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Footnote",
 ]);
 
+const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
+  {
+    title: "Tabs",
+    description: "Organize content into switchable tabs.",
+    searchTerms: ["tabs", "tab", "sections", "switch"],
+    icon: IconAppWindow,
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).insertTabs().run(),
+  },
+];
+
+function matchesQuery(item: SlashMenuItemType, query: string): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+
+  return [item.title, item.description, ...item.searchTerms].some((value) =>
+    value.toLowerCase().includes(normalized),
+  );
+}
+
 export function isPortfolioAuthoringMode(): boolean {
   if (typeof window === "undefined") return false;
 
@@ -69,6 +93,17 @@ export function getPortfolioSuggestionItems({
     if (filtered.length) {
       portfolioGroups[group] = filtered;
     }
+  }
+
+  const portfolioOnly = PORTFOLIO_ONLY_SLASH_ITEMS.filter((item) =>
+    matchesQuery(item, query),
+  );
+
+  if (portfolioOnly.length) {
+    portfolioGroups.basic = [
+      ...(portfolioGroups.basic ?? []),
+      ...portfolioOnly,
+    ];
   }
 
   return portfolioGroups;
