@@ -1,6 +1,12 @@
 import { Paper, Text } from "@mantine/core";
 import type { Editor, Range } from "@tiptap/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 const MAX_ROWS = 10;
@@ -45,7 +51,7 @@ export function TableSizePicker({
   );
 
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
+    (event: KeyboardEvent<HTMLDivElement>) => {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
