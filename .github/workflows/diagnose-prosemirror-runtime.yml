@@ -1,0 +1,58 @@
+name: Diagnose ProseMirror Runtime
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'ramzy/fix-runtime-prosemirror-singletons'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Show ProseMirror dependency paths
+        shell: bash
+        run: |
+          echo '=== pnpm why prosemirror-view ==='
+          pnpm why -r prosemirror-view || true
+          echo
+          echo '=== real prosemirror-view package directories ==='
+          find node_modules/.pnpm -maxdepth 1 -type d -name 'prosemirror-view@*' -printf '%f\n' | sort
+
+      - name: Build embedded runtime
+        run: pnpm run portfolio-runtime:build
+
+      - name: Inspect duplicated decoration implementation
+        shell: bash
+        run: |
+          echo '=== files containing localsInner ==='
+          grep -RIl 'localsInner' apps/client/dist-portfolio-runtime --include='*.mjs' --include='*.js' || true
+          echo
+          echo '=== localsInner occurrences ==='
+          grep -Rno 'localsInner' apps/client/dist-portfolio-runtime --include='*.mjs' --include='*.js' || true
+          echo
+          echo '=== prosemirror-view source markers ==='
+          grep -Rno 'prosemirror-view@[^/]*/node_modules/prosemirror-view' apps/client/dist-portfolio-runtime --include='*.mjs' --include='*.js' || true
+          echo
+          echo '=== @tiptap/pm source markers ==='
+          grep -Rno '@tiptap+pm@[^/]*/node_modules/@tiptap/pm' apps/client/dist-portfolio-runtime --include='*.mjs' --include='*.js' || true
