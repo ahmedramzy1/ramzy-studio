@@ -126,8 +126,8 @@ jobs:
 
       - name: Configure Git authentication
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh auth setup-git
+          RAMZY_RUNTIME_PUSH_TOKEN: ${{ github.token }}
+        run: git remote set-url origin "https://x-access-token:${RAMZY_RUNTIME_PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
       - name: Build, validate, and publish immutable portfolio runtime
         id: publish
