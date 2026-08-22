@@ -5,6 +5,7 @@ import {
 } from "vite";
 import react from "@vitejs/plugin-react";
 import * as path from "path";
+import { fileURLToPath } from "node:url";
 
 const workspaceRoot = path.resolve(process.cwd(), "..", "..");
 
@@ -14,32 +15,52 @@ const hostExternals = [
   /^react-router-dom(?:\/|$)/,
 ];
 
-// ProseMirror decoration objects rely on instanceof checks. If Rolldown/Vite
-// resolves the same package through more than one pnpm/peer path, a DecorationSet
-// produced by one copy is not recognized by another. The failure first surfaces
-// when Suggestion opens the slash menu as `localsInner` on an undefined member.
-// Keep the complete TipTap/ProseMirror identity graph on one module instance in
-// the reusable portfolio runtime.
+const prosemirrorModules = [
+  ["changeset", "prosemirror-changeset"],
+  ["commands", "prosemirror-commands"],
+  ["dropcursor", "prosemirror-dropcursor"],
+  ["gapcursor", "prosemirror-gapcursor"],
+  ["history", "prosemirror-history"],
+  ["inputrules", "prosemirror-inputrules"],
+  ["keymap", "prosemirror-keymap"],
+  ["model", "prosemirror-model"],
+  ["schema-list", "prosemirror-schema-list"],
+  ["state", "prosemirror-state"],
+  ["tables", "prosemirror-tables"],
+  ["transform", "prosemirror-transform"],
+  ["view", "prosemirror-view"],
+] as const;
+
+function esmEntry(moduleId: string): string {
+  return fileURLToPath(import.meta.resolve(moduleId));
+}
+
+// @tiptap/pm/* is intentionally a thin re-export layer over ProseMirror.
+// Rolldown can otherwise follow a CommonJS request through that wrapper while
+// a direct ProseMirror import follows the package ESM entry. Both point to the
+// same installed version but become different runtime identities. ProseMirror
+// DecorationSet/DecorationGroup use instanceof checks, so mixing those copies
+// crashes Suggestion/slash-menu decorations while reading `localsInner`.
+//
+// Route BOTH spellings to the exact same ESM physical entry. This is stronger
+// than resolve.dedupe: dedupe unifies package roots, but cannot merge a package's
+// distinct index.cjs and index.js files once both have entered the graph.
+const prosemirrorAliases = prosemirrorModules.flatMap(
+  ([subpath, packageName]) => {
+    const entry = esmEntry(packageName);
+    return [
+      { find: `@tiptap/pm/${subpath}`, replacement: entry },
+      { find: packageName, replacement: entry },
+    ];
+  },
+);
+
 const editorSingletons = [
   "@tiptap/core",
   "@tiptap/pm",
   "@tiptap/react",
   "@tiptap/suggestion",
-  "prosemirror-changeset",
-  "prosemirror-collab",
-  "prosemirror-commands",
-  "prosemirror-dropcursor",
-  "prosemirror-gapcursor",
-  "prosemirror-history",
-  "prosemirror-inputrules",
-  "prosemirror-keymap",
-  "prosemirror-model",
-  "prosemirror-schema-list",
-  "prosemirror-state",
-  "prosemirror-tables",
-  "prosemirror-trailing-node",
-  "prosemirror-transform",
-  "prosemirror-view",
+  ...prosemirrorModules.map(([, packageName]) => packageName),
   "y-prosemirror",
   "yjs",
 ];
@@ -90,9 +111,10 @@ export default defineConfig(({ mode }) => {
       react(),
     ],
     resolve: {
-      alias: {
-        "@": path.resolve(process.cwd(), "src"),
-      },
+      alias: [
+        ...prosemirrorAliases,
+        { find: "@", replacement: path.resolve(process.cwd(), "src") },
+      ],
       dedupe: editorSingletons,
     },
     build: {
