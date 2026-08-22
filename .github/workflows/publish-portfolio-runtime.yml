@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - ramzy/phase1-integration
-      - ramzy/runtime-hardening
     paths:
       - "apps/client/src/portfolio-runtime/**"
       - "apps/client/src/features/editor/**"
