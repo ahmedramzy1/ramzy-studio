@@ -55,6 +55,14 @@ jobs:
       - name: Validate packaged portfolio runtime
         run: node scripts/publish-portfolio-runtime.mjs --check
 
+      - name: Upload validated portfolio runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-runtime-${{ github.sha }}
+          path: apps/client/dist-portfolio-runtime
+          if-no-files-found: error
+          retention-days: 7
+
   server:
     runs-on: ubuntu-latest
     timeout-minutes: 20
