@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Show ProseMirror dependency paths
+      - name: Show ProseMirror dependency and resolver paths
         shell: bash
         run: |
           echo '=== pnpm why prosemirror-view ==='
@@ -38,6 +38,27 @@ jobs:
           echo
           echo '=== real prosemirror-view package directories ==='
           find node_modules/.pnpm -maxdepth 1 -type d -name 'prosemirror-view@*' -printf '%f\n' | sort
+          echo
+          echo '=== client resolver paths ==='
+          pnpm --filter ./apps/client exec node - <<'NODE'
+          const { createRequire } = require('node:module')
+          const path = require('node:path')
+          const req = createRequire(path.resolve('apps/client/package.json'))
+          for (const id of [
+            'prosemirror-view',
+            '@tiptap/pm/view',
+            'prosemirror-state',
+            '@tiptap/pm/state',
+            'prosemirror-model',
+            '@tiptap/pm/model',
+          ]) {
+            try {
+              console.log(id, '=>', req.resolve(id))
+            } catch (error) {
+              console.log(id, '=> RESOLVE ERROR:', error.message)
+            }
+          }
+          NODE
 
       - name: Build embedded runtime
         run: pnpm run portfolio-runtime:build
@@ -56,3 +77,16 @@ jobs:
           echo
           echo '=== @tiptap/pm source markers ==='
           grep -Rno '@tiptap+pm@[^/]*/node_modules/@tiptap/pm' apps/client/dist-portfolio-runtime --include='*.mjs' --include='*.js' || true
+          echo
+          FILE="$(grep -RIl 'localsInner' apps/client/dist-portfolio-runtime --include='*.mjs' --include='*.js' | head -n 1)"
+          if [ -n "$FILE" ]; then
+            echo "=== source regions near first DecorationSet copy in $FILE ==="
+            sed -n '8900,9080p' "$FILE" || true
+            echo
+            echo '=== source regions near second DecorationSet copy ==='
+            sed -n '23390,23590p' "$FILE" || true
+            echo
+            echo '=== nearest //#region markers around both ranges ==='
+            awk 'NR<=9080 && /#region/ {print NR ":" $0}' "$FILE" | tail -n 12 || true
+            awk 'NR<=23590 && /#region/ {print NR ":" $0}' "$FILE" | tail -n 12 || true
+          fi
