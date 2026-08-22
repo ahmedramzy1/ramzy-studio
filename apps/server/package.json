@@ -39,6 +39,7 @@
     "@azure/storage-blob": "12.31.0",
     "@clickhouse/client": "1.18.2",
     "@docmost/base-formula": "workspace:*",
+    "@docmost/editor-ext": "workspace:*",
     "@docmost/pdf-inspector": "1.9.6",
     "@fastify/cookie": "11.1.2",
     "@fastify/multipart": "10.1.1",

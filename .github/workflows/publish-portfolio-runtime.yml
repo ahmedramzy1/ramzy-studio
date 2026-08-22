@@ -10,6 +10,7 @@ on:
       - "apps/client/src/lib/**"
       - "apps/client/vite.portfolio-runtime.config.ts"
       - "packages/editor-ext/**"
+      - "scripts/publish-portfolio-runtime.mjs"
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/publish-portfolio-runtime.yml"
@@ -45,61 +46,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build portfolio runtime
-        run: pnpm run portfolio-runtime:build
-
-      - name: Assemble distributable package
-        shell: bash
-        run: |
-          set -euo pipefail
-          SOURCE_DIR="$GITHUB_WORKSPACE/apps/client/dist-portfolio-runtime"
-          DIST_DIR="$RUNNER_TEMP/ramzy-portfolio-runtime"
-          rm -rf "$DIST_DIR"
-          mkdir -p "$DIST_DIR"
-          cp -R "$SOURCE_DIR"/. "$DIST_DIR"/
-
-          if [ -f "$DIST_DIR/index.mjs" ]; then
-            ENTRY="index.mjs"
-          elif [ -f "$DIST_DIR/index.js" ]; then
-            ENTRY="index.js"
-          else
-            echo "Portfolio runtime entry was not produced" >&2
-            exit 1
-          fi
-
-          cat > "$DIST_DIR/package.json" <<EOF
-          {
-            "name": "@ramzy-studio/portfolio-runtime",
-            "version": "0.1.0",
-            "type": "module",
-            "main": "./$ENTRY",
-            "module": "./$ENTRY",
-            "exports": {
-              ".": "./$ENTRY",
-              "./style.css": "./style.css"
-            },
-            "peerDependencies": {
-              "react": "^19.2.0",
-              "react-dom": "^19.2.0",
-              "react-router-dom": "^7.18.0"
-            }
-          }
-          EOF
-
-          printf '%s\n' "$GITHUB_SHA" > "$DIST_DIR/RAMZY_RUNTIME_SOURCE_COMMIT"
-
-      - name: Publish distribution branch
-        shell: bash
+      # The publisher creates a temporary Git repository for the distributable.
+      # Configure the GitHub CLI credential helper globally so that temporary
+      # repository can push through the same authenticated GitHub Actions token.
+      - name: Configure Git authentication
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          DIST_DIR="$RUNNER_TEMP/ramzy-portfolio-runtime"
-          cd "$DIST_DIR"
-          git init -b portfolio-runtime-dist
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add --all
-          git commit -m "Portfolio runtime from ${GITHUB_SHA}"
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push --force origin portfolio-runtime-dist
+        run: gh auth setup-git
+
+      - name: Build, validate, and publish portfolio runtime
+        run: pnpm run portfolio-runtime:publish-git

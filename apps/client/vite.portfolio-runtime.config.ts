@@ -30,6 +30,10 @@ export default defineConfig(({ mode }) => {
   } = loadEnv(mode, workspaceRoot, "");
 
   return {
+    // This is a reusable library build, not the standalone Ramzy Studio web
+    // application. Do not copy PWA icons, manifests, locale JSON, or other
+    // public/ assets into the package distribution automatically.
+    publicDir: false,
     define: {
       "process.env": {
         APP_URL,
@@ -63,7 +67,9 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist-portfolio-runtime",
       emptyOutDir: true,
-      sourcemap: true,
+      // Shipping source maps multiplied the private runtime artifact size and
+      // exposed implementation source without helping the consuming website.
+      sourcemap: false,
       lib: {
         entry: path.resolve(process.cwd(), "src/portfolio-runtime/index.ts"),
         formats: ["es"],

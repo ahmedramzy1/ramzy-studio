@@ -10,6 +10,7 @@ const sourceDir = path.join(root, 'apps', 'client', 'dist-portfolio-runtime');
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ramzy-portfolio-runtime-'));
 const isWindows = process.platform === 'win32';
 const pnpm = isWindows ? 'pnpm.cmd' : 'pnpm';
+const checkOnly = process.argv.includes('--check');
 
 function quoteWindowsArg(value) {
   const arg = String(value);
@@ -85,6 +86,8 @@ function listJavaScriptFiles(directory) {
 
 function assertBrowserSafeBundle(directory) {
   const violations = [];
+  const hostRequirePattern =
+    /require\s*\(\s*["'](react(?:\/[^"']+)?|react-dom(?:\/[^"']+)?|react-router-dom(?:\/[^"']+)?)["']\s*\)/g;
 
   for (const file of listJavaScriptFiles(directory)) {
     const source = fs.readFileSync(file, 'utf8');
@@ -97,8 +100,10 @@ function assertBrowserSafeBundle(directory) {
       violations.push(`${relative}: leaked use-sync-external-store dependency`);
     }
 
-    if (/require\s*\(\s*["']react["']\s*\)/.test(source)) {
-      violations.push(`${relative}: contains browser-unsafe require('react')`);
+    for (const match of source.matchAll(hostRequirePattern)) {
+      violations.push(
+        `${relative}: contains browser-unsafe require('${match[1]}')`,
+      );
     }
 
     // The portfolio runtime is a reusable library, never the standalone Ramzy
@@ -261,39 +266,43 @@ try {
   writePublicTypes();
   writePackageManifest(entry);
 
-  const sourceCommit = run('git', ['rev-parse', 'HEAD'], { capture: true });
-  const sourceRemote = run('git', ['remote', 'get-url', 'origin'], {
-    capture: true,
-  });
+  if (checkOnly) {
+    console.log('\nPortfolio runtime validation passed. No distribution branch was modified.\n');
+  } else {
+    const sourceCommit = run('git', ['rev-parse', 'HEAD'], { capture: true });
+    const sourceRemote = run('git', ['remote', 'get-url', 'origin'], {
+      capture: true,
+    });
 
-  fs.writeFileSync(
-    path.join(tempDir, 'RAMZY_RUNTIME_SOURCE_COMMIT'),
-    `${sourceCommit}\n`,
-  );
+    fs.writeFileSync(
+      path.join(tempDir, 'RAMZY_RUNTIME_SOURCE_COMMIT'),
+      `${sourceCommit}\n`,
+    );
 
-  run('git', ['init', '-b', 'portfolio-runtime-dist'], { cwd: tempDir });
-  run('git', ['add', '--all'], { cwd: tempDir });
-  run(
-    'git',
-    [
-      '-c',
-      'user.name=Ramzy Studio Runtime',
-      '-c',
-      'user.email=runtime@local.invalid',
-      'commit',
-      '-m',
-      `Portfolio runtime from ${sourceCommit}`,
-    ],
-    { cwd: tempDir },
-  );
-  run('git', ['remote', 'add', 'origin', sourceRemote], { cwd: tempDir });
-  run('git', ['push', '--force', 'origin', 'portfolio-runtime-dist'], {
-    cwd: tempDir,
-  });
+    run('git', ['init', '-b', 'portfolio-runtime-dist'], { cwd: tempDir });
+    run('git', ['add', '--all'], { cwd: tempDir });
+    run(
+      'git',
+      [
+        '-c',
+        'user.name=Ramzy Studio Runtime',
+        '-c',
+        'user.email=runtime@local.invalid',
+        'commit',
+        '-m',
+        `Portfolio runtime from ${sourceCommit}`,
+      ],
+      { cwd: tempDir },
+    );
+    run('git', ['remote', 'add', 'origin', sourceRemote], { cwd: tempDir });
+    run('git', ['push', '--force', 'origin', 'portfolio-runtime-dist'], {
+      cwd: tempDir,
+    });
 
-  console.log('\nPortfolio runtime published successfully.');
-  console.log(`Source commit: ${sourceCommit}`);
-  console.log('Distribution branch: portfolio-runtime-dist\n');
+    console.log('\nPortfolio runtime published successfully.');
+    console.log(`Source commit: ${sourceCommit}`);
+    console.log('Distribution branch: portfolio-runtime-dist\n');
+  }
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

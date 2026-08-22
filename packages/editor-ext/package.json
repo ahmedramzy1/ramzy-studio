@@ -1,5 +1,6 @@
 {
   "name": "@docmost/editor-ext",
+  "description": "Shared Docmost editor extensions used by Ramzy Studio and the portfolio runtime.",
   "homepage": "https://docmost.com",
   "private": true,
   "sideEffects": false,
