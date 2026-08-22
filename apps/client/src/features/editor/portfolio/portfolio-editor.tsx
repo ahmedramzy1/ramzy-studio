@@ -8,23 +8,10 @@ import React, {
 } from "react";
 import type { Editor, EditorOptions, JSONContent } from "@tiptap/core";
 import {
-  HocuspocusProviderWebsocket,
-} from "@hocuspocus/provider";
-import {
-  HocuspocusProviderWebsocketComponent,
-  HocuspocusRoom,
-  useHocuspocusEvent,
-  useHocuspocusProvider,
-} from "@hocuspocus/provider-react";
-import { IndexeddbPersistence } from "y-indexeddb";
-import {
   RamzyPortfolioEditor,
   type RamzyPortfolioSession,
 } from "@docmost/editor-ext/portfolio";
-import {
-  collabExtensions,
-  mainExtensions,
-} from "@/features/editor/extensions/extensions";
+import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { handleFileDrop, handlePaste } from "@/features/editor/components/common/editor-paste-handler";
 import { EditorBubbleMenu } from "@/features/editor/components/bubble-menu/bubble-menu";
 import { EditorLinkMenu } from "@/features/editor/components/link/link-menu";
@@ -42,8 +29,8 @@ import SearchAndReplaceDialog from "@/features/editor/components/search-and-repl
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
-import { RamzyStudioPortfolioRenderer } from "./portfolio-renderer";
-import { observeInitialSync } from "./portfolio-sync";
+
+export type RamzyPortfolioSaveState = "idle" | "saving" | "saved" | "error";
 
 export interface RamzyStudioPortfolioEditorProps {
   pageId: string;
@@ -53,14 +40,20 @@ export interface RamzyStudioPortfolioEditorProps {
   onCreate?: (editor: Editor) => void;
   onUpdate?: (content: JSONContent, editor: Editor) => void;
   onSessionExpired?: () => void;
+  onSaveStateChange?: (
+    state: RamzyPortfolioSaveState,
+    error?: string,
+  ) => void;
 }
 
 /**
- * Complete collaborative Ramzy Studio authoring surface for portfolio hosts.
+ * Native Ramzy Studio authoring surface for external portfolio hosts.
  *
- * The host supplies only page identity + the short-lived session returned by
- * /api/portfolio/session/exchange. Ramzy Studio owns collaboration, extensions,
- * node views, editor menus, uploads and API routing internally.
+ * The editor deliberately does not require Docmost's collaboration WebSocket.
+ * ahmedramzy.com is a single-user authoring host, so the native ProseMirror JSON
+ * is edited with the exact same Studio extensions/menus and autosaved through a
+ * short-lived authenticated Studio API session. Standalone Ramzy Studio keeps
+ * its normal Hocuspocus/Yjs collaboration path.
  */
 export function RamzyStudioPortfolioEditor({
   pageId,
@@ -70,16 +63,8 @@ export function RamzyStudioPortfolioEditor({
   onCreate,
   onUpdate,
   onSessionExpired,
+  onSaveStateChange,
 }: RamzyStudioPortfolioEditorProps) {
-  const socket = useMemo(
-    () =>
-      new HocuspocusProviderWebsocket({
-        url: session.collaborationUrl,
-        autoConnect: true,
-      }),
-    [session.collaborationUrl],
-  );
-
   useLayoutEffect(() => {
     return setPortfolioRuntimeHostConfig({
       apiUrl: session.apiUrl,
@@ -88,96 +73,149 @@ export function RamzyStudioPortfolioEditor({
     });
   }, [session.accessToken, session.apiUrl, session.collaborationUrl]);
 
-  useEffect(() => {
-    return () => {
-      socket.destroy();
-    };
-  }, [socket]);
-
   return (
     <PortfolioRuntimeProviders>
       <TransclusionLookupProvider>
-        <HocuspocusProviderWebsocketComponent websocketProvider={socket}>
-          <HocuspocusRoom
-            name={`page.${pageId}`}
-            token={session.collaborationToken}
-            flushDelay={500}
-            onAuthenticationFailed={onSessionExpired}
-          >
-            <CollaborativePortfolioEditor
-              pageId={pageId}
-              session={session}
-              initialContent={initialContent}
-              editable={editable}
-              onCreate={onCreate}
-              onUpdate={onUpdate}
-            />
-          </HocuspocusRoom>
-        </HocuspocusProviderWebsocketComponent>
+        <DirectPortfolioEditor
+          pageId={pageId}
+          session={session}
+          initialContent={initialContent}
+          editable={editable}
+          onCreate={onCreate}
+          onUpdate={onUpdate}
+          onSessionExpired={onSessionExpired}
+          onSaveStateChange={onSaveStateChange}
+        />
       </TransclusionLookupProvider>
     </PortfolioRuntimeProviders>
   );
 }
 
-function CollaborativePortfolioEditor({
+function DirectPortfolioEditor({
   pageId,
   session,
   initialContent,
   editable,
   onCreate,
   onUpdate,
-}: Omit<RamzyStudioPortfolioEditorProps, "onSessionExpired">) {
-  const provider = useHocuspocusProvider();
+  onSessionExpired,
+  onSaveStateChange,
+}: RamzyStudioPortfolioEditorProps) {
   const editorRef = useRef<Editor | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
-  const [remoteSynced, setRemoteSynced] = useState(() => provider.synced);
-  const [localSynced, setLocalSynced] = useState(false);
-  const [syncTimedOut, setSyncTimedOut] = useState(false);
+  const mountedRef = useRef(true);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingContentRef = useRef<JSONContent | null>(null);
+  const saveVersionRef = useRef(0);
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const lastSavedJsonRef = useRef(
+    JSON.stringify(initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }),
+  );
 
   useEffect(() => {
-    // Hocuspocus can complete its first handshake before this component's event
-    // subscription is installed. Read the provider's current state as well as
-    // subscribing to future events so BUILD can never miss the ready signal.
-    setRemoteSynced(provider.synced);
-  }, [provider]);
-
-  useEffect(() => {
-    const persistence = new IndexeddbPersistence(
-      provider.configuration.name,
-      provider.document,
-    );
-
-    const stopObserving = observeInitialSync(persistence, () => {
-      setLocalSynced(true);
-    });
+    mountedRef.current = true;
+    onSaveStateChange?.("idle");
 
     return () => {
-      stopObserving();
-      persistence.destroy();
+      mountedRef.current = false;
     };
-  }, [provider]);
+  }, [onSaveStateChange]);
 
-  useHocuspocusEvent("synced", ({ state }) => setRemoteSynced(state));
+  const extensions = useMemo(() => [...mainExtensions], []);
 
-  const isSynced = remoteSynced && localSynced;
+  const persistDraft = useCallback(
+    async (content: JSONContent, version: number) => {
+      const apiBase = session.apiUrl.replace(/\/+$/, "");
+      const response = await fetch(`${apiBase}/portfolio/draft/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        body: JSON.stringify({ pageId, content }),
+      });
+
+      if (response.status === 401) {
+        onSessionExpired?.();
+        throw new Error("Ramzy Studio session expired. Reconnecting…");
+      }
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const message =
+          body && typeof body === "object" && "message" in body
+            ? String(body.message)
+            : `Ramzy Studio autosave failed (${response.status})`;
+        throw new Error(message);
+      }
+
+      lastSavedJsonRef.current = JSON.stringify(content);
+
+      if (mountedRef.current && version === saveVersionRef.current) {
+        onSaveStateChange?.("saved");
+      }
+    },
+    [onSaveStateChange, onSessionExpired, pageId, session.accessToken, session.apiUrl],
+  );
+
+  const enqueueSave = useCallback(
+    (content: JSONContent) => {
+      const serialized = JSON.stringify(content);
+      if (serialized === lastSavedJsonRef.current) {
+        if (mountedRef.current) onSaveStateChange?.("saved");
+        return;
+      }
+
+      const version = ++saveVersionRef.current;
+      if (mountedRef.current) onSaveStateChange?.("saving");
+
+      saveChainRef.current = saveChainRef.current
+        .catch(() => undefined)
+        .then(() => persistDraft(content, version))
+        .catch((error) => {
+          if (mountedRef.current && version === saveVersionRef.current) {
+            onSaveStateChange?.(
+              "error",
+              error instanceof Error ? error.message : "Ramzy Studio autosave failed.",
+            );
+          }
+        });
+    },
+    [onSaveStateChange, persistDraft],
+  );
+
+  const scheduleSave = useCallback(
+    (content: JSONContent) => {
+      pendingContentRef.current = content;
+
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      if (mountedRef.current) onSaveStateChange?.("saving");
+
+      saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = null;
+        const pending = pendingContentRef.current;
+        pendingContentRef.current = null;
+        if (pending) enqueueSave(pending);
+      }, 450);
+    },
+    [enqueueSave, onSaveStateChange],
+  );
 
   useEffect(() => {
-    if (isSynced) {
-      setSyncTimedOut(false);
-      return;
-    }
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
 
-    const timeout = window.setTimeout(() => setSyncTimedOut(true), 8000);
-    return () => window.clearTimeout(timeout);
-  }, [isSynced, pageId]);
-
-  const extensions = useMemo(
-    () => [
-      ...mainExtensions,
-      ...collabExtensions(provider, session.user as any),
-    ],
-    [provider, session.user],
-  );
+      const pending = pendingContentRef.current;
+      pendingContentRef.current = null;
+      if (pending) enqueueSave(pending);
+    };
+  }, [enqueueSave]);
 
   const editorProps = useMemo<EditorOptions["editorProps"]>(
     () => ({
@@ -210,45 +248,20 @@ function CollaborativePortfolioEditor({
 
   const handleUpdate = useCallback(
     (nextEditor: Editor) => {
-      onUpdate?.(nextEditor.getJSON(), nextEditor);
+      const content = nextEditor.getJSON();
+      onUpdate?.(content, nextEditor);
+      scheduleSave(content);
     },
-    [onUpdate],
+    [onUpdate, scheduleSave],
   );
 
-  if (!isSynced) {
-    if (syncTimedOut) {
-      return (
-        <div
-          role="status"
-          style={{
-            padding: "28px 32px",
-            border: "1px solid var(--mantine-color-default-border)",
-            borderRadius: 8,
-            fontSize: 14,
-            lineHeight: 1.5,
-          }}
-        >
-          Ramzy Studio could not finish connecting to the editable document.
-          Refresh this project to retry the collaboration session.
-        </div>
-      );
-    }
-
-    return (
-      <RamzyStudioPortfolioRenderer
-        content={initialContent}
-        pageId={pageId}
-        withProviders={false}
-      />
-    );
-  }
-
   return (
-    <div className="editor-container" style={{ position: "relative" }}>
+    <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>
       <RamzyPortfolioEditor
         pageId={pageId}
+        content={initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }}
         extensions={extensions}
-        editable={editable}
+        editable={editable ?? true}
         ariaLabel="Portfolio document content"
         editorProps={editorProps}
         onCreate={handleCreate}
@@ -260,10 +273,10 @@ function CollaborativePortfolioEditor({
       />
 
       {editor && (
-        <SearchAndReplaceDialog editor={editor} editable={editable} />
+        <SearchAndReplaceDialog editor={editor} editable={editable ?? true} />
       )}
 
-      {editor && editable && (
+      {editor && (editable ?? true) && (
         <>
           <EditorLinkMenu editor={editor} />
           <EditorBubbleMenu editor={editor} />
@@ -286,7 +299,7 @@ function CollaborativePortfolioEditor({
             editor.commands.focus("end");
           }
         }}
-        style={{ paddingBottom: "20vh" }}
+        style={{ minHeight: 160, paddingBottom: "20vh", cursor: "text" }}
       />
     </div>
   );
