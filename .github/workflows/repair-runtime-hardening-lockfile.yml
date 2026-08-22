@@ -1,0 +1,56 @@
+name: Repair Runtime Hardening Lockfile
+
+on:
+  push:
+    branches:
+      - ramzy/runtime-hardening
+    paths:
+      - apps/client/package.json
+      - .github/workflows/repair-runtime-hardening-lockfile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ramzy-runtime-hardening-lockfile-final
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout hardening branch
+        uses: actions/checkout@v4
+        with:
+          ref: ramzy/runtime-hardening
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Regenerate lockfile
+        run: pnpm install --lockfile-only --no-frozen-lockfile
+
+      - name: Commit regenerated lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo "pnpm-lock.yaml is already current."
+            exit 0
+          fi
+
+          git config user.name "Ramzy Studio CI"
+          git config user.email "runtime@local.invalid"
+          git add pnpm-lock.yaml
+          git commit -m "Update TanStack ESLint plugin lockfile"
+          git push origin HEAD:ramzy/runtime-hardening
