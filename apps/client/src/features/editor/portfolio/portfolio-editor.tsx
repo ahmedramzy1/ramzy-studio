@@ -112,18 +112,35 @@ function DirectPortfolioEditor({
   const pendingContentRef = useRef<JSONContent | null>(null);
   const saveVersionRef = useRef(0);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  const onSaveStateChangeRef = useRef(onSaveStateChange);
+  const onSessionExpiredRef = useRef(onSessionExpired);
   const lastSavedJsonRef = useRef(
     JSON.stringify(initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }),
   );
 
   useEffect(() => {
+    onSaveStateChangeRef.current = onSaveStateChange;
+  }, [onSaveStateChange]);
+
+  useEffect(() => {
+    onSessionExpiredRef.current = onSessionExpired;
+  }, [onSessionExpired]);
+
+  const notifySaveState = useCallback(
+    (state: RamzyPortfolioSaveState, error?: string) => {
+      onSaveStateChangeRef.current?.(state, error);
+    },
+    [],
+  );
+
+  useEffect(() => {
     mountedRef.current = true;
-    onSaveStateChange?.("idle");
+    notifySaveState("idle");
 
     return () => {
       mountedRef.current = false;
     };
-  }, [onSaveStateChange]);
+  }, [notifySaveState]);
 
   const extensions = useMemo(() => [...mainExtensions], []);
 
@@ -138,7 +155,7 @@ function DirectPortfolioEditor({
         });
       } catch (error) {
         if (error instanceof PortfolioDraftSaveError && error.sessionExpired) {
-          onSessionExpired?.();
+          onSessionExpiredRef.current?.();
         }
         throw error;
       }
@@ -146,22 +163,22 @@ function DirectPortfolioEditor({
       lastSavedJsonRef.current = JSON.stringify(content);
 
       if (mountedRef.current && version === saveVersionRef.current) {
-        onSaveStateChange?.("saved");
+        notifySaveState("saved");
       }
     },
-    [onSaveStateChange, onSessionExpired, pageId, session.accessToken, session.apiUrl],
+    [notifySaveState, pageId, session.accessToken, session.apiUrl],
   );
 
   const enqueueSave = useCallback(
     (content: JSONContent) => {
       const serialized = JSON.stringify(content);
       if (serialized === lastSavedJsonRef.current) {
-        if (mountedRef.current) onSaveStateChange?.("saved");
+        if (mountedRef.current) notifySaveState("saved");
         return;
       }
 
       const version = ++saveVersionRef.current;
-      if (mountedRef.current) onSaveStateChange?.("saving");
+      if (mountedRef.current) notifySaveState("saving");
 
       // Serialize writes so an older request can never finish after a newer one
       // and overwrite the newest document state.
@@ -170,14 +187,14 @@ function DirectPortfolioEditor({
         .then(() => persistDraft(content, version))
         .catch((error) => {
           if (mountedRef.current && version === saveVersionRef.current) {
-            onSaveStateChange?.(
+            notifySaveState(
               "error",
               error instanceof Error ? error.message : "Ramzy Studio autosave failed.",
             );
           }
         });
     },
-    [onSaveStateChange, persistDraft],
+    [notifySaveState, persistDraft],
   );
 
   const scheduleSave = useCallback(
@@ -188,7 +205,7 @@ function DirectPortfolioEditor({
         clearTimeout(saveTimerRef.current);
       }
 
-      if (mountedRef.current) onSaveStateChange?.("saving");
+      if (mountedRef.current) notifySaveState("saving");
 
       saveTimerRef.current = setTimeout(() => {
         saveTimerRef.current = null;
@@ -197,7 +214,7 @@ function DirectPortfolioEditor({
         if (pending) enqueueSave(pending);
       }, 450);
     },
-    [enqueueSave, onSaveStateChange],
+    [enqueueSave, notifySaveState],
   );
 
   useEffect(() => {
