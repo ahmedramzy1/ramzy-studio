@@ -46,6 +46,12 @@ describe("savePortfolioDraft", () => {
       json: async () => ({ message: "expired" }),
     })) as unknown as typeof fetch;
 
+    const expectedError: Partial<PortfolioDraftSaveError> = {
+      name: "PortfolioDraftSaveError",
+      status: 401,
+      message: "expired",
+    };
+
     await expect(
       savePortfolioDraft({
         apiUrl: "/api/ramzy-studio",
@@ -54,10 +60,6 @@ describe("savePortfolioDraft", () => {
         content,
         fetchImpl,
       }),
-    ).rejects.toMatchObject<Partial<PortfolioDraftSaveError>>({
-      name: "PortfolioDraftSaveError",
-      status: 401,
-      message: "expired",
-    });
+    ).rejects.toMatchObject(expectedError);
   });
 });
