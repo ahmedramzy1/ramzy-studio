@@ -16,7 +16,6 @@ import { getPageTitle, isUserDisabled } from '../../common/helpers';
 import { TokenService } from '../../core/auth/services/token.service';
 import { PageAccessService } from '../../core/page/page-access/page-access.service';
 import { PageService } from '../../core/page/services/page.service';
-import { ShareService } from '../../core/share/share.service';
 import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
 import {
   SpaceCaslAction,
@@ -49,7 +48,6 @@ export class PortfolioSessionService {
     private readonly environmentService: EnvironmentService,
     private readonly pageService: PageService,
     private readonly pageAccessService: PageAccessService,
-    private readonly shareService: ShareService,
     private readonly spaceRepo: SpaceRepo,
     private readonly spaceAbility: SpaceAbilityFactory,
     private readonly userRepo: UserRepo,
@@ -97,9 +95,8 @@ export class PortfolioSessionService {
 
   /**
    * Create the canonical Ramzy Studio document for a portfolio project and
-   * immediately return an editing session for it. This is intentionally driven
-   * by the website's existing Supabase admin identity, so opening BUILD for an
-   * unlinked project requires no second login and no manual Studio setup.
+   * immediately return an editing session for it. Draft documents remain
+   * private; public sharing is created only when the portfolio is published.
    */
   async bootstrapPage(
     projectIdInput: string,
@@ -145,17 +142,6 @@ export class PortfolioSessionService {
         format: 'json',
       },
     );
-
-    await this.shareService.createShare({
-      authUserId: user.id,
-      workspaceId: user.workspaceId,
-      page: createdPage,
-      createShareDto: {
-        pageId: createdPage.id,
-        includeSubPages: false,
-        searchIndexing: false,
-      },
-    });
 
     const page = await this.pageService.findById(createdPage.id, true);
 
