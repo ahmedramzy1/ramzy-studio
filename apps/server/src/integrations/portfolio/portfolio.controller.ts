@@ -42,13 +42,19 @@ type PortfolioPageBootstrapDto = {
   title?: string;
 };
 
+type PortfolioDraftSaveDto = {
+  pageId?: string;
+  content?: Page['content'];
+};
+
 /**
  * Portfolio-specific bridge for ahmedramzy.com.
  *
- * Draft editing uses the live Ramzy Studio page document. Publishing creates an
- * explicit immutable PageHistory snapshot and the public portfolio reads that
- * exact snapshot by publicationId. This keeps ordinary Docmost autosave/history
- * timing independent from portfolio release semantics.
+ * Draft editing uses the native Ramzy Studio document JSON. The embedded
+ * portfolio editor persists drafts through an authenticated API rather than
+ * requiring a live collaboration socket; standalone Ramzy Studio keeps its
+ * normal collaborative editing path. Publishing creates an explicit immutable
+ * PageHistory snapshot and the public portfolio reads that exact snapshot.
  */
 @UseGuards(JwtAuthGuard)
 @Controller('portfolio')
@@ -98,6 +104,24 @@ export class PortfolioController {
     );
   }
 
+  /**
+   * Autosave one embedded BUILD draft. The short-lived Ramzy Studio access
+   * token authenticates this request and normal page edit permissions still
+   * apply. No public share/publication is created here.
+   */
+  @HttpCode(HttpStatus.OK)
+  @Post('/draft/save')
+  async saveDraft(
+    @Body() dto: PortfolioDraftSaveDto,
+    @AuthUser() user: User,
+  ) {
+    return this.portfolioSessionService.saveDraft(
+      dto.pageId ?? '',
+      dto.content,
+      user,
+    );
+  }
+
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('/page')
@@ -137,7 +161,7 @@ export class PortfolioController {
    * at this moment; drafts remain private while BUILD is in progress.
    *
    * The editor supplies its current native JSON so this operation does not
-   * depend on Hocuspocus' debounced persistence or background history cadence.
+   * depend on background autosave timing.
    */
   @HttpCode(HttpStatus.OK)
   @Post('/publications/create')
