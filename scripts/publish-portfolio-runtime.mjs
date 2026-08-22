@@ -85,6 +85,8 @@ function listJavaScriptFiles(directory) {
 
 function assertBrowserSafeBundle(directory) {
   const violations = [];
+  const hostRequirePattern =
+    /require\s*\(\s*["'](react(?:\/[^"']+)?|react-dom(?:\/[^"']+)?|react-router-dom(?:\/[^"']+)?)["']\s*\)/g;
 
   for (const file of listJavaScriptFiles(directory)) {
     const source = fs.readFileSync(file, 'utf8');
@@ -97,8 +99,10 @@ function assertBrowserSafeBundle(directory) {
       violations.push(`${relative}: leaked use-sync-external-store dependency`);
     }
 
-    if (/require\s*\(\s*["']react["']\s*\)/.test(source)) {
-      violations.push(`${relative}: contains browser-unsafe require('react')`);
+    for (const match of source.matchAll(hostRequirePattern)) {
+      violations.push(
+        `${relative}: contains browser-unsafe require('${match[1]}')`,
+      );
     }
 
     // The portfolio runtime is a reusable library, never the standalone Ramzy
