@@ -73,7 +73,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test server
-        run: pnpm --filter ./apps/server run test -- --runInBand
+        run: pnpm --filter ./apps/server exec jest --runInBand
 
       - name: Build server
         run: pnpm --filter ./apps/server run build
