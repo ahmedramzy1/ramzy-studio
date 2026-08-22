@@ -1,0 +1,45 @@
+name: Apply interactive YouTube node
+
+on:
+  push:
+    branches:
+      - ramzy/youtube-interaction
+    paths:
+      - ".github/workflows/youtube-interaction-apply.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout YouTube branch
+        uses: actions/checkout@v4
+        with:
+          ref: ramzy/youtube-interaction
+
+      - name: Use non-draggable YouTube extension
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('apps/client/src/features/editor/extensions/extensions.ts')
+          text = path.read_text()
+          old = 'import { Youtube } from "@tiptap/extension-youtube";\n'
+          new = 'import Youtube from "@/features/editor/extensions/interactive-youtube";\n'
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one YouTube import, found {count}')
+          path.write_text(text.replace(old, new, 1))
+
+      - name: Commit YouTube integration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/client/src/features/editor/extensions/extensions.ts
+          git commit -m "Use interactive YouTube extension"
+          git push origin HEAD:ramzy/youtube-interaction
