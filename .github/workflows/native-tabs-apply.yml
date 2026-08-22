@@ -1,0 +1,84 @@
+name: Apply native tabs integration
+
+on:
+  push:
+    branches:
+      - ramzy/native-tabs
+    paths:
+      - ".github/workflows/native-tabs-apply.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout tabs branch
+        uses: actions/checkout@v4
+        with:
+          ref: ramzy/native-tabs
+
+      - name: Wire tabs into Studio editor
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}: {old[:120]!r}')
+              file.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'packages/editor-ext/src/index.ts',
+              'export * from "./lib/columns";\n',
+              'export * from "./lib/columns";\nexport * from "./lib/tabs";\n',
+          )
+
+          replace_once(
+              'apps/client/src/features/editor/extensions/extensions.ts',
+              '  Details,\n  DetailsContent,\n  DetailsSummary,\n',
+              '  Details,\n  DetailsContent,\n  DetailsSummary,\n  Tabs,\n  TabPanel,\n',
+          )
+
+          replace_once(
+              'apps/client/src/features/editor/extensions/extensions.ts',
+              '  Details,\n  DetailsSummary,\n  DetailsContent,\n  Youtube.configure({',
+              '  Details,\n  DetailsSummary,\n  DetailsContent,\n  Tabs,\n  TabPanel,\n  Youtube.configure({',
+          )
+
+          tabs_item = '''    {
+      title: "Tabs",
+      description: "Organize content into switchable tabs.",
+      searchTerms: ["tabs", "tab", "sections", "switch"],
+      icon: IconAppWindow,
+      command: ({ editor, range }: CommandProps) =>
+        editor.chain().focus().deleteRange(range).insertTabs().run(),
+    },
+'''
+
+          replace_once(
+              'apps/client/src/features/editor/components/slash-menu/menu-items.ts',
+              '    {\n      title: "Callout",',
+              tabs_item + '    {\n      title: "Callout",',
+          )
+
+          replace_once(
+              'apps/client/src/features/editor/components/slash-menu/portfolio-menu.ts',
+              '  "Toggle block",\n',
+              '  "Toggle block",\n  "Tabs",\n',
+          )
+
+      - name: Commit native tabs wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/editor-ext/src/index.ts apps/client/src/features/editor/extensions/extensions.ts apps/client/src/features/editor/components/slash-menu/menu-items.ts apps/client/src/features/editor/components/slash-menu/portfolio-menu.ts
+          git commit -m "Wire native tabs into Studio authoring"
+          git push origin HEAD:ramzy/native-tabs
