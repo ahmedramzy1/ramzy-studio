@@ -1,12 +1,14 @@
 .ProseMirror {
     div[data-youtube-video] {
-        cursor: move;
+        cursor: default;
 
         iframe {
             display: block;
             outline: 0 solid transparent;
             border-radius: var(--mantine-radius-md);
             width: 100%;
+            cursor: auto;
+            pointer-events: auto;
         }
 
         &.ProseMirror-selectednode iframe {
