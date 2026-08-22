@@ -4,10 +4,12 @@ import {
   loadEnv,
 } from "vite";
 import react from "@vitejs/plugin-react";
-import * as path from "path";
-import { fileURLToPath } from "node:url";
+import * as fs from "node:fs";
+import { createRequire } from "node:module";
+import * as path from "node:path";
 
 const workspaceRoot = path.resolve(process.cwd(), "..", "..");
+const clientRequire = createRequire(path.resolve(process.cwd(), "package.json"));
 
 const hostExternals = [
   /^react(?:\/|$)/,
@@ -32,7 +34,19 @@ const prosemirrorModules = [
 ] as const;
 
 function esmEntry(moduleId: string): string {
-  return fileURLToPath(import.meta.resolve(moduleId));
+  const resolved = clientRequire.resolve(moduleId);
+
+  // ProseMirror packages expose CommonJS as their `require` target and ESM as
+  // the sibling dist/index.js import target. Vite may load this config through
+  // a CommonJS wrapper, so import.meta.resolve is unavailable here. Resolve the
+  // package from the client dependency graph and explicitly select its ESM
+  // sibling instead.
+  if (resolved.endsWith(".cjs")) {
+    const esm = resolved.slice(0, -4) + ".js";
+    if (fs.existsSync(esm)) return esm;
+  }
+
+  return resolved;
 }
 
 // @tiptap/pm/* is intentionally a thin re-export layer over ProseMirror.
