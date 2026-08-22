@@ -3,6 +3,7 @@ import "@/features/editor/styles/index.css";
 export {
   RamzyStudioPortfolioEditor,
   type RamzyStudioPortfolioEditorProps,
+  type RamzyPortfolioSaveState,
 } from "@/features/editor/portfolio/portfolio-editor";
 
 export {
