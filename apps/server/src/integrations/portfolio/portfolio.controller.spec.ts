@@ -4,6 +4,7 @@ import { PortfolioController } from './portfolio.controller';
 describe('PortfolioController contract', () => {
   const shareService = {
     getSharedPage: jest.fn(),
+    createShare: jest.fn(),
   };
   const pageService = {
     findById: jest.fn(),
@@ -51,6 +52,7 @@ describe('PortfolioController contract', () => {
   it('publishes the exact live editor JSON after validating edit access', async () => {
     const page = {
       id: 'page-1',
+      workspaceId: 'workspace-1',
       deletedAt: null,
     };
     const user = { id: 'user-1' };
@@ -66,6 +68,7 @@ describe('PortfolioController contract', () => {
 
     pageService.findById.mockResolvedValue(page);
     pageAccessService.validateCanEdit.mockResolvedValue(undefined);
+    shareService.createShare.mockResolvedValue(undefined);
     pageHistoryService.createPortfolioPublicationSnapshot.mockResolvedValue(
       publication,
     );
@@ -77,6 +80,16 @@ describe('PortfolioController contract', () => {
 
     expect(pageService.findById).toHaveBeenCalledWith('page-1', true);
     expect(pageAccessService.validateCanEdit).toHaveBeenCalledWith(page, user);
+    expect(shareService.createShare).toHaveBeenCalledWith({
+      authUserId: 'user-1',
+      workspaceId: 'workspace-1',
+      page,
+      createShareDto: {
+        pageId: 'page-1',
+        includeSubPages: false,
+        searchIndexing: false,
+      },
+    });
     expect(
       pageHistoryService.createPortfolioPublicationSnapshot,
     ).toHaveBeenCalledWith(page, content, 'user-1');
