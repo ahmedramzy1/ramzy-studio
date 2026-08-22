@@ -12,6 +12,7 @@
     "client:build": "nx run client:build",
     "editor-ext:build": "nx run @docmost/editor-ext:build",
     "portfolio-runtime:build": "pnpm run editor-ext:build && pnpm --filter client run build:portfolio-runtime",
+    "portfolio-runtime:watch": "concurrently -n \"editor-ext,runtime\" -c \"yellow,cyan\" \"pnpm --filter @docmost/editor-ext run dev\" \"pnpm --filter client run build:portfolio-runtime:watch\"",
     "portfolio-runtime:publish-git": "node scripts/publish-portfolio-runtime.mjs",
     "client:dev": "nx run client:dev",
     "server:dev": "nx run server:start:dev",
