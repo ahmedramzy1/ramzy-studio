@@ -37,6 +37,11 @@ type PortfolioSessionExchangeDto = {
   pageId?: string;
 };
 
+type PortfolioPageBootstrapDto = {
+  projectId?: string;
+  title?: string;
+};
+
 /**
  * Portfolio-specific bridge for ahmedramzy.com.
  *
@@ -70,6 +75,28 @@ export class PortfolioController {
   ) {
     const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1] ?? '';
     return this.portfolioSessionService.exchange(dto.pageId ?? '', bearer);
+  }
+
+  /**
+   * First-open bootstrap for portfolio projects that do not yet own a Ramzy
+   * Studio document. The website's Supabase admin identity is verified, a new
+   * Studio page is created in the configured portfolio space, public sharing is
+   * prepared for future publication rendering, and the authoring session is
+   * returned in one round-trip.
+   */
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('/page/bootstrap')
+  async bootstrapPage(
+    @Body() dto: PortfolioPageBootstrapDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    const bearer = authorization?.match(/^Bearer\s+(.+)$/i)?.[1] ?? '';
+    return this.portfolioSessionService.bootstrapPage(
+      dto.projectId ?? '',
+      dto.title ?? '',
+      bearer,
+    );
   }
 
   @Public()
