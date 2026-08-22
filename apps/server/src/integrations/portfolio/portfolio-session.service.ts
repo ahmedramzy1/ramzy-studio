@@ -6,14 +6,31 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectKysely } from 'nestjs-kysely';
+import { sql } from 'kysely';
+import { KyselyDB } from '@docmost/db/types/kysely.types';
+import { SpaceRepo } from '@docmost/db/repos/space/space.repo';
 import { UserRepo } from '@docmost/db/repos/user/user.repo';
+import { Page, User } from '@docmost/db/types/entity.types';
 import { getPageTitle, isUserDisabled } from '../../common/helpers';
 import { TokenService } from '../../core/auth/services/token.service';
 import { PageAccessService } from '../../core/page/page-access/page-access.service';
 import { PageService } from '../../core/page/services/page.service';
+import { ShareService } from '../../core/share/share.service';
+import SpaceAbilityFactory from '../../core/casl/abilities/space-ability.factory';
+import {
+  SpaceCaslAction,
+  SpaceCaslSubject,
+} from '../../core/casl/interfaces/space-ability.type';
 import { EnvironmentService } from '../environment/environment.service';
 
 const PORTFOLIO_SESSION_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_PORTFOLIO_SPACE_SLUG = 'general';
+
+const EMPTY_PORTFOLIO_DOCUMENT = {
+  type: 'doc',
+  content: [{ type: 'paragraph' }],
+};
 
 type SupabaseAuthUser = {
   id?: string;
@@ -32,8 +49,12 @@ export class PortfolioSessionService {
     private readonly environmentService: EnvironmentService,
     private readonly pageService: PageService,
     private readonly pageAccessService: PageAccessService,
+    private readonly shareService: ShareService,
+    private readonly spaceRepo: SpaceRepo,
+    private readonly spaceAbility: SpaceAbilityFactory,
     private readonly userRepo: UserRepo,
     private readonly tokenService: TokenService,
+    @InjectKysely() private readonly db: KyselyDB,
   ) {}
 
   async exchange(pageIdInput: string, supabaseAccessToken: string) {
@@ -71,6 +92,149 @@ export class PortfolioSessionService {
 
     await this.pageAccessService.validateCanEdit(page, user);
 
+    return this.buildSessionResponse(page, user);
+  }
+
+  /**
+   * Create the canonical Ramzy Studio document for a portfolio project and
+   * immediately return an editing session for it. This is intentionally driven
+   * by the website's existing Supabase admin identity, so opening BUILD for an
+   * unlinked project requires no second login and no manual Studio setup.
+   */
+  async bootstrapPage(
+    projectIdInput: string,
+    titleInput: string,
+    supabaseAccessToken: string,
+  ) {
+    const projectId = projectIdInput?.trim();
+    const title = titleInput?.trim() || 'Untitled Project';
+    const accessToken = supabaseAccessToken?.trim();
+
+    if (!projectId) {
+      throw new NotFoundException('Portfolio project not found');
+    }
+
+    if (!accessToken) {
+      throw new UnauthorizedException('Admin authentication is required');
+    }
+
+    const adminIdentity = await this.verifySupabaseAdmin(accessToken);
+    const email = adminIdentity.email?.trim();
+
+    if (!email) {
+      throw new UnauthorizedException('Admin account has no verified email');
+    }
+
+    const user = await this.resolvePortfolioUser(email);
+    const space = await this.resolvePortfolioSpace(user);
+
+    const ability = await this.spaceAbility.createForUser(user, space.id);
+    if (ability.cannot(SpaceCaslAction.Create, SpaceCaslSubject.Page)) {
+      throw new ForbiddenException(
+        'This Ramzy Studio account cannot create portfolio documents in the configured space',
+      );
+    }
+
+    const createdPage = await this.pageService.create(
+      user.id,
+      user.workspaceId,
+      {
+        title,
+        spaceId: space.id,
+        content: EMPTY_PORTFOLIO_DOCUMENT,
+        format: 'json',
+      },
+    );
+
+    await this.shareService.createShare({
+      authUserId: user.id,
+      workspaceId: user.workspaceId,
+      page: createdPage,
+      createShareDto: {
+        pageId: createdPage.id,
+        includeSubPages: false,
+        searchIndexing: false,
+      },
+    });
+
+    const page = await this.pageService.findById(createdPage.id, true);
+
+    return {
+      projectId,
+      ...(await this.buildSessionResponse(page, user)),
+    };
+  }
+
+  private async resolvePortfolioUser(email: string): Promise<User> {
+    const configuredWorkspaceId = this.configService
+      .get<string>('PORTFOLIO_WORKSPACE_ID')
+      ?.trim();
+
+    let query = this.db
+      .selectFrom('users')
+      .select(['id', 'workspaceId'])
+      .where(sql`LOWER(email)`, '=', sql`LOWER(${email})`)
+      .where('deletedAt', 'is', null)
+      .where('deactivatedAt', 'is', null);
+
+    if (configuredWorkspaceId) {
+      query = query.where('workspaceId', '=', configuredWorkspaceId);
+    }
+
+    const candidates = await query.execute();
+
+    if (candidates.length === 0) {
+      throw new ForbiddenException(
+        'This admin account is not linked to a Ramzy Studio editor account',
+      );
+    }
+
+    if (candidates.length > 1) {
+      throw new ServiceUnavailableException(
+        'Multiple Ramzy Studio workspaces match this admin. Configure PORTFOLIO_WORKSPACE_ID.',
+      );
+    }
+
+    const candidate = candidates[0];
+    const user = await this.userRepo.findById(
+      candidate.id,
+      candidate.workspaceId,
+    );
+
+    if (!user || isUserDisabled(user)) {
+      throw new ForbiddenException(
+        'This admin account is not linked to an active Ramzy Studio editor account',
+      );
+    }
+
+    return user;
+  }
+
+  private async resolvePortfolioSpace(user: User) {
+    const configuredSpaceId = this.configService
+      .get<string>('PORTFOLIO_SPACE_ID')
+      ?.trim();
+
+    const configuredSpaceSlug =
+      this.configService.get<string>('PORTFOLIO_SPACE_SLUG')?.trim() ||
+      DEFAULT_PORTFOLIO_SPACE_SLUG;
+
+    const space = configuredSpaceId
+      ? await this.spaceRepo.findById(configuredSpaceId, user.workspaceId)
+      : await this.spaceRepo.findBySlug(configuredSpaceSlug, user.workspaceId);
+
+    if (!space || space.deletedAt) {
+      throw new ServiceUnavailableException(
+        configuredSpaceId
+          ? 'The configured portfolio space does not exist in Ramzy Studio'
+          : `Ramzy Studio portfolio space “${configuredSpaceSlug}” was not found`,
+      );
+    }
+
+    return space;
+  }
+
+  private async buildSessionResponse(page: Page, user: User) {
     const [studioAccessToken, collaborationToken] = await Promise.all([
       this.tokenService.generatePortfolioAccessToken(user),
       this.tokenService.generatePortfolioCollabToken(user, page.workspaceId),
