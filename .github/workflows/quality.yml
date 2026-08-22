@@ -8,6 +8,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# Post-merge runtime publication is owned by the default-branch release workflow.
 permissions:
   contents: read
 
