@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          ref: ramzy/phase1-integration
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -56,4 +58,27 @@ jobs:
         run: gh auth setup-git
 
       - name: Build, validate, and publish portfolio runtime
-        run: pnpm run portfolio-runtime:publish-git
+        shell: bash
+        run: |
+          set +e
+          pnpm run portfolio-runtime:publish-git > publish.log 2>&1
+          status=$?
+          cat publish.log
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ "$status" -eq 0 ]; then
+            if [ -f .github/portfolio-runtime-publish-failure.log ]; then
+              git rm .github/portfolio-runtime-publish-failure.log
+              git commit -m "Clear portfolio runtime publish failure log" || true
+              git push origin HEAD:ramzy/phase1-integration || true
+            fi
+            exit 0
+          fi
+
+          tail -n 300 publish.log > .github/portfolio-runtime-publish-failure.log
+          git add .github/portfolio-runtime-publish-failure.log
+          git commit -m "Record portfolio runtime publish failure" || true
+          git push origin HEAD:ramzy/phase1-integration || true
+          exit "$status"
