@@ -1,9 +1,11 @@
-name: Publish Merged Integration Runtime
+name: Publish Validated Integration Runtime
 
 on:
-  pull_request_target:
+  workflow_run:
+    workflows:
+      - Ramzy Studio Quality
     types:
-      - closed
+      - completed
     branches:
       - ramzy/phase1-integration
 
@@ -16,15 +18,18 @@ concurrency:
 
 jobs:
   publish-runtime:
-    if: github.event.pull_request.merged == true
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'ramzy/phase1-integration'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout validated integration branch
+      - name: Checkout validated integration commit
         uses: actions/checkout@v4
         with:
-          ref: ramzy/phase1-integration
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -40,31 +45,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build editor extensions
-        run: pnpm run editor-ext:build
-
-      - name: Lint runtime build configuration
-        run: pnpm --filter ./apps/client exec eslint vite.portfolio-runtime.config.ts
-
-      - name: Test portfolio draft save contract
-        run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts
-
-      - name: Build client
-        run: pnpm --filter ./apps/client run build
-
-      - name: Validate packaged portfolio runtime
-        run: node scripts/publish-portfolio-runtime.mjs --check
-
-      - name: Test portfolio server contract
-        run: pnpm --filter ./apps/server exec jest src/integrations/portfolio/portfolio.controller.spec.ts --runInBand
-
-      - name: Build server
-        run: pnpm --filter ./apps/server run build
-
       - name: Configure Git authentication
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh auth setup-git
 
-      - name: Publish immutable portfolio runtime
+      - name: Build, validate, and publish immutable portfolio runtime
         run: pnpm run portfolio-runtime:publish-git
