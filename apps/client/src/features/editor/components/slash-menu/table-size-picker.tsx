@@ -1,6 +1,5 @@
 import { Paper, Text } from "@mantine/core";
-import type { Range } from "@tiptap/core";
-import type { Editor } from "@tiptap/react";
+import type { Editor, Range } from "@tiptap/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
