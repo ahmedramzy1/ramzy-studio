@@ -1,3 +1,4 @@
+# The integration branch is the only source allowed to publish reusable runtime artifacts.
 name: Publish Portfolio Runtime
 
 on:
