@@ -43,6 +43,7 @@ import { TransclusionLookupProvider } from "@/features/editor/components/transcl
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import { RamzyStudioPortfolioRenderer } from "./portfolio-renderer";
+import { observeInitialSync } from "./portfolio-sync";
 
 export interface RamzyStudioPortfolioEditorProps {
   pageId: string;
@@ -141,28 +142,17 @@ function CollaborativePortfolioEditor({
   }, [provider]);
 
   useEffect(() => {
-    let active = true;
     const persistence = new IndexeddbPersistence(
       provider.configuration.name,
       provider.document,
     );
 
-    const markSynced = () => {
-      if (active) setLocalSynced(true);
-    };
-
-    // `synced` may already be true by the time an event listener is attached.
-    // `whenSynced` is the race-safe source of truth for initial IndexedDB load.
-    if (persistence.synced) {
-      markSynced();
-    } else {
-      persistence.on("synced", markSynced);
-      void persistence.whenSynced.then(markSynced);
-    }
+    const stopObserving = observeInitialSync(persistence, () => {
+      setLocalSynced(true);
+    });
 
     return () => {
-      active = false;
-      persistence.off("synced", markSynced);
+      stopObserving();
       persistence.destroy();
     };
   }, [provider]);
