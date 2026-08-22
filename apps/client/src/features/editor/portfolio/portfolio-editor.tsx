@@ -129,23 +129,57 @@ function CollaborativePortfolioEditor({
   const provider = useHocuspocusProvider();
   const editorRef = useRef<Editor | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
-  const [remoteSynced, setRemoteSynced] = useState(false);
+  const [remoteSynced, setRemoteSynced] = useState(() => provider.synced);
   const [localSynced, setLocalSynced] = useState(false);
+  const [syncTimedOut, setSyncTimedOut] = useState(false);
 
   useEffect(() => {
+    // Hocuspocus can complete its first handshake before this component's event
+    // subscription is installed. Read the provider's current state as well as
+    // subscribing to future events so BUILD can never miss the ready signal.
+    setRemoteSynced(provider.synced);
+  }, [provider]);
+
+  useEffect(() => {
+    let active = true;
     const persistence = new IndexeddbPersistence(
       provider.configuration.name,
       provider.document,
     );
 
-    persistence.on("synced", () => setLocalSynced(true));
+    const markSynced = () => {
+      if (active) setLocalSynced(true);
+    };
+
+    // `synced` may already be true by the time an event listener is attached.
+    // `whenSynced` is the race-safe source of truth for initial IndexedDB load.
+    if (persistence.synced) {
+      markSynced();
+    } else {
+      persistence.on("synced", markSynced);
+      void persistence.whenSynced.then(markSynced);
+    }
 
     return () => {
+      active = false;
+      persistence.off("synced", markSynced);
       persistence.destroy();
     };
   }, [provider]);
 
   useHocuspocusEvent("synced", ({ state }) => setRemoteSynced(state));
+
+  const isSynced = remoteSynced && localSynced;
+
+  useEffect(() => {
+    if (isSynced) {
+      setSyncTimedOut(false);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setSyncTimedOut(true), 8000);
+    return () => window.clearTimeout(timeout);
+  }, [isSynced, pageId]);
 
   const extensions = useMemo(
     () => [
@@ -191,9 +225,25 @@ function CollaborativePortfolioEditor({
     [onUpdate],
   );
 
-  const isSynced = remoteSynced && localSynced;
-
   if (!isSynced) {
+    if (syncTimedOut) {
+      return (
+        <div
+          role="status"
+          style={{
+            padding: "28px 32px",
+            border: "1px solid var(--mantine-color-default-border)",
+            borderRadius: 8,
+            fontSize: 14,
+            lineHeight: 1.5,
+          }}
+        >
+          Ramzy Studio could not finish connecting to the editable document.
+          Refresh this project to retry the collaboration session.
+        </div>
+      );
+    }
+
     return (
       <RamzyStudioPortfolioRenderer
         content={initialContent}
