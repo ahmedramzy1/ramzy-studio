@@ -88,6 +88,8 @@ function assertBrowserSafeBundle(directory) {
   const violations = [];
   const hostRequirePattern =
     /require\s*\(\s*["'](react(?:\/[^"']+)?|react-dom(?:\/[^"']+)?|react-router-dom(?:\/[^"']+)?)["']\s*\)/g;
+  const prosemirrorDecorationFiles = [];
+  let prosemirrorDecorationReferences = 0;
 
   for (const file of listJavaScriptFiles(directory)) {
     const source = fs.readFileSync(file, 'utf8');
@@ -106,6 +108,18 @@ function assertBrowserSafeBundle(directory) {
       );
     }
 
+    // ProseMirror DecorationGroup uses instanceof checks internally. When two
+    // prosemirror-view module identities are bundled, decoration sets from one
+    // copy become undefined members in the other and slash-menu Suggestion can
+    // crash while reading `localsInner`. One current prosemirror-view runtime
+    // contains three references to that internal method; more than three, or
+    // references split across chunks, means the reusable runtime duplicated it.
+    const decorationReferences = source.match(/localsInner/g)?.length ?? 0;
+    if (decorationReferences > 0) {
+      prosemirrorDecorationFiles.push(relative);
+      prosemirrorDecorationReferences += decorationReferences;
+    }
+
     // The portfolio runtime is a reusable library, never the standalone Ramzy
     // Studio application. These strings uniquely belong to Studio's catch-all
     // Error404 route. If they appear here, the full App/router dependency graph
@@ -118,6 +132,21 @@ function assertBrowserSafeBundle(directory) {
     if (/Take me back to homepage/i.test(source)) {
       violations.push(`${relative}: leaked Ramzy Studio catch-all router UI`);
     }
+  }
+
+  if (prosemirrorDecorationReferences === 0) {
+    violations.push(
+      'could not find ProseMirror decoration internals in the packaged editor runtime',
+    );
+  }
+
+  if (
+    prosemirrorDecorationFiles.length > 1 ||
+    prosemirrorDecorationReferences > 3
+  ) {
+    violations.push(
+      `duplicated ProseMirror decoration runtime (${prosemirrorDecorationReferences} localsInner references across ${prosemirrorDecorationFiles.join(', ')})`,
+    );
   }
 
   if (violations.length > 0) {
