@@ -48,6 +48,7 @@ export function RamzyPortfolioRenderer({
       content={content ?? { type: "doc", content: [] }}
       editorProps={{
         attributes: {
+          class: "ramzy-portfolio-editor",
           "aria-label": ariaLabel,
         },
       }}
