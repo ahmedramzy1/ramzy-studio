@@ -26,6 +26,9 @@ import Security from "@/ee/security/pages/security.tsx";
 import License from "@/ee/licence/pages/license.tsx";
 import { useRedirectToCloudSelect } from "@/ee/hooks/use-redirect-to-cloud-select.tsx";
 import SharedPage from "@/pages/share/shared-page.tsx";
+import PortfolioEmbedPage from "@/pages/share/portfolio-embed-page.tsx";
+import PortfolioEditorPage from "@/pages/portfolio/portfolio-editor-page.tsx";
+import PortfolioPreviewPage from "@/pages/portfolio/portfolio-preview-page.tsx";
 import PdfRenderPage from "@/ee/pdf-export/pdf-render-page.tsx";
 import Shares from "@/pages/settings/shares/shares.tsx";
 import ShareLayout from "@/features/share/components/share-layout.tsx";
@@ -75,6 +78,20 @@ export default function App() {
             <Route path={"/verify-email"} element={<VerifyEmail />} />
           </>
         )}
+
+        <Route
+          path={"/portfolio/edit/p/:pageSlug"}
+          element={<PortfolioEditorPage />}
+        />
+        <Route
+          path={"/portfolio/preview/p/:pageSlug"}
+          element={<PortfolioPreviewPage />}
+        />
+
+        <Route
+          path={"/share/portfolio/p/:pageSlug"}
+          element={<PortfolioEmbedPage />}
+        />
 
         <Route element={<ShareLayout />}>
           <Route

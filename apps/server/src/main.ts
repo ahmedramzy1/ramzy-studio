@@ -82,6 +82,21 @@ async function bootstrap() {
       done();
     });
 
+  // Chrome can preflight localhost-to-localhost development requests as a
+  // Private Network Access request. Echo the opt-in header when requested so
+  // ahmedramzy.com can call the public portfolio bridge from its dev origin.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onSend', (request, reply, payload, done) => {
+      if (
+        request.headers['access-control-request-private-network'] === 'true'
+      ) {
+        reply.header('Access-Control-Allow-Private-Network', 'true');
+      }
+      done(null, payload);
+    });
+
   app
     .getHttpAdapter()
     .getInstance()
@@ -141,7 +156,14 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  // Reflect the requesting origin instead of relying on the default wildcard.
+  // This keeps the public portfolio bridge browser-safe in local development
+  // and remains compatible with the existing Docmost API client.
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   app.useGlobalInterceptors(new TransformHttpResponseInterceptor(reflector));
   app.enableShutdownHooks();
 

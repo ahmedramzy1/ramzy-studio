@@ -29,6 +29,7 @@ export * from "./lib/unique-id";
 export * from "./lib/shared-storage";
 export * from "./lib/recreate-transform";
 export * from "./lib/columns";
+export * from "./lib/tabs";
 export * from "./lib/status";
 export * from "./lib/pdf";
 export * from "./lib/page-break";
@@ -39,3 +40,7 @@ export {
   type DocxImageResolver,
 } from "./lib/prosemirror-docx";
 export * from "./lib/base-embed";
+export * from "./lib/portfolio/extension-profile";
+export * from "./lib/portfolio/outline";
+export * from "./lib/portfolio/renderer";
+export * from "./lib/portfolio/editor";

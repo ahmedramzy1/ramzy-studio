@@ -26,6 +26,7 @@ import {
   CollaborationHandler,
   CollabEventHandlers,
 } from './collaboration.handler';
+import { User } from '@docmost/db/types/entity.types';
 
 @Injectable()
 export class CollaborationGateway {
@@ -146,6 +147,30 @@ export class CollaborationGateway {
     payload: Parameters<CollabEventHandlers[TName]>[1],
   ) {
     return this.redisSync?.handleEvent(eventName, documentName, payload);
+  }
+
+  /**
+   * Replace one document through the exact same Hocuspocus/Yjs pipeline used by
+   * collaborative Docmost editing, but without requiring a browser WebSocket.
+   * PersistenceExtension remains responsible for canonical JSON/Ydoc storage,
+   * contributor tracking, history, transclusions, mentions and indexing.
+   */
+  async replaceDocumentContent(
+    documentName: string,
+    prosemirrorJson: unknown,
+    user: User,
+  ): Promise<void> {
+    const handlers = this.collabEventsService.getHandlers(this.hocuspocus);
+    await handlers.updatePageContent(documentName, {
+      prosemirrorJson,
+      operation: 'replace',
+      user,
+    });
+
+    // Direct connections disconnect after the transaction. Flush any pending
+    // debounced store so an autosave response means the canonical page state is
+    // durable before the next edit or Preview transition.
+    await this.hocuspocus.flushPendingStores();
   }
 
   openDirectConnection(documentName: string, context?: any) {

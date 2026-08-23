@@ -2,7 +2,6 @@ import "@/features/editor/styles/index.css";
 import React, {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -18,13 +17,11 @@ import {
   useHocuspocusEvent,
   useHocuspocusProvider,
 } from "@hocuspocus/provider-react";
+import type { Editor, EditorOptions } from "@tiptap/core";
+import { EditorProvider, useEditorState } from "@tiptap/react";
 import {
-  Editor,
-  EditorContent,
-  EditorProvider,
-  useEditor,
-  useEditorState,
-} from "@tiptap/react";
+  RamzyPortfolioEditor,
+} from "@docmost/editor-ext";
 import {
   collabExtensions,
   mainExtensions,
@@ -173,6 +170,7 @@ function CollabPageEditor({
   const provider = useHocuspocusProvider();
   const isComponentMounted = useRef(false);
   const editorRef = useRef<Editor | null>(null);
+  const [editor, setPortfolioEditor] = useState<Editor | null>(null);
 
   useEffect(() => {
     isComponentMounted.current = true;
@@ -245,104 +243,6 @@ function CollabPageEditor({
     return [...mainExtensions, ...collabExtensions(provider, currentUser.user)];
   }, [provider, currentUser?.user]);
 
-  const editor = useEditor(
-    {
-      extensions,
-      editable,
-      textDirection: "auto",
-      immediatelyRender: true,
-      shouldRerenderOnTransaction: false,
-      editorProps: {
-        scrollThreshold: 80,
-        scrollMargin: 80,
-        attributes: {
-          "aria-label": t("Page content"),
-        },
-        handleDOMEvents: {
-          keydown: (_view, event) => {
-            if (platformModifierKey(event) && event.code === "KeyS") {
-              event.preventDefault();
-              return true;
-            }
-            if (platformModifierKey(event) && event.code === "KeyK") {
-              searchSpotlight.open();
-              return true;
-            }
-            if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key)) {
-              const slashCommand = document.querySelector("#slash-command");
-              if (slashCommand) {
-                return true;
-              }
-            }
-            if (
-              [
-                "ArrowUp",
-                "ArrowDown",
-                "ArrowLeft",
-                "ArrowRight",
-                "Enter",
-              ].includes(event.key)
-            ) {
-              const emojiCommand = document.querySelector("#emoji-command");
-              if (emojiCommand) {
-                return true;
-              }
-            }
-          },
-        },
-        handlePaste: (_view, event) => {
-          if (!editorRef.current) return false;
-
-          return handlePaste(
-            editorRef.current,
-            event,
-            pageId,
-            currentUser?.user.id,
-          );
-        },
-        handleDrop: (_view, event, _slice, moved) => {
-          if (!editorRef.current) return false;
-
-          return handleFileDrop(editorRef.current, event, moved, pageId);
-        },
-      },
-      onCreate({ editor }) {
-        if (editor) {
-          // @ts-ignore
-          setEditor(editor);
-          // @ts-ignore
-          editor.storage.pageId = pageId;
-          handleScrollTo(editor);
-          editorRef.current = editor;
-        }
-      },
-      onUpdate({ editor }) {
-        if (editor.isEmpty) return;
-        const editorJson = editor.getJSON();
-        //update local page cache to reduce flickers
-        debouncedUpdateContent(editorJson);
-      },
-    },
-    [pageId, editable, extensions],
-  );
-
-  useLayoutEffect(() => {
-    if (editor && !editor.isDestroyed) {
-      // @ts-ignore
-      setEditor(editor);
-      // @ts-ignore
-      editor.storage.pageId = pageId;
-      editorRef.current = editor;
-    }
-  }, [editor, pageId, setEditor]);
-
-  const editorIsEditable = useEditorState({
-    editor,
-    selector: (ctx) => {
-      return ctx.editor?.isEditable ?? false;
-    },
-  });
-
   const debouncedUpdateContent = useDebouncedCallback((newContent: any) => {
     const pageData = queryClient.getQueryData<IPage>(["pages", slugId]);
 
@@ -353,6 +253,99 @@ function CollabPageEditor({
       });
     }
   }, 3000);
+
+  const portfolioEditorProps = useMemo<EditorOptions["editorProps"]>(
+    () => ({
+      handleDOMEvents: {
+        keydown: (_view, event) => {
+          if (platformModifierKey(event) && event.code === "KeyS") {
+            event.preventDefault();
+            return true;
+          }
+          if (platformModifierKey(event) && event.code === "KeyK") {
+            searchSpotlight.open();
+            return true;
+          }
+          if (["ArrowUp", "ArrowDown", "Enter"].includes(event.key)) {
+            const slashCommand = document.querySelector("#slash-command");
+            if (slashCommand) {
+              return true;
+            }
+          }
+          if (
+            [
+              "ArrowUp",
+              "ArrowDown",
+              "ArrowLeft",
+              "ArrowRight",
+              "Enter",
+            ].includes(event.key)
+          ) {
+            const emojiCommand = document.querySelector("#emoji-command");
+            if (emojiCommand) {
+              return true;
+            }
+          }
+        },
+      },
+      handlePaste: (_view, event) => {
+        if (!editorRef.current) return false;
+
+        return handlePaste(
+          editorRef.current,
+          event,
+          pageId,
+          currentUser?.user.id,
+        );
+      },
+      handleDrop: (_view, event, _slice, moved) => {
+        if (!editorRef.current) return false;
+
+        return handleFileDrop(editorRef.current, event, moved, pageId);
+      },
+    }),
+    [pageId, currentUser?.user.id],
+  );
+
+  const handlePortfolioEditorCreate = useCallback(
+    (nextEditor: Editor) => {
+      // The shared editor owns TipTap creation; this host keeps Docmost-specific
+      // atoms, scroll behaviour and collaboration chrome wired to that editor.
+      // @ts-ignore
+      setEditor(nextEditor);
+      handleScrollTo(nextEditor);
+      editorRef.current = nextEditor;
+    },
+    [handleScrollTo, setEditor],
+  );
+
+  const handlePortfolioEditorUpdate = useCallback(
+    (nextEditor: Editor) => {
+      if (nextEditor.isEmpty) return;
+      debouncedUpdateContent(nextEditor.getJSON());
+    },
+    [debouncedUpdateContent],
+  );
+
+  const handlePortfolioEditorChange = useCallback(
+    (nextEditor: Editor | null) => {
+      setPortfolioEditor(nextEditor);
+
+      if (nextEditor && !nextEditor.isDestroyed) {
+        // @ts-ignore
+        setEditor(nextEditor);
+        editorRef.current = nextEditor;
+      }
+    },
+    [setEditor],
+  );
+
+  const editorIsEditable = useEditorState({
+    editor,
+    selector: (ctx) => {
+      return ctx.editor?.isEditable ?? false;
+    },
+  });
 
   const handleActiveCommentEvent = (event) => {
     const { commentId, resolved } = event.detail;
@@ -407,10 +400,6 @@ function CollabPageEditor({
 
     return () => clearTimeout(timeout);
   }, [yjsConnectionStatus, isSynced]);
-  useEffect(() => {
-    if (!editor) return;
-    editor.setEditable(editable && currentPageEditMode === PageEditMode.Edit);
-  }, [currentPageEditMode, editor, editable]);
 
   const hasConnectedOnceRef = useRef(false);
   const [showStatic, setShowStatic] = useState(true);
@@ -433,7 +422,16 @@ function CollabPageEditor({
   return (
     <div className="editor-container" style={{ position: "relative" }}>
       <div ref={menuContainerRef}>
-        <EditorContent editor={editor} />
+        <RamzyPortfolioEditor
+          pageId={pageId}
+          extensions={extensions}
+          editable={editable && currentPageEditMode === PageEditMode.Edit}
+          ariaLabel={t("Page content")}
+          editorProps={portfolioEditorProps}
+          onCreate={handlePortfolioEditorCreate}
+          onUpdate={handlePortfolioEditorUpdate}
+          onEditorChange={handlePortfolioEditorChange}
+        />
 
         {editor && (
           <SearchAndReplaceDialog editor={editor} editable={editable} />

@@ -8,17 +8,21 @@ import {
   v8CssVariablesResolver,
 } from "@mantine/core";
 
+// Ramzy Studio signal palette, sourced from the Ahmed Ramzy design system.
+// Mantine requires 10 shades; the design system currently defines 9 signal
+// shades, so the darkest shade is intentionally repeated rather than inventing
+// a new colour outside the source-of-truth palette.
 const blue: MantineColorsTuple = [
-  "#e7f3ff",
-  "#d0e4ff",
-  "#a1c6fa",
-  "#6ea6f6",
-  "#458bf2",
-  "#2b7af1",
-  "#0b60d8",
-  "#1b72f2",
-  "#0056c1",
-  "#004aac",
+  "#EEF1FF",
+  "#D8DEFF",
+  "#B4BFFF",
+  "#8FA3FF",
+  "#6B84FF",
+  "#3B5BFF",
+  "#2A44CC",
+  "#1D30A3",
+  "#12207A",
+  "#0A1452",
 ];
 
 const red: MantineColorsTuple = [
@@ -34,12 +38,26 @@ const red: MantineColorsTuple = [
   "#93151b",
 ];
 
+// Canonical radius for bordered surfaces across Ramzy Studio. Mantine
+// components inherit this through `defaultRadius`; custom/editor surfaces use
+// the matching `--ramzy-radius-bordered` CSS token below. Keeping the value in
+// one place prevents tables, tabs, cards, popovers, inputs, etc. from drifting
+// into unrelated corner geometries as the product grows.
+export const RAMZY_BORDERED_RADIUS = 8;
+
 export const theme = createTheme({
   colors: {
     blue,
     red,
   },
-  defaultRadius: 'sm',
+  primaryColor: "blue",
+  primaryShade: 5,
+  defaultRadius: RAMZY_BORDERED_RADIUS,
+  fontFamily: '"DM Sans", system-ui, sans-serif',
+  fontFamilyMonospace: '"JetBrains Mono", "Courier New", monospace',
+  headings: {
+    fontFamily: '"Fraunces", Georgia, serif',
+  },
   components: {
     Tooltip: Tooltip.extend({
       defaultProps: {
@@ -73,9 +91,9 @@ export const theme = createTheme({
           root: {
             ...(props.variant === "subtle" &&
               props.color === "dark" && {
-                "--ai-color": "var(--mantine-color-default-color)",
-                "--ai-hover": "var(--mantine-color-default-hover)",
-              }),
+              "--ai-color": "var(--mantine-color-default-color)",
+              "--ai-hover": "var(--mantine-color-default-hover)",
+            }),
           },
         };
       },
@@ -88,6 +106,7 @@ export const mantineCssResolver: CSSVariablesResolver = (theme) => ({
   variables: {
     ...v8CssVariablesResolver(theme).variables,
     "--input-error-size": theme.fontSizes.sm,
+    "--ramzy-radius-bordered": `${RAMZY_BORDERED_RADIUS}px`,
   },
   light: {
     ...v8CssVariablesResolver(theme).light,

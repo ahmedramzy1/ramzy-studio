@@ -1,15 +1,14 @@
 import "@/features/editor/styles/index.css";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { EditorProvider } from "@tiptap/react";
-import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { Document } from "@tiptap/extension-document";
-import { Heading, UniqueID } from "@docmost/editor-ext";
+import { Heading } from "@docmost/editor-ext";
 import { Text } from "@tiptap/extension-text";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { useAtom } from "jotai";
 import { readOnlyEditorAtom } from "@/features/editor/atoms/editor-atoms.ts";
 import { useEditorScroll } from "./hooks/use-editor-scroll";
-import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
+import { RamzyStudioPortfolioRenderer } from "@/features/editor/portfolio/portfolio-renderer";
 
 interface PageEditorProps {
   title: string;
@@ -23,6 +22,11 @@ interface PageEditorProps {
    * that isn't itself shared.
    */
   shareId?: string;
+  /**
+   * Portfolio surfaces already render the project title in the website shell,
+   * so they can opt into the native Ramzy Studio body renderer only.
+   */
+  showTitle?: boolean;
 }
 
 export default function ReadonlyPageEditor({
@@ -31,6 +35,7 @@ export default function ReadonlyPageEditor({
   pageId,
   printMode = false,
   shareId,
+  showTitle = true,
 }: PageEditorProps) {
   const [, setReadOnlyEditor] = useAtom(readOnlyEditorAtom);
   const isComponentMounted = useRef(false);
@@ -49,24 +54,6 @@ export default function ReadonlyPageEditor({
     isComponentMounted.current = true;
   }, []);
 
-  const extensions = useMemo(() => {
-    const excludedExtensions = new Set([
-      "uniqueID",
-      ...(printMode ? ["tableHeaderPin", "tableReadonlySort"] : []),
-    ]);
-    const filteredExtensions = mainExtensions.filter(
-      (ext) => !excludedExtensions.has(ext.name),
-    );
-
-    return [
-      ...filteredExtensions,
-      UniqueID.configure({
-        types: ["heading", "paragraph"],
-        updateDocument: false,
-      }),
-    ];
-  }, [printMode]);
-
   const titleExtensions = [
     Document.extend({
       content: "heading",
@@ -80,38 +67,38 @@ export default function ReadonlyPageEditor({
   ];
 
   return (
-    <TransclusionLookupProvider shareId={shareId}>
-      <div className="page-title">
-        <EditorProvider
-          editable={false}
-          immediatelyRender={true}
-          textDirection="auto"
-          extensions={titleExtensions}
-          content={title}
-        ></EditorProvider>
-      </div>
+    <>
+      {showTitle && (
+        <div className="page-title">
+          <EditorProvider
+            editable={false}
+            immediatelyRender={true}
+            textDirection="auto"
+            extensions={titleExtensions}
+            content={title}
+          ></EditorProvider>
+        </div>
+      )}
 
-      <EditorProvider
-        editable={false}
-        immediatelyRender={true}
-        textDirection="auto"
-        extensions={extensions}
+      <RamzyStudioPortfolioRenderer
         content={content}
-        onCreate={({ editor }) => {
-          if (editor) {
-            if (pageId) {
-              // @ts-ignore
-              editor.storage.pageId = pageId;
-            }
-            // @ts-ignore
-            setReadOnlyEditor(editor);
+        pageId={pageId}
+        shareId={shareId}
+        printMode={printMode}
+        withProviders={false}
+        onCreate={(editor) => {
+          // Docmost-specific host state remains outside the reusable renderer.
+          // @ts-ignore
+          setReadOnlyEditor(editor);
 
-            handleScrollTo(editor);
-            editorCreated.current = true;
-          }
+          handleScrollTo(editor);
+          editorCreated.current = true;
         }}
-      ></EditorProvider>
-      <div style={{ paddingBottom: "20vh" }}></div>
-    </TransclusionLookupProvider>
+      />
+
+      {!showTitle && !printMode ? null : (
+        <div style={{ paddingBottom: "20vh" }}></div>
+      )}
+    </>
   );
 }

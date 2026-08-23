@@ -42,6 +42,26 @@ export class TokenService {
     return this.jwtService.sign(payload);
   }
 
+  /**
+   * Short-lived access token used by the portfolio authoring runtime. It does
+   * not create a second persistent Docmost login session; ahmedramzy.com's
+   * existing admin identity is re-verified whenever this token is exchanged.
+   */
+  async generatePortfolioAccessToken(user: User): Promise<string> {
+    if (isUserDisabled(user)) {
+      throw new ForbiddenException();
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      workspaceId: user.workspaceId,
+      type: JwtType.ACCESS,
+    };
+
+    return this.jwtService.sign(payload, { expiresIn: '15m' });
+  }
+
   async generateCollabToken(user: User, workspaceId: string): Promise<string> {
     if (isUserDisabled(user)) {
       throw new ForbiddenException();
@@ -54,6 +74,23 @@ export class TokenService {
     };
     const expiresIn = '24h';
     return this.jwtService.sign(payload, { expiresIn });
+  }
+
+  async generatePortfolioCollabToken(
+    user: User,
+    workspaceId: string,
+  ): Promise<string> {
+    if (isUserDisabled(user)) {
+      throw new ForbiddenException();
+    }
+
+    const payload: JwtCollabPayload = {
+      sub: user.id,
+      workspaceId,
+      type: JwtType.COLLAB,
+    };
+
+    return this.jwtService.sign(payload, { expiresIn: '15m' });
   }
 
   async generateExchangeToken(
@@ -77,7 +114,7 @@ export class TokenService {
     const payload: JwtAttachmentPayload = {
       attachmentId: attachmentId,
       pageId: pageId,
-      workspaceId: workspaceId,
+      workspaceId,
       type: JwtType.ATTACHMENT,
     };
     return this.jwtService.sign(payload, { expiresIn: '1h' });

@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useHasFeature } from "@/ee/hooks/use-feature";
 import { Feature } from "@/ee/features";
 import { useUpgradeLabel } from "@/ee/hooks/use-upgrade-label";
+import TableSizePicker from "./table-size-picker";
 
 const CommandList = ({
   items,
@@ -34,6 +35,7 @@ const CommandList = ({
 }) => {
   const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [tablePickerOpen, setTablePickerOpen] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [countAnnouncement, setCountAnnouncement] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
@@ -54,6 +56,11 @@ const CommandList = ({
     (index: number) => {
       const item = flatItems[index];
       if (item && !isItemDisabled(item)) {
+        if (item.title === "Table") {
+          setTablePickerOpen(true);
+          return;
+        }
+
         command(item);
       }
     },
@@ -63,6 +70,8 @@ const CommandList = ({
   useEffect(() => {
     const navigationKeys = ["ArrowUp", "ArrowDown", "Enter"];
     const onKeyDown = (e: KeyboardEvent) => {
+      if (tablePickerOpen) return;
+
       if (navigationKeys.includes(e.key)) {
         e.preventDefault();
 
@@ -89,10 +98,17 @@ const CommandList = ({
     return () => {
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [flatItems, selectedIndex, setSelectedIndex, selectItem]);
+  }, [
+    flatItems,
+    selectedIndex,
+    setSelectedIndex,
+    selectItem,
+    tablePickerOpen,
+  ]);
 
   useEffect(() => {
     setSelectedIndex(0);
+    setTablePickerOpen(false);
   }, [flatItems]);
 
   useEffect(() => {
@@ -115,10 +131,22 @@ const CommandList = ({
   }, [selectedIndex, flatItems, t]);
 
   useEffect(() => {
+    if (tablePickerOpen) return;
+
     viewportRef.current
       ?.querySelector(`[data-item-index="${selectedIndex}"]`)
       ?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
+  }, [selectedIndex, tablePickerOpen]);
+
+  if (tablePickerOpen) {
+    return (
+      <TableSizePicker
+        editor={editor}
+        range={range}
+        onCancel={() => setTablePickerOpen(false)}
+      />
+    );
+  }
 
   return flatItems.length > 0 ? (
     <Paper
@@ -146,59 +174,63 @@ const CommandList = ({
         {(() => {
           let flatIndex = -1;
           return Object.entries(items).map(([category, categoryItems]) => (
-          <div key={category} role="group" aria-label={category}>
-            <Text c="dimmed" mb={4} fw={500} tt="capitalize">
-              {category}
-            </Text>
-            {categoryItems.map((item: SlashMenuItemType) => {
-              flatIndex += 1;
-              const itemIndex = flatIndex;
-              const disabled = isItemDisabled(item);
-              return (
-              <Tooltip
-                key={itemIndex}
-                label={upgradeLabel}
-                disabled={!disabled}
-                position="right"
-              >
-              <UnstyledButton
-                data-item-index={itemIndex}
-                id={`slash-command-option-${itemIndex}`}
-                role="option"
-                aria-selected={itemIndex === selectedIndex}
-                aria-disabled={disabled}
-                onClick={() => selectItem(itemIndex)}
-                className={clsx(classes.menuBtn, {
-                  [classes.selectedItem]: itemIndex === selectedIndex,
-                  [classes.gatedItem]: disabled,
-                })}
-              >
-                <Group wrap="nowrap">
-                  <ActionIcon variant="default" component="div" aria-hidden="true">
-                    <item.icon size={18} />
-                  </ActionIcon>
+            <div key={category} role="group" aria-label={category}>
+              <Text c="dimmed" mb={4} fw={500} tt="capitalize">
+                {category}
+              </Text>
+              {categoryItems.map((item: SlashMenuItemType) => {
+                flatIndex += 1;
+                const itemIndex = flatIndex;
+                const disabled = isItemDisabled(item);
+                return (
+                  <Tooltip
+                    key={itemIndex}
+                    label={upgradeLabel}
+                    disabled={!disabled}
+                    position="right"
+                  >
+                    <UnstyledButton
+                      data-item-index={itemIndex}
+                      id={`slash-command-option-${itemIndex}`}
+                      role="option"
+                      aria-selected={itemIndex === selectedIndex}
+                      aria-disabled={disabled}
+                      onClick={() => selectItem(itemIndex)}
+                      className={clsx(classes.menuBtn, {
+                        [classes.selectedItem]: itemIndex === selectedIndex,
+                        [classes.gatedItem]: disabled,
+                      })}
+                    >
+                      <Group wrap="nowrap">
+                        <ActionIcon
+                          variant="default"
+                          component="div"
+                          aria-hidden="true"
+                        >
+                          <item.icon size={18} />
+                        </ActionIcon>
 
-                  <div style={{ flex: 1 }}>
-                    <Text size="sm" fw={500}>
-                      {t(item.title)}
-                    </Text>
+                        <div style={{ flex: 1 }}>
+                          <Text size="sm" fw={500}>
+                            {t(item.title)}
+                          </Text>
 
-                    <Text c="dimmed" size="xs">
-                      {t(item.description)}
-                    </Text>
-                  </div>
+                          <Text c="dimmed" size="xs">
+                            {t(item.description)}
+                          </Text>
+                        </div>
 
-                  {disabled && (
-                    <Badge size="xs" variant="light" color="gray">
-                      {t("Upgrade")}
-                    </Badge>
-                  )}
-                </Group>
-              </UnstyledButton>
-              </Tooltip>
-              );
-            })}
-          </div>
+                        {disabled && (
+                          <Badge size="xs" variant="light" color="gray">
+                            {t("Upgrade")}
+                          </Badge>
+                        )}
+                      </Group>
+                    </UnstyledButton>
+                  </Tooltip>
+                );
+              })}
+            </div>
           ));
         })()}
       </ScrollArea>

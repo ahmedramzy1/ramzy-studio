@@ -2,6 +2,7 @@ import bytes from "bytes";
 import { castToBoolean } from "@/lib/utils.tsx";
 import { AvatarIconType } from "@/features/attachments/types/attachment.types.ts";
 import { sanitizeUrl } from "@docmost/editor-ext";
+import { getPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 
 declare global {
   interface Window {
@@ -14,18 +15,31 @@ export function getAppName(): string {
 }
 
 export function getAppUrl(): string {
+  const runtime = getPortfolioRuntimeHostConfig();
+  if (runtime?.apiUrl) {
+    return runtime.apiUrl.replace(/\/api\/?$/, "");
+  }
+
   return `${window.location.protocol}//${window.location.host}`;
 }
 
 export function getServerAppUrl(): string {
-  return getConfigValue("APP_URL");
+  return getPortfolioRuntimeHostConfig()?.apiUrl?.replace(/\/api\/?$/, "") ||
+    getConfigValue("APP_URL");
 }
 
 export function getBackendUrl(): string {
-  return getAppUrl() + "/api";
+  return getPortfolioRuntimeHostConfig()?.apiUrl || getAppUrl() + "/api";
 }
 
 export function getCollaborationUrl(): string {
+  const runtimeCollaborationUrl =
+    getPortfolioRuntimeHostConfig()?.collaborationUrl;
+
+  if (runtimeCollaborationUrl) {
+    return runtimeCollaborationUrl;
+  }
+
   const baseUrl =
     getConfigValue("COLLAB_URL") ||
     (import.meta.env.DEV ? process.env.APP_URL : getAppUrl());

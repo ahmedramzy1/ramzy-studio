@@ -1,5 +1,6 @@
 {
   "name": "@docmost/editor-ext",
+  "description": "Shared Docmost editor extensions used by Ramzy Studio and the portfolio runtime.",
   "homepage": "https://docmost.com",
   "private": true,
   "sideEffects": false,
@@ -10,6 +11,21 @@
   "main": "dist/index.js",
   "module": "./src/index.ts",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./portfolio": {
+      "types": "./dist/lib/portfolio/index.d.ts",
+      "default": "./dist/lib/portfolio/index.js"
+    }
+  },
+  "peerDependencies": {
+    "@tiptap/core": "3.29.2",
+    "@tiptap/react": "3.29.2",
+    "react": "19.2.7"
+  },
   "dependencies": {
     "marked": "17.0.5"
   }
