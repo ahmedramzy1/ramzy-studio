@@ -1,4 +1,5 @@
 import "@/features/editor/styles/index.css";
+import "@/features/editor/styles/portfolio-embedded.css";
 
 export {
   RamzyStudioPortfolioEditor,
