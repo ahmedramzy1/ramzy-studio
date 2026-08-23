@@ -1,0 +1,80 @@
+/* Ramzy Portfolio editorial typography.
+ *
+ * Keep this separate from Docmost's dense document defaults so Portfolio mode
+ * can be calibrated visually without changing normal wiki/editor surfaces.
+ * The website owns the canonical brand font loading; the fallbacks keep
+ * standalone Studio usable when those webfonts are unavailable. */
+
+.ProseMirror.ramzy-portfolio-editor {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 19px;
+  line-height: 1.58;
+}
+
+.ProseMirror.ramzy-portfolio-editor > * + * {
+  margin-top: 1.625rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor p {
+  margin-top: 0;
+  margin-bottom: 0.8125rem;
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 19px;
+  line-height: 1.58;
+}
+
+.ProseMirror.ramzy-portfolio-editor h1,
+.ProseMirror.ramzy-portfolio-editor h2,
+.ProseMirror.ramzy-portfolio-editor h3 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+
+.ProseMirror.ramzy-portfolio-editor h1 {
+  margin-top: 4.75rem;
+  margin-bottom: 0.875rem;
+  font-size: clamp(38px, 3.7vw, 46px);
+  line-height: 1.08;
+}
+
+.ProseMirror.ramzy-portfolio-editor h2 {
+  margin-top: 3.75rem;
+  margin-bottom: 0.875rem;
+  font-size: 32px;
+  line-height: 1.16;
+}
+
+.ProseMirror.ramzy-portfolio-editor h3 {
+  margin-top: 2.75rem;
+  margin-bottom: 0.875rem;
+  font-size: 25px;
+  line-height: 1.22;
+}
+
+.ProseMirror.ramzy-portfolio-editor li,
+.ProseMirror.ramzy-portfolio-editor blockquote {
+  font-size: 19px;
+  line-height: 1.58;
+}
+
+@media (max-width: 720px) {
+  .ProseMirror.ramzy-portfolio-editor,
+  .ProseMirror.ramzy-portfolio-editor p,
+  .ProseMirror.ramzy-portfolio-editor li,
+  .ProseMirror.ramzy-portfolio-editor blockquote {
+    font-size: 18px;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor h1 {
+    font-size: clamp(34px, 9vw, 42px);
+  }
+
+  .ProseMirror.ramzy-portfolio-editor h2 {
+    font-size: 30px;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor h3 {
+    font-size: 24px;
+  }
+}
