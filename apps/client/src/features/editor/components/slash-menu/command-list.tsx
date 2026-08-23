@@ -50,17 +50,17 @@ const portfolioHeadingStyle = (
   if (title === "Heading 1") {
     return {
       fontFamily: '"Fraunces", Georgia, serif',
-      fontSize: 36,
+      fontSize: 46,
       fontWeight: 400,
       letterSpacing: "-0.025em",
-      lineHeight: 1.12,
+      lineHeight: 1.08,
     };
   }
 
   if (title === "Heading 2") {
     return {
       fontFamily: '"Fraunces", Georgia, serif',
-      fontSize: 30,
+      fontSize: 32,
       fontWeight: 400,
       letterSpacing: "-0.025em",
       lineHeight: 1.16,
@@ -70,7 +70,7 @@ const portfolioHeadingStyle = (
   if (title === "Heading 3") {
     return {
       fontFamily: '"Fraunces", Georgia, serif',
-      fontSize: 24,
+      fontSize: 25,
       fontWeight: 400,
       letterSpacing: "-0.025em",
       lineHeight: 1.22,
@@ -80,7 +80,7 @@ const portfolioHeadingStyle = (
   if (title === "Text") {
     return {
       fontFamily: '"DM Sans", system-ui, sans-serif',
-      fontSize: 16,
+      fontSize: 19,
       fontWeight: 400,
       lineHeight: 1.45,
     };
@@ -220,7 +220,7 @@ const CommandList = forwardRef<CommandListHandle, CommandListProps>(
         <ScrollArea
           viewportRef={viewportRef}
           h={350}
-          w={300}
+          w={340}
           scrollbarSize={8}
           overscrollBehavior="contain"
         >
