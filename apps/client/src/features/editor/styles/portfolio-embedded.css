@@ -1,0 +1,32 @@
+/* Embedded portfolio authoring is hosted by ahmedramzy.com.
+ * The website canvas owns the page background and outer spacing, so the
+ * ProseMirror surface must not bring Docmost's standalone white page layer
+ * or its 3rem horizontal page padding with it. */
+.ProseMirror.ramzy-portfolio-editor {
+  background-color: transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.ramzy-portfolio-history-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.ramzy-portfolio-history-controls button {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: inherit;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: var(--mantine-font-size-xs);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.ramzy-portfolio-history-controls button:hover {
+  background: var(--mantine-color-default-hover);
+}
