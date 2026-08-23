@@ -40,11 +40,18 @@ const handleImageUpload =
     );
 
     const placeholderId = generateNodeId();
-    const width = imageDimensions?.width ?? undefined;
-    const height = imageDimensions?.height ?? undefined;
+    const naturalWidth = imageDimensions?.width ?? undefined;
+    const naturalHeight = imageDimensions?.height ?? undefined;
     const aspectRatio = imageDimensions
       ? imageDimensions.width / imageDimensions.height
       : undefined;
+
+    // Portfolio media should enter the canvas as a layout block, not inherit a
+    // tiny source bitmap's literal pixel width. Percentage width also behaves
+    // correctly inside editorial columns. A manual resize later commits an
+    // explicit pixel size, so authors still retain full control.
+    const width = '100%';
+    const height = undefined;
 
     let placeholderInserted = false;
 
@@ -62,6 +69,8 @@ const handleImageUpload =
           width,
           height,
           aspectRatio,
+          naturalWidth,
+          naturalHeight,
         });
 
         if (!initialPlaceholderNode) return false;
