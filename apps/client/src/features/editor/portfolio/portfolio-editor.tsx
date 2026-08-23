@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import type { Editor, EditorOptions, JSONContent } from "@tiptap/core";
+import { UndoRedo } from "@tiptap/extensions";
 import {
   RamzyPortfolioEditor,
   type RamzyPortfolioSession,
@@ -142,7 +143,7 @@ function DirectPortfolioEditor({
     };
   }, [notifySaveState]);
 
-  const extensions = useMemo(() => [...mainExtensions], []);
+  const extensions = useMemo(() => [...mainExtensions, UndoRedo], []);
 
   const persistDraft = useCallback(
     async (content: JSONContent, version: number) => {
@@ -232,6 +233,9 @@ function DirectPortfolioEditor({
 
   const editorProps = useMemo<EditorOptions["editorProps"]>(
     () => ({
+      attributes: {
+        class: "ramzy-portfolio-editor",
+      },
       handlePaste: (_view, event) => {
         if (!editorRef.current) return false;
         return handlePaste(
@@ -270,6 +274,27 @@ function DirectPortfolioEditor({
 
   return (
     <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>
+      {editor && (editable ?? true) && (
+        <div className="ramzy-portfolio-history-controls" aria-label="Editing history">
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => editor.chain().focus().undo().run()}
+            title="Undo (Ctrl+Z)"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => editor.chain().focus().redo().run()}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            Redo
+          </button>
+        </div>
+      )}
+
       <RamzyPortfolioEditor
         pageId={pageId}
         content={initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }}
