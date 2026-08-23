@@ -36,6 +36,7 @@ import {
   Callout,
   TiptapVideo,
   TiptapAudio,
+  MediaPlaylist,
   LinkExtension,
   Selection,
   Attachment,
@@ -88,6 +89,7 @@ import CalloutView from "@/features/editor/components/callout/callout-view.tsx";
 import StatusView from "@/features/editor/components/status/status-view.tsx";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
 import AudioView from "@/features/editor/components/audio/audio-view.tsx";
+import MediaPlaylistView from "@/features/editor/components/media-playlist/media-playlist-view.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
 import CodeBlockView from "@/features/editor/components/code-block/code-block-view.tsx";
 import DrawioView from "../components/drawio/drawio-view";
@@ -333,6 +335,9 @@ export const mainExtensions = [
   }),
   TiptapAudio.configure({
     view: AudioView,
+  }),
+  MediaPlaylist.configure({
+    view: MediaPlaylistView,
   }),
   Callout.configure({
     view: CalloutView,
