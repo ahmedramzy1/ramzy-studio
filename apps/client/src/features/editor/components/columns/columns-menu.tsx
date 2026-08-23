@@ -20,7 +20,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { isEditorReady, isTextSelected } from "@docmost/editor-ext";
-import type { WidthMode, ColumnsLayout } from "@docmost/editor-ext";
+import type { ColumnsLayout } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
 
@@ -31,15 +31,15 @@ type LayoutPreset = {
 };
 
 const twoColumnPresets: LayoutPreset[] = [
-  { layout: "two_equal", label: "Equal columns", icon: IconColumns2 },
+  { layout: "two_equal", label: "50 / 50", icon: IconColumns2 },
   {
     layout: "two_left_sidebar",
-    label: "Left sidebar",
+    label: "40 / 60",
     icon: IconLayoutSidebar,
   },
   {
     layout: "two_right_sidebar",
-    label: "Right sidebar",
+    label: "60 / 40",
     icon: IconLayoutSidebarRight,
   },
 ];
