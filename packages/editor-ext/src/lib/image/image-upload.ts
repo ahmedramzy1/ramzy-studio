@@ -40,8 +40,6 @@ const handleImageUpload =
     );
 
     const placeholderId = generateNodeId();
-    const naturalWidth = imageDimensions?.width ?? undefined;
-    const naturalHeight = imageDimensions?.height ?? undefined;
     const aspectRatio = imageDimensions
       ? imageDimensions.width / imageDimensions.height
       : undefined;
@@ -69,8 +67,6 @@ const handleImageUpload =
           width,
           height,
           aspectRatio,
-          naturalWidth,
-          naturalHeight,
         });
 
         if (!initialPlaceholderNode) return false;
