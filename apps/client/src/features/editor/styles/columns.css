@@ -73,6 +73,72 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   flex: 2;
 }
 
+/* Portfolio mode turns Docmost columns into editorial case-study layouts.
+ * 50/50 comes from two_equal; the two sidebar presets become 40/60 and 60/40.
+ * Authoring guides remain editor-only so Preview/Public stay visually clean. */
+.ProseMirror.ramzy-portfolio-editor div[data-type="columns"] {
+  gap: 2rem;
+  margin: 1.5rem 0;
+  padding: 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"]
+  > div[data-type="column"] {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"]
+  > div[data-type="column"]
+  + div[data-type="column"] {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-layout="two_left_sidebar"]
+  > div[data-type="column"]:first-child {
+  flex: 2;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-layout="two_left_sidebar"]
+  > div[data-type="column"]:last-child {
+  flex: 3;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-layout="two_right_sidebar"]
+  > div[data-type="column"]:first-child {
+  flex: 3;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-layout="two_right_sidebar"]
+  > div[data-type="column"]:last-child {
+  flex: 2;
+}
+
+.ProseMirror.ramzy-portfolio-editor[contenteditable="true"]
+  div[data-type="columns"].has-focus
+  > div[data-type="column"]
+  + div[data-type="column"] {
+  border-left: 1px dashed
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
+  padding-left: calc(2rem - 1px);
+  margin-left: -2rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor div[data-type="column"] > :first-child {
+  margin-top: 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor div[data-type="column"] > :last-child {
+  margin-bottom: 0;
+}
+
 /* Stack columns vertically on small viewports */
 @media (max-width: 680px) {
   div[data-type="columns"] {
@@ -89,6 +155,10 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
     + div[data-type="column"] {
     border-left: none;
   }
+
+  .ProseMirror.ramzy-portfolio-editor div[data-type="columns"] {
+    gap: 1.5rem;
+  }
 }
 
 /* Wide width mode — extends columns to full container width */
@@ -98,11 +168,26 @@ div[data-type="columns"][data-width-mode="wide"] {
   width: calc(100% + 6rem);
 }
 
+/* The portfolio editor already occupies the canonical content canvas, so wide
+ * mode means the available host width rather than compensating for Docmost's
+ * old 3rem document padding. */
+.ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-width-mode="wide"] {
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+}
+
 @media (max-width: $mantine-breakpoint-sm) {
   div[data-type="columns"][data-width-mode="wide"] {
     margin-left: -1rem;
     margin-right: -1rem;
     width: calc(100% + 2rem);
+  }
+
+  .ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-width-mode="wide"] {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
   }
 }
 
