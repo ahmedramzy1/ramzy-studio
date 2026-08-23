@@ -1,0 +1,139 @@
+name: Apply Embedded Authoring Core Fixes
+
+on:
+  push:
+    branches:
+      - ramzy/fix-embedded-authoring-core
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ramzy/fix-embedded-authoring-core
+
+      - name: Restore embedded history and editor surface
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          editor = Path('apps/client/src/features/editor/portfolio/portfolio-editor.tsx')
+          text = editor.read_text()
+
+          import_anchor = 'import type { Editor, EditorOptions, JSONContent } from "@tiptap/core";\n'
+          if 'import { UndoRedo } from "@tiptap/extensions";' not in text:
+            if import_anchor not in text:
+              raise SystemExit('portfolio editor import anchor not found')
+            text = text.replace(
+              import_anchor,
+              import_anchor + 'import { UndoRedo } from "@tiptap/extensions";\n',
+              1,
+            )
+
+          extension_anchor = '  const extensions = useMemo(() => [...mainExtensions], []);'
+          if extension_anchor in text:
+            text = text.replace(
+              extension_anchor,
+              '  const extensions = useMemo(() => [...mainExtensions, UndoRedo], []);',
+              1,
+            )
+          elif '[...mainExtensions, UndoRedo]' not in text:
+            raise SystemExit('portfolio editor extension anchor not found')
+
+          props_anchor = '    () => ({\n      handlePaste: (_view, event) => {'
+          props_replacement = '    () => ({\n      attributes: {\n        class: "ramzy-portfolio-editor",\n      },\n      handlePaste: (_view, event) => {'
+          if props_anchor in text:
+            text = text.replace(props_anchor, props_replacement, 1)
+          elif 'class: "ramzy-portfolio-editor"' not in text:
+            raise SystemExit('portfolio editor props anchor not found')
+
+          return_anchor = '''  return (\n    <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>\n      <RamzyPortfolioEditor\n'''
+          controls = '''  return (\n    <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>\n      {editor && (editable ?? true) && (\n        <div className="ramzy-portfolio-history-controls" aria-label="Editing history">\n          <button\n            type="button"\n            onMouseDown={(event) => event.preventDefault()}\n            onClick={() => editor.chain().focus().undo().run()}\n            title="Undo (Ctrl+Z)"\n          >\n            Undo\n          </button>\n          <button\n            type="button"\n            onMouseDown={(event) => event.preventDefault()}\n            onClick={() => editor.chain().focus().redo().run()}\n            title="Redo (Ctrl+Shift+Z)"\n          >\n            Redo\n          </button>\n        </div>\n      )}\n\n      <RamzyPortfolioEditor\n'''
+          if return_anchor in text:
+            text = text.replace(return_anchor, controls, 1)
+          elif 'ramzy-portfolio-history-controls' not in text:
+            raise SystemExit('portfolio editor controls anchor not found')
+
+          editor.write_text(text)
+
+          css = Path('apps/client/src/features/editor/styles/core.css')
+          css_text = css.read_text()
+          marker = '/* Embedded portfolio authoring surface */'
+          if marker not in css_text:
+            css_text += '''\n\n/* Embedded portfolio authoring surface */\n.ProseMirror.ramzy-portfolio-editor {\n  background-color: transparent;\n  padding-left: 0;\n  padding-right: 0;\n}\n\n.ramzy-portfolio-history-controls {\n  display: flex;\n  justify-content: flex-end;\n  gap: 0.375rem;\n  margin-bottom: 0.5rem;\n}\n\n.ramzy-portfolio-history-controls button {\n  border: 1px solid var(--mantine-color-default-border);\n  border-radius: var(--mantine-radius-sm);\n  background: transparent;\n  color: inherit;\n  padding: 0.25rem 0.5rem;\n  font: inherit;\n  font-size: var(--mantine-font-size-xs);\n  line-height: 1.4;\n  cursor: pointer;\n}\n\n.ramzy-portfolio-history-controls button:hover {\n  background: var(--mantine-color-default-hover);\n}\n'''
+          css.write_text(css_text)
+          PY
+
+      - name: Add embedded authoring regression contract
+        run: |
+          cat > apps/client/src/features/editor/portfolio/portfolio-embedded-authoring.test.ts <<'EOF'
+          import { readFileSync } from "node:fs";
+          import { describe, expect, it } from "vitest";
+
+          const read = (path: string) => readFileSync(path, "utf8");
+
+          describe("embedded portfolio authoring contract", () => {
+            it("keeps local history enabled and exposes undo/redo controls", () => {
+              const source = read("src/features/editor/portfolio/portfolio-editor.tsx");
+              expect(source).toContain('import { UndoRedo } from "@tiptap/extensions";');
+              expect(source).toContain("[...mainExtensions, UndoRedo]");
+              expect(source).toContain("ramzy-portfolio-history-controls");
+              expect(source).toContain(".undo().run()");
+              expect(source).toContain(".redo().run()");
+            });
+
+            it("uses a transparent embedded editor surface", () => {
+              const source = read("src/features/editor/portfolio/portfolio-editor.tsx");
+              const css = read("src/features/editor/styles/core.css");
+              expect(source).toContain('class: "ramzy-portfolio-editor"');
+              expect(css).toContain(".ProseMirror.ramzy-portfolio-editor");
+              expect(css).toContain("background-color: transparent");
+              expect(css).toContain("padding-left: 0");
+              expect(css).toContain("padding-right: 0");
+            });
+
+            it("keeps the packaged runtime on one ProseMirror identity", () => {
+              const config = read("vite.portfolio-runtime.config.ts");
+              const publisher = read("../../scripts/publish-portfolio-runtime.mjs");
+              expect(config).toContain("prosemirrorAliases");
+              expect(config).toContain('"@tiptap/pm"');
+              expect(config).toContain('"prosemirror-view"');
+              expect(publisher).toContain("localsInner");
+              expect(publisher).toContain("duplicated ProseMirror decoration runtime");
+            });
+          });
+          EOF
+
+      - name: Extend quality gate with embedded authoring contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/quality.yml')
+          text = path.read_text()
+          old = '      - name: Test portfolio draft save contract\n        run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts\n'
+          new = '      - name: Test portfolio authoring contracts\n        run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts src/features/editor/portfolio/portfolio-embedded-authoring.test.ts\n'
+          if old in text:
+            text = text.replace(old, new, 1)
+          elif 'portfolio-embedded-authoring.test.ts' not in text:
+            raise SystemExit('quality workflow test anchor not found')
+          path.write_text(text)
+          PY
+
+      - name: Commit patch if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/client/src/features/editor/portfolio/portfolio-editor.tsx apps/client/src/features/editor/portfolio/portfolio-embedded-authoring.test.ts apps/client/src/features/editor/styles/core.css .github/workflows/quality.yml
+          if git diff --cached --quiet; then
+            echo "Patch already applied."
+            exit 0
+          fi
+          git commit -m "Restore embedded authoring history and surface"
+          git push origin HEAD:ramzy/fix-embedded-authoring-core
