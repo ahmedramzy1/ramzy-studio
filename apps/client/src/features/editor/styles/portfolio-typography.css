@@ -11,22 +11,38 @@
   line-height: 1.55;
 }
 
-.ProseMirror.ramzy-portfolio-editor > * + * {
-  margin-top: 1.75rem;
+/* Long-form copy keeps a readable measure, while media, columns and other
+ * structural blocks can still use the complete 880px editorial canvas. */
+.ProseMirror.ramzy-portfolio-editor > p,
+.ProseMirror.ramzy-portfolio-editor > ul,
+.ProseMirror.ramzy-portfolio-editor > ol,
+.ProseMirror.ramzy-portfolio-editor > blockquote {
+  max-width: 720px;
 }
 
-.ProseMirror.ramzy-portfolio-editor p {
-  margin-top: 0;
-  margin-bottom: 0.875rem;
+.ProseMirror.ramzy-portfolio-editor > p {
+  margin: 0 0 0.875rem;
   font-family: "DM Sans", system-ui, sans-serif;
   font-size: 20px;
   line-height: 1.55;
+}
+
+.ProseMirror.ramzy-portfolio-editor > ul,
+.ProseMirror.ramzy-portfolio-editor > ol {
+  margin-top: 0;
+  margin-bottom: 1.75rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor > blockquote {
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
 }
 
 .ProseMirror.ramzy-portfolio-editor h1,
 .ProseMirror.ramzy-portfolio-editor h2,
 .ProseMirror.ramzy-portfolio-editor h3 {
   position: relative;
+  max-width: 820px;
   margin-bottom: 1rem;
   font-family: "Fraunces", Georgia, serif;
   font-weight: 400;
@@ -70,21 +86,35 @@
 }
 
 .ProseMirror.ramzy-portfolio-editor h2 {
-  margin-top: 4rem;
+  margin-top: 3.5rem;
   font-size: 34px;
   line-height: 1.14;
 }
 
 .ProseMirror.ramzy-portfolio-editor h3 {
-  margin-top: 3rem;
+  margin-top: 2.5rem;
   font-size: 28px;
   line-height: 1.2;
+}
+
+/* ProjectIntro already owns the transition into the Studio document. Do not
+ * stack another full section margin on the first authored heading. */
+.ProseMirror.ramzy-portfolio-editor > h1:first-child,
+.ProseMirror.ramzy-portfolio-editor > h2:first-child,
+.ProseMirror.ramzy-portfolio-editor > h3:first-child {
+  margin-top: 0;
 }
 
 .ProseMirror.ramzy-portfolio-editor li,
 .ProseMirror.ramzy-portfolio-editor blockquote {
   font-size: 20px;
   line-height: 1.55;
+}
+
+.ProseMirror.ramzy-portfolio-editor > .react-renderer {
+  width: 100%;
+  margin-top: 1.75rem;
+  margin-bottom: 1.75rem;
 }
 
 @media (max-width: 720px) {
