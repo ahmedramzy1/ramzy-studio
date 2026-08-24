@@ -75,11 +75,50 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 
 /* Portfolio mode turns Docmost columns into editorial case-study layouts.
  * 50/50 comes from two_equal; the two sidebar presets become 40/60 and 60/40.
- * Authoring guides remain editor-only so Preview/Public stay visually clean. */
+ * Authoring guides remain editor-only so Preview/Public stay visually clean.
+ * Advanced grid controls are represented as durable node attributes so the
+ * same alignment, spacing and custom spans render in Build and readonly mode. */
 .ProseMirror.ramzy-portfolio-editor div[data-type="columns"] {
-  gap: 2rem;
+  --ramzy-columns-gap: 2rem;
+  gap: var(--ramzy-columns-gap);
+  align-items: flex-start;
   margin: 1.5rem 0;
   padding: 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-gap="compact"] {
+  --ramzy-columns-gap: 1rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-gap="standard"] {
+  --ramzy-columns-gap: 2rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-gap="wide"] {
+  --ramzy-columns-gap: 3rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-vertical-align="top"] {
+  align-items: flex-start;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-vertical-align="center"] {
+  align-items: center;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-vertical-align="bottom"] {
+  align-items: flex-end;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-vertical-align="stretch"] {
+  align-items: stretch;
 }
 
 .ProseMirror.ramzy-portfolio-editor
@@ -127,8 +166,8 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   + div[data-type="column"] {
   border-left: 1px dashed
     light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
-  padding-left: calc(2rem - 1px);
-  margin-left: -2rem;
+  padding-left: calc(var(--ramzy-columns-gap) - 1px);
+  margin-left: calc(var(--ramzy-columns-gap) * -1);
 }
 
 .ProseMirror.ramzy-portfolio-editor div[data-type="column"] > :first-child {
@@ -157,7 +196,8 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   }
 
   .ProseMirror.ramzy-portfolio-editor div[data-type="columns"] {
-    gap: 1.5rem;
+    --ramzy-columns-gap: 1.5rem;
+    align-items: stretch;
   }
 }
 
