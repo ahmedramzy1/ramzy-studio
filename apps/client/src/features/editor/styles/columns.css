@@ -178,7 +178,8 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   margin-bottom: 0;
 }
 
-/* Stack columns vertically on small viewports */
+/* Stack columns vertically on small viewports. Custom desktop span weights are
+ * intentionally neutralized so every stacked cell keeps full mobile width. */
 @media (max-width: 680px) {
   div[data-type="columns"] {
     flex-direction: column;
@@ -198,6 +199,13 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   .ProseMirror.ramzy-portfolio-editor div[data-type="columns"] {
     --ramzy-columns-gap: 1.5rem;
     align-items: stretch;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"]
+    > div[data-type="column"] {
+    flex: 0 0 auto !important;
+    width: 100%;
   }
 }
 
