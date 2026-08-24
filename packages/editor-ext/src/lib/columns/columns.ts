@@ -14,6 +14,9 @@ export type ColumnsLayout =
   | "four_equal"
   | "five_equal";
 
+export type ColumnsVerticalAlign = "top" | "center" | "bottom" | "stretch";
+export type ColumnsGap = "compact" | "standard" | "wide";
+
 export interface ColumnsOptions {
   HTMLAttributes: Record<string, any>;
 }
@@ -23,6 +26,8 @@ export type WidthMode = "normal" | "wide";
 export interface ColumnsAttributes {
   layout?: ColumnsLayout;
   widthMode?: WidthMode;
+  verticalAlign?: ColumnsVerticalAlign;
+  gap?: ColumnsGap;
 }
 
 declare module "@tiptap/core" {
@@ -32,6 +37,8 @@ declare module "@tiptap/core" {
       setColumnsWidthMode: (widthMode: WidthMode) => ReturnType;
       setColumnCount: (count: number) => ReturnType;
       setColumnsLayout: (layout: ColumnsLayout) => ReturnType;
+      setColumnsVerticalAlign: (verticalAlign: ColumnsVerticalAlign) => ReturnType;
+      setColumnsGap: (gap: ColumnsGap) => ReturnType;
     };
   }
 }
@@ -48,6 +55,14 @@ function defaultLayoutForCount(count: number): ColumnsLayout {
   if (count === 4) return "four_equal";
   if (count === 5) return "five_equal";
   return "two_equal";
+}
+
+function clearColumnWidth(node: PMNode): PMNode {
+  return node.type.create(
+    { ...node.attrs, width: null },
+    node.content,
+    node.marks,
+  );
 }
 
 export const Columns = Node.create<ColumnsOptions>({
@@ -81,6 +96,21 @@ export const Columns = Node.create<ColumnsOptions>({
             return {};
           return { "data-width-mode": attributes.widthMode };
         },
+      },
+      verticalAlign: {
+        default: "top",
+        parseHTML: (element) =>
+          element.getAttribute("data-vertical-align") || "top",
+        renderHTML: (attributes: ColumnsAttributes) => ({
+          "data-vertical-align": attributes.verticalAlign || "top",
+        }),
+      },
+      gap: {
+        default: "standard",
+        parseHTML: (element) => element.getAttribute("data-gap") || "standard",
+        renderHTML: (attributes: ColumnsAttributes) => ({
+          "data-gap": attributes.gap || "standard",
+        }),
       },
     };
   },
@@ -163,14 +193,14 @@ export const Columns = Node.create<ColumnsOptions>({
 
           if (count > currentCount) {
             for (let i = 0; i < currentCount; i++) {
-              newChildren.push(columnsNode.child(i));
+              newChildren.push(clearColumnWidth(columnsNode.child(i)));
             }
             for (let i = currentCount; i < count; i++) {
               newChildren.push(columnType.create(null, paraType.create()));
             }
           } else {
             for (let i = 0; i < count - 1; i++) {
-              newChildren.push(columnsNode.child(i));
+              newChildren.push(clearColumnWidth(columnsNode.child(i)));
             }
             let mergedContent = columnsNode.child(count - 1).content;
             for (let j = count; j < currentCount; j++) {
@@ -190,7 +220,12 @@ export const Columns = Node.create<ColumnsOptions>({
                 );
               }
             }
-            newChildren.push(columnType.create(null, mergedContent));
+            newChildren.push(
+              columnType.create(
+                { ...columnsNode.child(count - 1).attrs, width: null },
+                mergedContent,
+              ),
+            );
           }
 
           const newLayout = defaultLayoutForCount(count);
@@ -207,8 +242,37 @@ export const Columns = Node.create<ColumnsOptions>({
 
       setColumnsLayout:
         (layout) =>
+        ({ tr, state }) => {
+          const parent = findParentNode(
+            (node: PMNode) => node.type.name === "columns",
+          )(state.selection);
+          if (!parent) return false;
+
+          const newChildren: PMNode[] = [];
+          parent.node.forEach((child) => {
+            newChildren.push(clearColumnWidth(child));
+          });
+
+          const newNode = parent.node.type.create(
+            { ...parent.node.attrs, layout },
+            Fragment.from(newChildren),
+          );
+          tr.replaceWith(parent.pos, parent.pos + parent.node.nodeSize, newNode);
+          tr.setSelection(
+            TextSelection.near(tr.doc.resolve(parent.pos + 1), 1),
+          );
+          return true;
+        },
+
+      setColumnsVerticalAlign:
+        (verticalAlign) =>
         ({ commands }) =>
-          commands.updateAttributes("columns", { layout }),
+          commands.updateAttributes("columns", { verticalAlign }),
+
+      setColumnsGap:
+        (gap) =>
+        ({ commands }) =>
+          commands.updateAttributes("columns", { gap }),
     };
   },
 
