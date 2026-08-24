@@ -1,8 +1,12 @@
 import React, { useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Center, Loader, Text } from "@mantine/core";
+import { Button, Center, Loader, Text } from "@mantine/core";
+import { IconHistory } from "@tabler/icons-react";
+import { useSetAtom } from "jotai";
 import PageEditor from "@/features/editor/page-editor";
 import { usePageQuery } from "@/features/page/queries/page-query";
+import HistoryModal from "@/features/page-history/components/history-modal";
+import { historyAtoms } from "@/features/page-history/atoms/history-atoms";
 import { extractPageSlugId } from "@/lib";
 
 /**
@@ -15,6 +19,7 @@ import { extractPageSlugId } from "@/lib";
 export default function PortfolioEditorPage() {
   const { pageSlug = "" } = useParams();
   const [searchParams] = useSearchParams();
+  const setHistoryModalOpen = useSetAtom(historyAtoms);
   const pageId = extractPageSlugId(pageSlug);
   const { data: page, isLoading, isError } = usePageQuery({ pageId });
   const requestedTheme = searchParams.get("theme");
@@ -71,6 +76,26 @@ export default function PortfolioEditorPage() {
         background: "var(--mantine-color-body)",
       }}
     >
+      {canEdit && (
+        <div
+          style={{
+            position: "fixed",
+            top: 12,
+            right: 16,
+            zIndex: 100,
+          }}
+        >
+          <Button
+            variant="default"
+            size="compact-sm"
+            leftSection={<IconHistory size={14} />}
+            onClick={() => setHistoryModalOpen(true)}
+          >
+            History
+          </Button>
+        </div>
+      )}
+
       <div
         style={{
           width: "min(1200px, 100%)",
@@ -86,6 +111,8 @@ export default function PortfolioEditorPage() {
           canComment={false}
         />
       </div>
+
+      <HistoryModal pageId={page.id} />
     </main>
   );
 }
