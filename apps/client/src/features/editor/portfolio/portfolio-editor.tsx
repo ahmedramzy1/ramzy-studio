@@ -43,6 +43,14 @@ export interface RamzyStudioPortfolioEditorProps {
   initialContent?: JSONContent | null;
   editable?: boolean;
   onCreate?: (editor: Editor) => void;
+  /**
+   * Reports the current live TipTap instance whenever React/TipTap replaces it.
+   * This is intentionally distinct from onCreate: development Strict Mode can
+   * destroy an initially-created instance and replace it while the editor stays
+   * mounted. Consumers that perform commands after creation (History restore,
+   * for example) must use the live lifecycle rather than retain a stale editor.
+   */
+  onEditorChange?: (editor: Editor | null) => void;
   onUpdate?: (content: JSONContent, editor: Editor) => void;
   onSessionExpired?: () => void;
   onSaveStateChange?: (
@@ -66,6 +74,7 @@ export function RamzyStudioPortfolioEditor({
   initialContent,
   editable = true,
   onCreate,
+  onEditorChange,
   onUpdate,
   onSessionExpired,
   onSaveStateChange,
@@ -87,6 +96,7 @@ export function RamzyStudioPortfolioEditor({
           initialContent={initialContent}
           editable={editable}
           onCreate={onCreate}
+          onEditorChange={onEditorChange}
           onUpdate={onUpdate}
           onSessionExpired={onSessionExpired}
           onSaveStateChange={onSaveStateChange}
@@ -102,6 +112,7 @@ function DirectPortfolioEditor({
   initialContent,
   editable,
   onCreate,
+  onEditorChange,
   onUpdate,
   onSessionExpired,
   onSaveStateChange,
@@ -307,6 +318,7 @@ function DirectPortfolioEditor({
         onEditorChange={(nextEditor) => {
           editorRef.current = nextEditor;
           setEditor(nextEditor);
+          onEditorChange?.(nextEditor);
         }}
       />
 
