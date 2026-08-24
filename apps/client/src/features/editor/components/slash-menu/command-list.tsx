@@ -50,37 +50,37 @@ const portfolioHeadingStyle = (
   if (title === "Heading 1") {
     return {
       fontFamily: '"Fraunces", Georgia, serif',
-      fontSize: 46,
+      fontSize: 50,
       fontWeight: 400,
       letterSpacing: "-0.025em",
-      lineHeight: 1.08,
+      lineHeight: 1.07,
     };
   }
 
   if (title === "Heading 2") {
     return {
       fontFamily: '"Fraunces", Georgia, serif',
-      fontSize: 32,
+      fontSize: 34,
       fontWeight: 400,
       letterSpacing: "-0.025em",
-      lineHeight: 1.16,
+      lineHeight: 1.14,
     };
   }
 
   if (title === "Heading 3") {
     return {
       fontFamily: '"Fraunces", Georgia, serif',
-      fontSize: 25,
+      fontSize: 28,
       fontWeight: 400,
       letterSpacing: "-0.025em",
-      lineHeight: 1.22,
+      lineHeight: 1.2,
     };
   }
 
   if (title === "Text") {
     return {
       fontFamily: '"DM Sans", system-ui, sans-serif',
-      fontSize: 19,
+      fontSize: 20,
       fontWeight: 400,
       lineHeight: 1.45,
     };
