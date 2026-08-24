@@ -20,7 +20,11 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { isEditorReady, isTextSelected } from "@docmost/editor-ext";
-import type { ColumnsLayout } from "@docmost/editor-ext";
+import type {
+  ColumnsGap,
+  ColumnsLayout,
+  ColumnsVerticalAlign,
+} from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
 
@@ -59,6 +63,30 @@ const threeColumnPresets: LayoutPreset[] = [
   { layout: "three_right_wide", label: "Right wide", icon: IconLayoutSidebar },
 ];
 
+const alignOptions: Array<{
+  value: ColumnsVerticalAlign;
+  label: string;
+}> = [
+  { value: "top", label: "Top" },
+  { value: "center", label: "Center" },
+  { value: "bottom", label: "Bottom" },
+  { value: "stretch", label: "Stretch" },
+];
+
+const gapOptions: Array<{ value: ColumnsGap; label: string }> = [
+  { value: "compact", label: "Compact" },
+  { value: "standard", label: "Standard" },
+  { value: "wide", label: "Wide" },
+];
+
+const widthOptions: Array<{ value: number | null; label: string }> = [
+  { value: null, label: "Auto" },
+  { value: 1, label: "1×" },
+  { value: 1.5, label: "1.5×" },
+  { value: 2, label: "2×" },
+  { value: 3, label: "3×" },
+];
+
 function getPresetsForCount(count: number): LayoutPreset[] {
   if (count === 2) return twoColumnPresets;
   if (count === 3) return threeColumnPresets;
@@ -68,6 +96,9 @@ function getPresetsForCount(count: number): LayoutPreset[] {
 export function ColumnsMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
   const [isCountOpen, setIsCountOpen] = useState(false);
+  const [isAlignOpen, setIsAlignOpen] = useState(false);
+  const [isGapOpen, setIsGapOpen] = useState(false);
+  const [isWidthOpen, setIsWidthOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -110,10 +141,20 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
       const parent = findParentNode(
         (node: PMNode) => node.type.name === "columns",
       )(selection);
+      const column = findParentNode(
+        (node: PMNode) => node.type.name === "column",
+      )(selection);
 
       return {
         columnCount: parent?.node.childCount || 2,
         layout: (parent?.node.attrs.layout as ColumnsLayout) || "two_equal",
+        verticalAlign:
+          (parent?.node.attrs.verticalAlign as ColumnsVerticalAlign) || "top",
+        gap: (parent?.node.attrs.gap as ColumnsGap) || "standard",
+        columnWidth:
+          typeof column?.node.attrs.width === "number"
+            ? (column.node.attrs.width as number)
+            : null,
         isNormal: ctx.editor.isActive("columns", { widthMode: "normal" }),
         isWide: ctx.editor.isActive("columns", { widthMode: "wide" }),
       };
@@ -130,7 +171,6 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
       const dom = editor.view.nodeDOM(parent?.pos) as HTMLElement;
       const domRect = dom.getBoundingClientRect();
 
-      // Columns entirely out of viewport — return real rect so menu goes off-screen
       if (domRect.bottom <= 0 || domRect.top >= window.innerHeight) {
         return {
           getBoundingClientRect: () => domRect,
@@ -138,8 +178,6 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
         };
       }
 
-      // Clamp bottom so menu stays within viewport when columns extend below it
-      // 55px = 15px offset + ~40px menu height
       const maxBottom = window.innerHeight - 55;
       if (domRect.bottom > maxBottom) {
         const clamped = new DOMRect(
@@ -186,6 +224,42 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
         .focus(undefined, { scrollIntoView: false })
         .setColumnsLayout(layout)
         .run();
+    },
+    [editor],
+  );
+
+  const setVerticalAlign = useCallback(
+    (verticalAlign: ColumnsVerticalAlign) => {
+      editor
+        .chain()
+        .focus(undefined, { scrollIntoView: false })
+        .setColumnsVerticalAlign(verticalAlign)
+        .run();
+      setIsAlignOpen(false);
+    },
+    [editor],
+  );
+
+  const setGap = useCallback(
+    (gap: ColumnsGap) => {
+      editor
+        .chain()
+        .focus(undefined, { scrollIntoView: false })
+        .setColumnsGap(gap)
+        .run();
+      setIsGapOpen(false);
+    },
+    [editor],
+  );
+
+  const setSelectedColumnWidth = useCallback(
+    (width: number | null) => {
+      editor
+        .chain()
+        .focus(undefined, { scrollIntoView: false })
+        .setColumnWidth(width)
+        .run();
+      setIsWidthOpen(false);
     },
     [editor],
   );
@@ -251,7 +325,18 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
 
   const columnCount = editorState?.columnCount || 2;
   const currentLayout = editorState?.layout || "two_equal";
+  const currentAlign = editorState?.verticalAlign || "top";
+  const currentGap = editorState?.gap || "standard";
+  const currentWidth = editorState?.columnWidth ?? null;
   const presets = getPresetsForCount(columnCount);
+
+  const alignLabel =
+    alignOptions.find((option) => option.value === currentAlign)?.label || "Top";
+  const gapLabel =
+    gapOptions.find((option) => option.value === currentGap)?.label || "Standard";
+  const widthLabel =
+    widthOptions.find((option) => option.value === currentWidth)?.label ||
+    `${currentWidth}×`;
 
   return (
     <BaseBubbleMenu
@@ -321,6 +406,110 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
             </ActionIcon>
           </Tooltip>
         ))}
+
+        <div className={classes.divider} />
+
+        <Popover opened={isAlignOpen} onChange={setIsAlignOpen} withArrow>
+          <Popover.Target>
+            <Button
+              variant="subtle"
+              color="dark"
+              size="compact-sm"
+              rightSection={<IconChevronDown size={12} />}
+              onClick={() => setIsAlignOpen(!isAlignOpen)}
+            >
+              {t("Align")}: {t(alignLabel)}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown p={4}>
+            <Button.Group orientation="vertical">
+              {alignOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={option.value === currentAlign ? "light" : "subtle"}
+                  color={option.value === currentAlign ? "blue" : "dark"}
+                  justify="space-between"
+                  fullWidth
+                  rightSection={
+                    option.value === currentAlign ? <IconCheck size={14} /> : null
+                  }
+                  onClick={() => setVerticalAlign(option.value)}
+                  size="xs"
+                >
+                  {t(option.label)}
+                </Button>
+              ))}
+            </Button.Group>
+          </Popover.Dropdown>
+        </Popover>
+
+        <Popover opened={isGapOpen} onChange={setIsGapOpen} withArrow>
+          <Popover.Target>
+            <Button
+              variant="subtle"
+              color="dark"
+              size="compact-sm"
+              rightSection={<IconChevronDown size={12} />}
+              onClick={() => setIsGapOpen(!isGapOpen)}
+            >
+              {t("Gap")}: {t(gapLabel)}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown p={4}>
+            <Button.Group orientation="vertical">
+              {gapOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={option.value === currentGap ? "light" : "subtle"}
+                  color={option.value === currentGap ? "blue" : "dark"}
+                  justify="space-between"
+                  fullWidth
+                  rightSection={
+                    option.value === currentGap ? <IconCheck size={14} /> : null
+                  }
+                  onClick={() => setGap(option.value)}
+                  size="xs"
+                >
+                  {t(option.label)}
+                </Button>
+              ))}
+            </Button.Group>
+          </Popover.Dropdown>
+        </Popover>
+
+        <Popover opened={isWidthOpen} onChange={setIsWidthOpen} withArrow>
+          <Popover.Target>
+            <Button
+              variant="subtle"
+              color="dark"
+              size="compact-sm"
+              rightSection={<IconChevronDown size={12} />}
+              onClick={() => setIsWidthOpen(!isWidthOpen)}
+            >
+              {t("Width")}: {widthLabel}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown p={4}>
+            <Button.Group orientation="vertical">
+              {widthOptions.map((option) => (
+                <Button
+                  key={option.label}
+                  variant={option.value === currentWidth ? "light" : "subtle"}
+                  color={option.value === currentWidth ? "blue" : "dark"}
+                  justify="space-between"
+                  fullWidth
+                  rightSection={
+                    option.value === currentWidth ? <IconCheck size={14} /> : null
+                  }
+                  onClick={() => setSelectedColumnWidth(option.value)}
+                  size="xs"
+                >
+                  {t(option.label)}
+                </Button>
+              ))}
+            </Button.Group>
+          </Popover.Dropdown>
+        </Popover>
 
         <div className={classes.divider} />
 
