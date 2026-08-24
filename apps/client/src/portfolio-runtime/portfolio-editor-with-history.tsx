@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import {
   RamzyStudioPortfolioEditor as BasePortfolioEditor,
+  type RamzyPortfolioSaveState,
   type RamzyStudioPortfolioEditorProps,
 } from "@/features/editor/portfolio/portfolio-editor";
 import {
@@ -34,13 +35,20 @@ function requestStatus(error: unknown): number | undefined {
   return typeof response?.status === "number" ? response.status : undefined;
 }
 
+type RestoreFeedback =
+  | { kind: "saving" | "success" | "error"; message: string }
+  | null;
+
 /**
  * Portfolio-runtime wrapper that exposes Ramzy Studio's real Page History to
  * the embedded BUILD surface used by ahmedramzy.com.
  *
- * Restoring a snapshot writes it back through the same TipTap editor instance,
- * so the existing portfolio autosave contract remains the single canonical
- * draft persistence path.
+ * History commands always target the editor instance reported by the live
+ * editor lifecycle. `onCreate` is not sufficient here because React Strict
+ * Mode can destroy the first TipTap instance and replace it while BUILD remains
+ * mounted. The restored snapshot then flows through the normal editor update +
+ * authenticated autosave path; success is reported only after autosave says the
+ * draft is saved.
  */
 export function RamzyStudioPortfolioEditor(
   props: RamzyStudioPortfolioEditorProps,
@@ -54,18 +62,75 @@ export function RamzyStudioPortfolioEditor(
   const [detailLoading, setDetailLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [restoreFeedback, setRestoreFeedback] =
+    useState<RestoreFeedback>(null);
+  const restorePendingRef = useRef(false);
+  const restoredVersionRef = useRef<string | number | null>(null);
 
   const selectedPreview = useMemo(
     () => documentText(selectedHistory?.content),
     [selectedHistory],
   );
 
+  const editorReady = Boolean(
+    editor && !editor.isDestroyed && editor.isEditable,
+  );
+
   const handleCreate = useCallback(
     (nextEditor: Editor) => {
-      setEditor(nextEditor);
       props.onCreate?.(nextEditor);
     },
     [props.onCreate],
+  );
+
+  const handleEditorChange = useCallback(
+    (nextEditor: Editor | null) => {
+      setEditor(nextEditor);
+      props.onEditorChange?.(nextEditor);
+    },
+    [props.onEditorChange],
+  );
+
+  const handleSaveStateChange = useCallback(
+    (state: RamzyPortfolioSaveState, error?: string) => {
+      props.onSaveStateChange?.(state, error);
+
+      if (!restorePendingRef.current) return;
+
+      if (state === "saving") {
+        setRestoreFeedback({
+          kind: "saving",
+          message: "Restored into BUILD. Saving the recovered draft…",
+        });
+        return;
+      }
+
+      if (state === "saved") {
+        const version = restoredVersionRef.current;
+        restorePendingRef.current = false;
+        restoredVersionRef.current = null;
+        setRestoring(false);
+        setHistoryOpen(false);
+        setHistoryError(null);
+        setRestoreFeedback({
+          kind: "success",
+          message: version
+            ? `History version ${version} restored and saved.`
+            : "History version restored and saved.",
+        });
+        return;
+      }
+
+      if (state === "error") {
+        restorePendingRef.current = false;
+        restoredVersionRef.current = null;
+        setRestoring(false);
+        const message = error || "The restored version could not be autosaved.";
+        setHistoryError(message);
+        setRestoreFeedback({ kind: "error", message });
+      }
+    },
+    [props.onSaveStateChange],
   );
 
   const loadHistoryDetail = useCallback(
@@ -90,6 +155,7 @@ export function RamzyStudioPortfolioEditor(
     setHistoryOpen(true);
     setHistoryLoading(true);
     setHistoryError(null);
+    setRestoreFeedback(null);
 
     try {
       const result = await getPageHistoryList(props.pageId);
@@ -109,32 +175,57 @@ export function RamzyStudioPortfolioEditor(
   }, [loadHistoryDetail, props.onSessionExpired, props.pageId]);
 
   const restoreSelected = useCallback(() => {
-    if (
-      !editor ||
-      editor.isDestroyed ||
-      !editor.isEditable ||
-      !selectedHistory?.content
-    ) {
+    if (!selectedHistory?.content) {
+      setHistoryError("Select a history version with restorable content first.");
+      return;
+    }
+
+    if (!editor || editor.isDestroyed || !editor.isEditable) {
+      setHistoryError(
+        "BUILD is not holding a live editable Studio instance yet. Close History, wait for the editor to finish loading, then reopen it.",
+      );
       return;
     }
 
     const confirmed = window.confirm(
-      "Restore this Studio version? The current BUILD draft will be replaced, then autosaved as the new draft.",
+      "Restore this Studio version? The current BUILD draft will be replaced and saved as the new draft. Nothing will be published.",
     );
     if (!confirmed) return;
 
+    setHistoryError(null);
     setRestoring(true);
+    restorePendingRef.current = true;
+    restoredVersionRef.current = selectedHistory.version;
+    setRestoreFeedback({
+      kind: "saving",
+      message: "Applying the selected Studio version…",
+    });
+
     try {
-      editor
+      const applied = editor
         .chain()
         .focus()
         .setContent(selectedHistory.content, { emitUpdate: true })
         .run();
-      setHistoryOpen(false);
-    } finally {
+
+      if (!applied) {
+        throw new Error("TipTap rejected the selected history document.");
+      }
+    } catch (error) {
+      restorePendingRef.current = false;
+      restoredVersionRef.current = null;
       setRestoring(false);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The selected Studio version could not be applied.";
+      setHistoryError(message);
+      setRestoreFeedback({ kind: "error", message });
     }
   }, [editor, selectedHistory]);
+
+  const restoreDisabled =
+    !editorReady || !selectedHistory?.content || detailLoading || restoring;
 
   return (
     <div style={{ position: "relative" }}>
@@ -142,7 +233,9 @@ export function RamzyStudioPortfolioEditor(
         <div
           style={{
             display: "flex",
+            alignItems: "center",
             justifyContent: "flex-start",
+            gap: 10,
             marginBottom: 8,
           }}
         >
@@ -164,10 +257,32 @@ export function RamzyStudioPortfolioEditor(
           >
             History
           </button>
+          {restoreFeedback && (
+            <span
+              role={restoreFeedback.kind === "error" ? "alert" : "status"}
+              style={{
+                fontSize: 12,
+                color:
+                  restoreFeedback.kind === "error"
+                    ? "var(--mantine-color-red-6)"
+                    : restoreFeedback.kind === "success"
+                      ? "var(--mantine-color-green-7)"
+                      : "inherit",
+                opacity: restoreFeedback.kind === "saving" ? 0.68 : 0.9,
+              }}
+            >
+              {restoreFeedback.message}
+            </span>
+          )}
         </div>
       )}
 
-      <BasePortfolioEditor {...props} onCreate={handleCreate} />
+      <BasePortfolioEditor
+        {...props}
+        onCreate={handleCreate}
+        onEditorChange={handleEditorChange}
+        onSaveStateChange={handleSaveStateChange}
+      />
 
       {historyOpen && (
         <div
@@ -184,7 +299,9 @@ export function RamzyStudioPortfolioEditor(
             background: "rgba(0, 0, 0, 0.58)",
           }}
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setHistoryOpen(false);
+            if (event.target === event.currentTarget && !restoring) {
+              setHistoryOpen(false);
+            }
           }}
         >
           <div
@@ -219,15 +336,17 @@ export function RamzyStudioPortfolioEditor(
               </div>
               <button
                 type="button"
+                disabled={restoring}
                 onClick={() => setHistoryOpen(false)}
                 aria-label="Close history"
                 style={{
                   border: 0,
                   background: "transparent",
                   color: "inherit",
-                  cursor: "pointer",
+                  cursor: restoring ? "not-allowed" : "pointer",
                   fontSize: 22,
                   lineHeight: 1,
+                  opacity: restoring ? 0.4 : 1,
                 }}
               >
                 ×
@@ -264,6 +383,7 @@ export function RamzyStudioPortfolioEditor(
                       <button
                         key={item.id}
                         type="button"
+                        disabled={restoring}
                         onClick={() => loadHistoryDetail(item.id)}
                         style={{
                           width: "100%",
@@ -278,7 +398,8 @@ export function RamzyStudioPortfolioEditor(
                             : "transparent",
                           color: "inherit",
                           padding: "10px 11px",
-                          cursor: "pointer",
+                          cursor: restoring ? "not-allowed" : "pointer",
+                          opacity: restoring ? 0.65 : 1,
                         }}
                       >
                         <div style={{ fontSize: 12, fontWeight: 600 }}>
@@ -298,7 +419,7 @@ export function RamzyStudioPortfolioEditor(
 
               <div style={{ minHeight: 0, overflowY: "auto", padding: 22 }}>
                 {historyError ? (
-                  <div style={{ color: "var(--mantine-color-red-6)", fontSize: 13 }}>
+                  <div role="alert" style={{ color: "var(--mantine-color-red-6)", fontSize: 13 }}>
                     {historyError}
                   </div>
                 ) : detailLoading ? (
@@ -332,46 +453,58 @@ export function RamzyStudioPortfolioEditor(
             <div
               style={{
                 display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
                 padding: "12px 18px",
                 borderTop: "1px solid var(--mantine-color-default-border)",
               }}
             >
-              <button
-                type="button"
-                onClick={() => setHistoryOpen(false)}
-                style={{
-                  border: "1px solid var(--mantine-color-default-border)",
-                  borderRadius: 7,
-                  background: "transparent",
-                  color: "inherit",
-                  padding: "7px 12px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!selectedHistory?.content || detailLoading || restoring}
-                onClick={restoreSelected}
-                style={{
-                  border: 0,
-                  borderRadius: 7,
-                  background: "var(--mantine-primary-color-filled)",
-                  color: "var(--mantine-color-white)",
-                  padding: "7px 12px",
-                  cursor:
-                    !selectedHistory?.content || detailLoading || restoring
-                      ? "not-allowed"
-                      : "pointer",
-                  opacity:
-                    !selectedHistory?.content || detailLoading || restoring ? 0.5 : 1,
-                }}
-              >
-                {restoring ? "Restoring…" : "Restore selected version"}
-              </button>
+              <div style={{ fontSize: 12, opacity: 0.66 }}>
+                {!editorReady
+                  ? "Restore is disabled until BUILD has a live editable Studio instance."
+                  : restoring
+                    ? "Waiting for the recovered draft to autosave…"
+                    : "Restore changes BUILD only. It does not publish."}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={restoring}
+                  onClick={() => setHistoryOpen(false)}
+                  style={{
+                    border: "1px solid var(--mantine-color-default-border)",
+                    borderRadius: 7,
+                    background: "transparent",
+                    color: "inherit",
+                    padding: "7px 12px",
+                    cursor: restoring ? "not-allowed" : "pointer",
+                    opacity: restoring ? 0.5 : 1,
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={restoreDisabled}
+                  onClick={restoreSelected}
+                  style={{
+                    border: 0,
+                    borderRadius: 7,
+                    background: "var(--mantine-primary-color-filled)",
+                    color: "var(--mantine-color-white)",
+                    padding: "7px 12px",
+                    cursor: restoreDisabled ? "not-allowed" : "pointer",
+                    opacity: restoreDisabled ? 0.5 : 1,
+                  }}
+                >
+                  {restoring
+                    ? "Restoring & saving…"
+                    : !editorReady
+                      ? "Editor not ready"
+                      : "Restore selected version"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
