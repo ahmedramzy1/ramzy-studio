@@ -1,8 +1,6 @@
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { Range, Node, mergeAttributes } from "@tiptap/core";
-import { ResizableNodeView } from "../resizable-nodeview";
+import { Range, Node } from "@tiptap/core";
 import type { ResizableNodeViewDirection } from "../resizable-nodeview";
-import { normalizeFileUrl } from "../media-utils";
 
 export type VideoResizeOptions = {
   enabled: boolean;
@@ -76,9 +74,7 @@ export const TiptapVideo = Node.create<VideoOptions>({
       src: {
         default: "",
         parseHTML: (element) => element.getAttribute("src"),
-        renderHTML: (attributes) => ({
-          src: attributes.src,
-        }),
+        renderHTML: (attributes) => ({ src: attributes.src }),
       },
       alt: {
         default: undefined,
@@ -103,9 +99,7 @@ export const TiptapVideo = Node.create<VideoOptions>({
           const num = parseFloat(raw);
           return isNaN(num) ? null : num;
         },
-        renderHTML: (attributes: VideoAttributes) => ({
-          width: attributes.width,
-        }),
+        renderHTML: (attributes: VideoAttributes) => ({ width: attributes.width }),
       },
       height: {
         default: null,
@@ -115,23 +109,17 @@ export const TiptapVideo = Node.create<VideoOptions>({
           const num = parseFloat(raw);
           return isNaN(num) ? null : num;
         },
-        renderHTML: (attributes: VideoAttributes) => ({
-          height: attributes.height,
-        }),
+        renderHTML: (attributes: VideoAttributes) => ({ height: attributes.height }),
       },
       size: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-size"),
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-size": attributes.size,
-        }),
+        renderHTML: (attributes: VideoAttributes) => ({ "data-size": attributes.size }),
       },
       align: {
         default: "center",
         parseHTML: (element) => element.getAttribute("data-align"),
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-align": attributes.align,
-        }),
+        renderHTML: (attributes: VideoAttributes) => ({ "data-align": attributes.align }),
       },
       aspectRatio: {
         default: null,
@@ -148,11 +136,7 @@ export const TiptapVideo = Node.create<VideoOptions>({
   },
 
   parseHTML() {
-    return [
-      {
-        tag: "video",
-      },
-    ];
+    return [{ tag: "video" }];
   },
 
   renderHTML({ HTMLAttributes }) {
@@ -167,12 +151,8 @@ export const TiptapVideo = Node.create<VideoOptions>({
     return {
       setVideo:
         (attrs: VideoAttributes) =>
-        ({ commands }) => {
-          return commands.insertContent({
-            type: "video",
-            attrs: attrs,
-          });
-        },
+        ({ commands }) =>
+          commands.insertContent({ type: "video", attrs }),
 
       setVideoAlign:
         (align) =>
@@ -194,178 +174,14 @@ export const TiptapVideo = Node.create<VideoOptions>({
   },
 
   addNodeView() {
-    const resize = this.options.resize;
-
-    if (!resize || !resize.enabled) {
-      this.editor.isInitialized = true;
-      return ReactNodeViewRenderer(this.options.view);
-    }
-
-    const {
-      directions,
-      minWidth,
-      minHeight,
-      alwaysPreserveAspectRatio,
-      createCustomHandle,
-      className,
-    } = resize;
-
-    return (props) => {
-      const { node, getPos, HTMLAttributes, editor } = props;
-
-      if (!node.attrs.src) {
-        editor.isInitialized = true;
-        const reactView = ReactNodeViewRenderer(this.options.view);
-        const view = reactView(props);
-
-        const originalUpdate = view.update?.bind(view);
-        view.update = (updatedNode, decorations, innerDecorations) => {
-          if (updatedNode.attrs.src && !node.attrs.src) {
-            return false;
-          }
-          if (originalUpdate) {
-            return originalUpdate(updatedNode, decorations, innerDecorations);
-          }
-          return true;
-        };
-
-        return view;
-      }
-
-      const el = document.createElement("video");
-      el.src = normalizeFileUrl(node.attrs.src);
-      el.controls = true;
-      el.preload = "metadata";
-      if (node.attrs.alt) {
-        el.setAttribute("aria-label", node.attrs.alt);
-      }
-      el.style.display = "block";
-      el.style.maxWidth = "100%";
-      el.style.borderRadius = "8px";
-
-      if (typeof node.attrs.width === "number" && node.attrs.width > 0) {
-        el.style.width = `${node.attrs.width}px`;
-        if (typeof node.attrs.height === "number" && node.attrs.height > 0) {
-          el.style.height = `${node.attrs.height}px`;
-        }
-      }
-
-      let currentNode = node;
-
-      const nodeView = new ResizableNodeView({
-        element: el,
-        editor,
-        node,
-        getPos,
-        onResize: (w, h) => {
-          el.style.width = `${w}px`;
-          el.style.height = `${h}px`;
-        },
-        onCommit: () => {
-          const pos = getPos();
-          if (pos === undefined) return;
-
-          this.editor
-            .chain()
-            .setNodeSelection(pos)
-            .updateAttributes(this.name, {
-              width: Math.round(el.offsetWidth),
-              height: Math.round(el.offsetHeight),
-            })
-            .run();
-        },
-        onUpdate: (updatedNode, _decorations, _innerDecorations) => {
-          if (updatedNode.type !== currentNode.type) {
-            return false;
-          }
-
-          if (updatedNode.attrs.src !== currentNode.attrs.src) {
-            el.src = normalizeFileUrl(updatedNode.attrs.src);
-          }
-
-          if (updatedNode.attrs.alt !== currentNode.attrs.alt) {
-            if (updatedNode.attrs.alt) {
-              el.setAttribute("aria-label", updatedNode.attrs.alt);
-            } else {
-              el.removeAttribute("aria-label");
-            }
-          }
-
-          const w = updatedNode.attrs.width;
-          const h = updatedNode.attrs.height;
-          if (w != null) {
-            el.style.width = `${w}px`;
-          }
-          if (h != null) {
-            el.style.height = `${h}px`;
-          }
-
-          const align = updatedNode.attrs.align || "center";
-          const container = nodeView.dom as HTMLElement;
-          applyAlignment(container, align);
-
-          currentNode = updatedNode;
-          return true;
-        },
-        options: {
-          directions,
-          min: {
-            width: minWidth,
-            height: minHeight,
-          },
-          preserveAspectRatio: alwaysPreserveAspectRatio === true,
-          createCustomHandle,
-          className,
-        },
-      });
-
-      const dom = nodeView.dom as HTMLElement;
-
-      applyAlignment(dom, node.attrs.align || "center");
-
-      // Handle percentage width backward compat
-      const widthAttr = node.attrs.width;
-      if (typeof widthAttr === "string" && widthAttr.endsWith("%")) {
-        requestAnimationFrame(() => {
-          const parentEl = dom.parentElement;
-          if (parentEl) {
-            const containerWidth = parentEl.clientWidth;
-            const pctValue = parseInt(widthAttr, 10);
-            if (!isNaN(pctValue) && containerWidth > 0) {
-              const pxWidth = Math.round(
-                containerWidth * (pctValue / 100),
-              );
-              el.style.width = `${pxWidth}px`;
-              if (node.attrs.aspectRatio) {
-                el.style.height = `${Math.round(pxWidth / node.attrs.aspectRatio)}px`;
-              }
-            }
-          }
-          dom.style.visibility = "";
-          dom.style.pointerEvents = "";
-        });
-      }
-
-      // Show skeleton background while video loads from server
-      dom.style.pointerEvents = "none";
-      el.classList.add("media-pulse");
-
-      el.onloadedmetadata = () => {
-        dom.style.pointerEvents = "";
-        el.classList.remove("media-pulse");
-      };
-
-      return nodeView;
-    };
+    // The old resize-enabled path replaced the configured React node view with
+    // a hand-built native <video controls> element as soon as an upload gained
+    // a real src. That made portfolio BUILD silently bypass Ramzy Player.
+    //
+    // Keep the configured React node view authoritative for uploaded media.
+    // Video resizing will be reintroduced around this branded node view under
+    // the dedicated Media authoring UX roadmap item instead of replacing it.
+    this.editor.isInitialized = true;
+    return ReactNodeViewRenderer(this.options.view);
   },
 });
-
-function applyAlignment(container: HTMLElement, align: string) {
-  if (align === "left") {
-    container.style.justifyContent = "flex-start";
-  } else if (align === "right") {
-    container.style.justifyContent = "flex-end";
-  } else {
-    container.style.justifyContent = "center";
-  }
-}

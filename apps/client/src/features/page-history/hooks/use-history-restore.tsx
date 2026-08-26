@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import {
   activeHistoryIdAtom,
   historyAtoms,
@@ -30,14 +30,18 @@ export function useHistoryRestore() {
   const mainEditorTitle = useAtomValue(titleEditorAtom);
   const setHistoryModalOpen = useSetAtom(historyAtoms);
 
+  const location = useLocation();
   const { spaceSlug } = useParams();
   const { data: space } = useSpaceQuery(spaceSlug);
   const spaceAbility = useSpaceAbility(space?.membership?.permissions);
+  const isPortfolioAuthoring = location.pathname.includes("/portfolio/edit/");
 
-  const canRestore = spaceAbility.can(
-    SpaceCaslAction.Manage,
-    SpaceCaslSubject.Page,
-  );
+  // Portfolio authoring intentionally omits Docmost's title editor because the
+  // portfolio project title lives in website metadata. In that surface the
+  // live body editor's editability is the relevant restore permission gate.
+  const canRestore = isPortfolioAuthoring
+    ? Boolean(mainEditor && !mainEditor.isDestroyed && mainEditor.isEditable)
+    : spaceAbility.can(SpaceCaslAction.Manage, SpaceCaslSubject.Page);
 
   const handleRestore = useCallback(
     async (historyId: string) => {
@@ -52,20 +56,24 @@ export function useHistoryRestore() {
         return;
       }
 
-      if (
-        !mainEditor ||
-        mainEditor.isDestroyed ||
-        !mainEditorTitle ||
-        mainEditorTitle.isDestroyed
-      ) {
+      if (!mainEditor || mainEditor.isDestroyed) {
         return;
       }
 
-      mainEditorTitle
-        .chain()
-        .clearContent()
-        .setContent(historyData.title, { emitUpdate: true })
-        .run();
+      // Normal Docmost pages restore both title and body. Portfolio Build only
+      // restores the Studio-owned case-study body; Sanity owns project title
+      // and metadata outside this editor.
+      if (!isPortfolioAuthoring) {
+        if (!mainEditorTitle || mainEditorTitle.isDestroyed) {
+          return;
+        }
+
+        mainEditorTitle
+          .chain()
+          .clearContent()
+          .setContent(historyData.title, { emitUpdate: true })
+          .run();
+      }
 
       mainEditor
         .chain()
@@ -76,7 +84,13 @@ export function useHistoryRestore() {
       setHistoryModalOpen(false);
       notifications.show({ message: t("Successfully restored") });
     },
-    [mainEditor, mainEditorTitle, setHistoryModalOpen, t],
+    [
+      isPortfolioAuthoring,
+      mainEditor,
+      mainEditorTitle,
+      setHistoryModalOpen,
+      t,
+    ],
   );
 
   const confirmRestore = useCallback(

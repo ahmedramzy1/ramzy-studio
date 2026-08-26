@@ -5,6 +5,7 @@ import { getFileUrl } from "@/lib/config.ts";
 import clsx from "clsx";
 import classes from "./video-view.module.css";
 import { useTranslation } from "react-i18next";
+import RamzyVideoPlayer from "./ramzy-video-player";
 
 export default function VideoView(props: NodeViewProps) {
   const { t } = useTranslation();
@@ -27,6 +28,10 @@ export default function VideoView(props: NodeViewProps) {
     return null;
   }, [placeholder, editor]);
 
+  const playerStyle = aspectRatio
+    ? { aspectRatio: String(aspectRatio) }
+    : undefined;
+
   return (
     <NodeViewWrapper data-drag-handle>
       <div
@@ -37,27 +42,23 @@ export default function VideoView(props: NodeViewProps) {
           alignClass,
         )}
         style={{
-          aspectRatio: aspectRatio ? aspectRatio : src ? undefined : "16 / 9",
+          aspectRatio: !src && !aspectRatio ? "16 / 9" : undefined,
           width,
         }}
       >
         {src && (
-          <video
-            className={classes.video}
-            preload="metadata"
-            controls
+          <RamzyVideoPlayer
             src={getFileUrl(src)}
-            aria-label={alt || undefined}
+            title={alt || t("Video")}
+            style={playerStyle}
           />
         )}
         {!src && previewSrc && (
-          <Group pos="relative" h="100%" w="100%">
-            <video
-              className={classes.video}
-              preload="metadata"
-              controls
+          <Group pos="relative" w="100%">
+            <RamzyVideoPlayer
               src={previewSrc}
-              aria-label={placeholder?.name || t("Video")}
+              title={placeholder?.name || t("Video")}
+              style={playerStyle}
             />
             <Loader size={20} pos="absolute" top={6} right={6} />
           </Group>
@@ -73,7 +74,7 @@ export default function VideoView(props: NodeViewProps) {
           </Group>
         )}
         {!src && !previewSrc && !placeholder && (
-          <video className={classes.video} controls aria-label={t("Video")} />
+          <div style={{ width: "100%", aspectRatio: "16 / 9" }} />
         )}
       </div>
     </NodeViewWrapper>

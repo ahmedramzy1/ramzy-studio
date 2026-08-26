@@ -5,6 +5,7 @@ import { getFileUrl } from "@/lib/config.ts";
 import { isInternalFileUrl } from "@docmost/editor-ext";
 import classes from "./audio-view.module.css";
 import { useTranslation } from "react-i18next";
+import RamzyAudioPlayer from "./ramzy-audio-player";
 
 export default function AudioView(props: NodeViewProps) {
   const { t } = useTranslation();
@@ -27,26 +28,22 @@ export default function AudioView(props: NodeViewProps) {
     return null;
   }, [placeholder, editor]);
 
+  const title = placeholder?.name || t("Audio");
+
   return (
     <NodeViewWrapper data-drag-handle>
-      <div className={`${classes.audioWrapper} ${!safeSrc && placeholder ? classes.skeleton : ''}`}>
+      <div className={`${classes.audioWrapper} ${!safeSrc && placeholder ? classes.skeleton : ""}`}>
         {safeSrc && (
-          <audio
-            className={classes.audio}
-            preload="metadata"
-            controls
+          <RamzyAudioPlayer
             src={safeSrc}
-            aria-label={placeholder?.name || t("Audio")}
+            title={title}
           />
         )}
         {!safeSrc && previewSrc && (
           <Group pos="relative" w="100%">
-            <audio
-              className={classes.audio}
-              preload="metadata"
-              controls
+            <RamzyAudioPlayer
               src={previewSrc}
-              aria-label={placeholder?.name || t("Audio")}
+              title={title}
             />
             <Loader size={20} pos="absolute" top={6} right={6} />
           </Group>
@@ -62,7 +59,7 @@ export default function AudioView(props: NodeViewProps) {
           </Group>
         )}
         {!safeSrc && !previewSrc && !placeholder && (
-          <audio className={classes.audio} controls aria-label={t("Audio")} />
+          <div style={{ width: "100%", minHeight: 96 }} />
         )}
       </div>
     </NodeViewWrapper>

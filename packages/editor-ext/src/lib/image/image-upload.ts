@@ -40,11 +40,25 @@ const handleImageUpload =
     );
 
     const placeholderId = generateNodeId();
-    const width = imageDimensions?.width ?? undefined;
-    const height = imageDimensions?.height ?? undefined;
     const aspectRatio = imageDimensions
       ? imageDimensions.width / imageDimensions.height
       : undefined;
+
+    const isPortfolioDocument = editor.view.dom.classList.contains(
+      'ramzy-portfolio-editor',
+    );
+
+    // Portfolio media enters the canvas as a layout block rather than inheriting
+    // a tiny source bitmap's literal pixel width. Percentage width also behaves
+    // correctly inside editorial columns. A manual resize later commits an
+    // explicit pixel size, so authors still retain full control. Normal Docmost
+    // pages keep their original source-pixel insertion behaviour.
+    const width = isPortfolioDocument
+      ? '100%'
+      : imageDimensions?.width ?? undefined;
+    const height = isPortfolioDocument
+      ? undefined
+      : imageDimensions?.height ?? undefined;
 
     let placeholderInserted = false;
 

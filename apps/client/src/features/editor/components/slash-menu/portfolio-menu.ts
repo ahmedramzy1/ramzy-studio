@@ -1,4 +1,4 @@
-import { IconAppWindow } from "@tabler/icons-react";
+import { IconAppWindow, IconMusic, IconVideo } from "@tabler/icons-react";
 import getSuggestionItems from "@/features/editor/components/slash-menu/menu-items";
 import type {
   SlashMenuGroupedItemsType,
@@ -56,6 +56,32 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
     icon: IconAppWindow,
     command: ({ editor, range }) =>
       editor.chain().focus().deleteRange(range).insertTabs().run(),
+  },
+  {
+    title: "Video Playlist",
+    description: "Add a Ramzy Player with a selectable video queue.",
+    searchTerms: ["video", "playlist", "queue", "media", "player"],
+    icon: IconVideo,
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setMediaPlaylist({ kind: "video", items: [] })
+        .run(),
+  },
+  {
+    title: "Audio Playlist",
+    description: "Add Ramzy Wave with a selectable audio queue.",
+    searchTerms: ["audio", "playlist", "music", "tracks", "queue", "wave"],
+    icon: IconMusic,
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setMediaPlaylist({ kind: "audio", items: [] })
+        .run(),
   },
 ];
 
