@@ -28,6 +28,10 @@ export default function VideoView(props: NodeViewProps) {
     return null;
   }, [placeholder, editor]);
 
+  const playerStyle = aspectRatio
+    ? { aspectRatio: String(aspectRatio) }
+    : undefined;
+
   return (
     <NodeViewWrapper data-drag-handle>
       <div
@@ -38,7 +42,7 @@ export default function VideoView(props: NodeViewProps) {
           alignClass,
         )}
         style={{
-          aspectRatio: aspectRatio ? aspectRatio : src ? undefined : "16 / 9",
+          aspectRatio: !src && !aspectRatio ? "16 / 9" : undefined,
           width,
         }}
       >
@@ -46,15 +50,15 @@ export default function VideoView(props: NodeViewProps) {
           <RamzyVideoPlayer
             src={getFileUrl(src)}
             title={alt || t("Video")}
-            style={{ height: "100%", aspectRatio: "auto" }}
+            style={playerStyle}
           />
         )}
         {!src && previewSrc && (
-          <Group pos="relative" h="100%" w="100%">
+          <Group pos="relative" w="100%">
             <RamzyVideoPlayer
               src={previewSrc}
               title={placeholder?.name || t("Video")}
-              style={{ height: "100%", aspectRatio: "auto" }}
+              style={playerStyle}
             />
             <Loader size={20} pos="absolute" top={6} right={6} />
           </Group>
