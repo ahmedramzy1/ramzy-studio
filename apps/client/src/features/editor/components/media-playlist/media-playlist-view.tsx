@@ -27,29 +27,67 @@ export default function MediaPlaylistView({
     () => (Array.isArray(node.attrs.items) ? node.attrs.items : []),
     [node.attrs.items],
   );
+
   const [localActiveKey, setLocalActiveKey] = useState(
     node.attrs.activeKey || items[0]?.key || "",
   );
+  const [playKey, setPlayKey] = useState("");
+  const [playNonce, setPlayNonce] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
 
   useEffect(() => {
     if (items.some((item) => item.key === localActiveKey)) return;
-    setLocalActiveKey(node.attrs.activeKey || items[0]?.key || "");
-  }, [items, node.attrs.activeKey, localActiveKey]);
+    const next = node.attrs.activeKey || items[0]?.key || "";
+    setLocalActiveKey(next);
+    if (playKey && !items.some((item) => item.key === playKey)) setPlayKey("");
+  }, [items, node.attrs.activeKey, localActiveKey, playKey]);
 
-  const active =
-    items.find((item) => item.key === localActiveKey) || items[0] || null;
+  const activeIndex = Math.max(
+    0,
+    items.findIndex((item) => item.key === localActiveKey),
+  );
+  const active = items[activeIndex] || items[0] || null;
 
   const select = (key: string) => {
     setLocalActiveKey(key);
     if (editable) updateAttributes({ activeKey: key });
   };
 
+  const play = (key: string) => {
+    if (!items.some((item) => item.key === key)) return;
+    setLocalActiveKey(key);
+    setPlayKey(key);
+    setPlayNonce((value) => value + 1);
+    if (editable) updateAttributes({ activeKey: key });
+  };
+
+  const playPrevious = () => {
+    if (!items.length) return;
+    const index = Math.max(0, items.findIndex((item) => item.key === (active?.key || localActiveKey)));
+    if (index <= 0) {
+      if (node.attrs.loop && items.length > 1) play(items[items.length - 1].key);
+      return;
+    }
+    play(items[index - 1].key);
+  };
+
+  const playNext = (force = false) => {
+    if (!items.length) return;
+    if (!force && !node.attrs.autoplay) return;
+    const index = Math.max(0, items.findIndex((item) => item.key === (active?.key || localActiveKey)));
+    if (index < items.length - 1) {
+      play(items[index + 1].key);
+      return;
+    }
+    if (node.attrs.loop && items.length > 1) play(items[0].key);
+  };
+
   const setItems = (next: MediaPlaylistItem[], nextActive?: string) => {
     const activeKey = nextActive ?? localActiveKey ?? next[0]?.key ?? "";
     updateAttributes({ items: next, activeKey });
     setLocalActiveKey(activeKey);
+    if (playKey && !next.some((item) => item.key === playKey)) setPlayKey("");
   };
 
   const move = (key: string, direction: -1 | 1) => {
@@ -84,8 +122,7 @@ export default function MediaPlaylistView({
   };
 
   const uploadFiles = async (files: FileList | File[]) => {
-    // Portfolio editor storage owns the canonical linked page id.
-    // @ts-ignore
+    // @ts-ignore portfolio editor storage owns the canonical linked page id.
     const pageId = editor.storage?.pageId as string | undefined;
     if (!pageId || uploading) return;
 
@@ -110,13 +147,20 @@ export default function MediaPlaylistView({
     subtitle:
       item.subtitle ||
       (kind === "audio" ? item.artist || item.album : undefined),
-    artwork: item.artwork || item.poster
-      ? getFileUrl(item.artwork || item.poster || "")
-      : undefined,
+    artwork:
+      item.artwork || item.poster
+        ? getFileUrl(item.artwork || item.poster || "")
+        : undefined,
+    durationSeconds: item.durationSeconds,
+    dateAdded: item.dateAdded,
+    sourceLabel: kind === "video" ? "Uploaded video" : "Uploaded audio",
   }));
 
   const activeArtwork = active?.artwork ? getFileUrl(active.artwork) : undefined;
   const activePoster = active?.poster ? getFileUrl(active.poster) : undefined;
+  const isPlayingRequest = !!active && playKey === active.key;
+  const hasPrevious = activeIndex > 0 || (!!node.attrs.loop && items.length > 1);
+  const hasNext = activeIndex < items.length - 1 || (!!node.attrs.loop && items.length > 1);
 
   return (
     <NodeViewWrapper
@@ -174,6 +218,17 @@ export default function MediaPlaylistView({
               src={getFileUrl(active.src)}
               poster={activePoster}
               title={active.title || "Video"}
+              autoPlay={isPlayingRequest}
+              playRequestToken={playNonce}
+              loop={false}
+              onEnded={() => playNext(false)}
+              onPrevious={playPrevious}
+              onNext={() => playNext(true)}
+              hasPrevious={hasPrevious}
+              hasNext={hasNext}
+              playlistTitle={node.attrs.title || "Video playlist"}
+              playlistTrackCount={items.length}
+              playlistIndex={activeIndex}
             />
           ) : (
             <RamzyAudioPlayer
@@ -183,13 +238,24 @@ export default function MediaPlaylistView({
               artist={active.artist}
               description={active.description || active.album}
               artwork={activeArtwork}
-              loop={!!node.attrs.loop}
+              autoPlay={isPlayingRequest}
+              playRequestToken={playNonce}
+              loop={false}
+              onEnded={() => playNext(false)}
+              onPrevious={playPrevious}
+              onNext={() => playNext(true)}
+              hasPrevious={hasPrevious}
+              hasNext={hasNext}
+              playlistTitle={node.attrs.title || "Audio playlist"}
+              playlistTrackCount={items.length}
+              playlistIndex={activeIndex}
             />
           )
         ) : (
           <div
             style={{
-              minHeight: kind === "video" ? 240 : 180,
+              minHeight: kind === "video" ? 320 : 180,
+              aspectRatio: kind === "video" ? "16 / 9" : undefined,
               border: "1px dashed var(--mantine-color-default-border)",
               borderRadius: 8,
               display: "grid",
@@ -212,12 +278,14 @@ export default function MediaPlaylistView({
         <RamzyPlaylist
           items={queueItems}
           activeKey={active?.key}
+          playingKey={playKey}
           editable={editable}
           onSelect={select}
+          onPlay={play}
           onMove={move}
           onReorder={reorder}
           onRemove={remove}
-          maxHeight={kind === "video" ? 330 : 360}
+          maxHeight={kind === "video" ? 390 : 420}
         />
 
         {editable && (
@@ -239,15 +307,20 @@ export default function MediaPlaylistView({
                 "+ Add track(s)"
               )}
             </Button>
-            {kind === "audio" && (
-              <Button
-                size="xs"
-                variant={node.attrs.loop ? "filled" : "subtle"}
-                onClick={() => updateAttributes({ loop: !node.attrs.loop })}
-              >
-                Loop playlist
-              </Button>
-            )}
+            <Button
+              size="xs"
+              variant={node.attrs.autoplay ? "filled" : "subtle"}
+              onClick={() => updateAttributes({ autoplay: !node.attrs.autoplay })}
+            >
+              Autoplay next
+            </Button>
+            <Button
+              size="xs"
+              variant={node.attrs.loop ? "filled" : "subtle"}
+              onClick={() => updateAttributes({ loop: !node.attrs.loop })}
+            >
+              Loop playlist
+            </Button>
           </Group>
         )}
 
