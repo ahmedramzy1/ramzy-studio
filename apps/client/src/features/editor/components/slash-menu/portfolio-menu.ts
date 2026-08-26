@@ -14,22 +14,29 @@ import {
  * - block/text styles (Heading 1/2/3...) belong to the text-style selector
  * - slash commands insert content/structural blocks
  *
- * Docmost keeps its complete command set outside Portfolio Mode.
+ * Self-contained document blocks are available here. Workspace relational
+ * constructs (Bases/Kanban, subpage relations, mentions, etc.) stay out of the
+ * public portfolio authoring contract because they require separate Docmost
+ * workspace records rather than portable project-document state.
  */
 export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Text",
+  "To-do list",
   "Bullet list",
   "Numbered list",
   "Quote",
   "Divider",
+  "Page break",
   "Callout",
   "Toggle block",
   "Image",
+  "File attachment",
   "Embed PDF",
   "Table",
   "2 Columns",
   "3 Columns",
   "4 Columns",
+  "5 Columns",
   "Iframe embed",
   "Figma",
   "Framer",
