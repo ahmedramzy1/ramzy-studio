@@ -117,21 +117,19 @@ export async function inspectVideoFile(file: File): Promise<VideoInspection> {
   }
 }
 
-/** Capture a deterministic still slightly into a local video so black first
- * frames do not become the default poster. Failure is enrichment-only and
- * never blocks the video upload itself. */
-export async function captureVideoThumbnailFile(file: File): Promise<File | undefined> {
-  if (!isVideoFile(file) || typeof document === "undefined" || typeof URL === "undefined") {
-    return undefined;
-  }
+async function captureVideoThumbnailFromSource(
+  source: string,
+  baseName: string,
+): Promise<File | undefined> {
+  if (typeof document === "undefined") return undefined;
 
-  const objectUrl = URL.createObjectURL(file);
+  const video = document.createElement("video");
   try {
-    const video = document.createElement("video");
     video.preload = "metadata";
     video.muted = true;
     video.playsInline = true;
-    video.src = objectUrl;
+    video.crossOrigin = "anonymous";
+    video.src = source;
     await waitForEvent(video, "loadedmetadata", "error");
 
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
@@ -162,13 +160,43 @@ export async function captureVideoThumbnailFile(file: File): Promise<File | unde
     if (!blob) return undefined;
 
     const base =
-      fileStem(file)
+      baseName
+        .replace(/\.[^.]+$/, "")
         .replace(/[^a-z0-9-_]+/gi, "-")
         .replace(/^-+|-+$/g, "") || "video";
     return new File([blob], `${base}-thumbnail.jpg`, { type: "image/jpeg" });
   } catch {
     return undefined;
   } finally {
+    video.removeAttribute("src");
+    video.load();
+  }
+}
+
+/** Capture a deterministic still slightly into a local video so black first
+ * frames do not become the default poster. Failure is enrichment-only and
+ * never blocks the video upload itself. */
+export async function captureVideoThumbnailFile(file: File): Promise<File | undefined> {
+  if (!isVideoFile(file) || typeof document === "undefined" || typeof URL === "undefined") {
+    return undefined;
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    return await captureVideoThumbnailFromSource(objectUrl, file.name);
+  } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+/** Backfill helper for videos already persisted before poster enrichment.
+ * Using the media URL lets the browser range-load enough of the existing
+ * attachment to capture a frame instead of downloading the whole video into
+ * JS memory. */
+export async function captureVideoThumbnailUrl(
+  src: string,
+  baseName = "video",
+): Promise<File | undefined> {
+  if (!src) return undefined;
+  return captureVideoThumbnailFromSource(src, baseName);
 }
