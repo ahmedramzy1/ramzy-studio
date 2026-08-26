@@ -19,4 +19,10 @@ export type UploadFn = (
 export interface MediaUploadOptions {
   validateFn?: (file: File, allowMedia?: boolean) => void;
   onUpload: (file: File, pageId: string) => Promise<any>;
+  /**
+   * Optional best-effort enrichment that is persisted onto the same media node
+   * after the canonical attachment upload succeeds. This lets the host provide
+   * poster/artwork/metadata logic without coupling editor-ext to host storage.
+   */
+  enrichFn?: (file: File, pageId: string) => Promise<Record<string, any>>;
 }
