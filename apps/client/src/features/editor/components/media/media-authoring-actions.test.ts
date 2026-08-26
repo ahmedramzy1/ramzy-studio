@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const uploadVideoAction = vi.fn();
-const uploadAudioAction = vi.fn();
-const ingestMediaBatch = vi.fn();
+const mocks = vi.hoisted(() => ({
+  uploadVideoAction: vi.fn(),
+  uploadAudioAction: vi.fn(),
+  ingestMediaBatch: vi.fn(),
+}));
 
 vi.mock("@/features/editor/components/video/upload-video-action.tsx", () => ({
-  uploadVideoAction,
+  uploadVideoAction: mocks.uploadVideoAction,
 }));
 vi.mock("@/features/editor/components/audio/upload-audio-action.tsx", () => ({
-  uploadAudioAction,
+  uploadAudioAction: mocks.uploadAudioAction,
 }));
-vi.mock("./media-ingest", () => ({ ingestMediaBatch }));
+vi.mock("./media-ingest", () => ({ ingestMediaBatch: mocks.ingestMediaBatch }));
 vi.mock("@/lib/config.ts", () => ({ getFileUploadSizeLimit: () => 1024 * 1024 * 1024 }));
 vi.mock("@/lib", () => ({ formatBytes: (value: number) => String(value) }));
 vi.mock("@/i18n.ts", () => ({ default: { t: (value: string) => value } }));
@@ -66,9 +68,9 @@ describe("Ramzy Studio media authoring insertion", () => {
       pos: 11,
     });
 
-    expect(uploadVideoAction).toHaveBeenCalledOnce();
-    expect(uploadVideoAction).toHaveBeenCalledWith(file, editor, 11, "page-1");
-    expect(ingestMediaBatch).not.toHaveBeenCalled();
+    expect(mocks.uploadVideoAction).toHaveBeenCalledOnce();
+    expect(mocks.uploadVideoAction).toHaveBeenCalledWith(file, editor, 11, "page-1");
+    expect(mocks.ingestMediaBatch).not.toHaveBeenCalled();
     expect(inserted).toEqual([]);
   });
 
@@ -84,7 +86,7 @@ describe("Ramzy Studio media authoring insertion", () => {
       mediaItem("b", "video"),
       mediaItem("c", "video"),
     ];
-    ingestMediaBatch.mockResolvedValue({ successful, failed: [] });
+    mocks.ingestMediaBatch.mockResolvedValue({ successful, failed: [] });
 
     await insertMediaFiles({
       editor,
@@ -94,8 +96,8 @@ describe("Ramzy Studio media authoring insertion", () => {
       pos: 13,
     });
 
-    expect(uploadVideoAction).not.toHaveBeenCalled();
-    expect(ingestMediaBatch).toHaveBeenCalledWith(files, "video", "page-1");
+    expect(mocks.uploadVideoAction).not.toHaveBeenCalled();
+    expect(mocks.ingestMediaBatch).toHaveBeenCalledWith(files, "video", "page-1");
     expect(inserted).toHaveLength(1);
     expect(inserted[0]).toEqual({
       pos: 13,
@@ -120,7 +122,7 @@ describe("Ramzy Studio media authoring insertion", () => {
       new File(["b"], "b.m4a", { type: "audio/mp4" }),
     ];
     const successful = [mediaItem("a", "audio"), mediaItem("b", "audio")];
-    ingestMediaBatch.mockResolvedValue({ successful, failed: [] });
+    mocks.ingestMediaBatch.mockResolvedValue({ successful, failed: [] });
 
     await insertMediaFiles({
       editor,
@@ -129,7 +131,7 @@ describe("Ramzy Studio media authoring insertion", () => {
       kind: "audio",
     });
 
-    expect(uploadAudioAction).not.toHaveBeenCalled();
+    expect(mocks.uploadAudioAction).not.toHaveBeenCalled();
     expect(inserted[0].content.attrs.kind).toBe("audio");
     expect(inserted[0].content.attrs.items).toEqual(successful);
     expect(inserted[0].content.attrs.activeKey).toBe("a");
