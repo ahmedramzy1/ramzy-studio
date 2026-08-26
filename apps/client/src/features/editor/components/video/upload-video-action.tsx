@@ -4,21 +4,24 @@ import { notifications } from "@mantine/notifications";
 import { getFileUploadSizeLimit } from "@/lib/config.ts";
 import { formatBytes } from "@/lib";
 import i18n from "@/i18n.ts";
+import { enrichVideoFile } from "@/features/editor/components/media/media-ingest.ts";
+import { isVideoFile } from "@/features/editor/components/media/media-file-utils.ts";
 
 export const uploadVideoAction = handleVideoUpload({
   onUpload: async (file: File, pageId: string): Promise<any> => {
     try {
       return await uploadFile(file, pageId);
-    } catch (err) {
+    } catch (err: any) {
       notifications.show({
         color: "red",
-        message: err?.response.data.message,
+        message: err?.response?.data?.message || i18n.t("Video upload failed"),
       });
       throw err;
     }
   },
+  enrichFn: enrichVideoFile,
   validateFn: (file) => {
-    if (!file.type.includes("video/")) {
+    if (!isVideoFile(file)) {
       return false;
     }
 
