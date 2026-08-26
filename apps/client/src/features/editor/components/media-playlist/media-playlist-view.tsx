@@ -2,20 +2,17 @@ import { Button, Group, Loader, Stack, Text, TextInput } from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MediaPlaylistItem } from "@docmost/editor-ext";
-import { uploadFile } from "@/features/page/services/page-service.ts";
 import { getFileUrl } from "@/lib/config.ts";
 import RamzyAudioPlayer from "@/features/editor/components/audio/ramzy-audio-player.tsx";
 import RamzyVideoPlayer from "@/features/editor/components/video/ramzy-video-player.tsx";
 import RamzyPlaylist from "./ramzy-playlist";
+import { ingestMediaBatch } from "@/features/editor/components/media/media-ingest.ts";
+import {
+  filterMediaFiles,
+  mediaAccept,
+} from "@/features/editor/components/media/media-authoring-actions.ts";
 
 const BODY = '"DM Sans", system-ui, sans-serif';
-
-function makeKey() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 export default function MediaPlaylistView({
   editor,
@@ -34,6 +31,7 @@ export default function MediaPlaylistView({
     node.attrs.activeKey || items[0]?.key || "",
   );
   const [uploading, setUploading] = useState(false);
+  const [dropActive, setDropActive] = useState(false);
 
   useEffect(() => {
     if (items.some((item) => item.key === localActiveKey)) return;
@@ -81,48 +79,73 @@ export default function MediaPlaylistView({
     const pageId = editor.storage?.pageId as string | undefined;
     if (!pageId || uploading) return;
 
-    const accepted = Array.from(files).filter((file) =>
-      kind === "video"
-        ? file.type.startsWith("video/")
-        : file.type.startsWith("audio/"),
-    );
+    const accepted = filterMediaFiles(Array.from(files), kind);
     if (!accepted.length) return;
 
     setUploading(true);
     try {
-      const uploaded: MediaPlaylistItem[] = [];
-      for (const file of accepted) {
-        const attachment = await uploadFile(file, pageId);
-        uploaded.push({
-          key: makeKey(),
-          src: `/api/files/${attachment.id}/${attachment.fileName}`,
-          attachmentId: attachment.id,
-          title: file.name.replace(/\.[^.]+$/, ""),
-          subtitle: kind === "video" ? "Uploaded video" : "Uploaded audio",
-        });
-      }
-
-      const next = [...items, ...uploaded];
-      setItems(next, uploaded[0]?.key || next[0]?.key || "");
+      const result = await ingestMediaBatch(accepted, kind, pageId);
+      if (!result.successful.length) return;
+      const next = [...items, ...result.successful];
+      setItems(next, result.successful[0]?.key || next[0]?.key || "");
     } finally {
       setUploading(false);
+      setDropActive(false);
     }
   };
 
   const queueItems = items.map((item) => ({
     key: item.key,
     title: item.title || (kind === "video" ? "Video" : "Audio"),
-    subtitle: item.subtitle,
-    artwork: item.artwork || item.poster,
+    subtitle:
+      item.subtitle ||
+      (kind === "audio" ? item.artist || item.album : undefined),
+    artwork: item.artwork || item.poster
+      ? getFileUrl(item.artwork || item.poster || "")
+      : undefined,
   }));
+
+  const activeArtwork = active?.artwork ? getFileUrl(active.artwork) : undefined;
+  const activePoster = active?.poster ? getFileUrl(active.poster) : undefined;
 
   return (
     <NodeViewWrapper
       data-drag-handle
       data-ramzy-playlist-kind={kind}
       className={selected ? "ProseMirror-selectednode" : undefined}
+      onDragEnter={(event) => {
+        if (!editable || !event.dataTransfer?.types.includes("Files")) return;
+        event.preventDefault();
+        setDropActive(true);
+      }}
+      onDragOver={(event) => {
+        if (!editable || !event.dataTransfer?.types.includes("Files")) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        setDropActive(true);
+      }}
+      onDragLeave={(event) => {
+        if (!editable) return;
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setDropActive(false);
+        }
+      }}
+      onDrop={(event) => {
+        if (!editable || !event.dataTransfer?.files.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void uploadFiles(event.dataTransfer.files);
+      }}
     >
-      <Stack gap="sm" py="xs">
+      <Stack
+        gap="sm"
+        py="xs"
+        style={{
+          outline: dropActive ? "2px solid #3B5BFF" : undefined,
+          outlineOffset: dropActive ? 6 : undefined,
+          borderRadius: dropActive ? 8 : undefined,
+        }}
+      >
         {(editable || node.attrs.title) && (
           <TextInput
             value={node.attrs.title || ""}
@@ -139,7 +162,7 @@ export default function MediaPlaylistView({
             <RamzyVideoPlayer
               key={active.key}
               src={getFileUrl(active.src)}
-              poster={active.poster ? getFileUrl(active.poster) : undefined}
+              poster={activePoster}
               title={active.title || "Video"}
             />
           ) : (
@@ -147,13 +170,16 @@ export default function MediaPlaylistView({
               key={active.key}
               src={getFileUrl(active.src)}
               title={active.title || "Audio"}
+              artist={active.artist}
+              description={active.description || active.album}
+              artwork={activeArtwork}
               loop={!!node.attrs.loop}
             />
           )
         ) : (
           <div
             style={{
-              minHeight: kind === "video" ? 240 : 116,
+              minHeight: kind === "video" ? 240 : 180,
               border: "1px dashed var(--mantine-color-default-border)",
               borderRadius: 8,
               display: "grid",
@@ -162,7 +188,13 @@ export default function MediaPlaylistView({
             }}
           >
             <Text size="sm" c="dimmed" ff={BODY}>
-              {kind === "video" ? "Add your first video" : "Add your first track"}
+              {dropActive
+                ? kind === "video"
+                  ? "Drop videos to add them"
+                  : "Drop audio files to add them"
+                : kind === "video"
+                  ? "Add or drop your first video"
+                  : "Add or drop your first track"}
             </Text>
           </div>
         )}
@@ -188,12 +220,12 @@ export default function MediaPlaylistView({
               {uploading ? (
                 <Group gap={6} wrap="nowrap">
                   <Loader size={13} />
-                  <span>Uploading…</span>
+                  <span>Uploading & processing…</span>
                 </Group>
               ) : kind === "video" ? (
-                "+ Add video"
+                "+ Add video(s)"
               ) : (
-                "+ Add track"
+                "+ Add track(s)"
               )}
             </Button>
             {kind === "audio" && (
@@ -211,7 +243,7 @@ export default function MediaPlaylistView({
         <input
           ref={inputRef}
           type="file"
-          accept={kind === "video" ? "video/*" : "audio/*"}
+          accept={mediaAccept(kind)}
           multiple
           style={{ display: "none" }}
           onChange={(event) => {
