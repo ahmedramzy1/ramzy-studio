@@ -1,12 +1,15 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Group, Loader, Text } from "@mantine/core";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getFileUrl } from "@/lib/config.ts";
 import { isInternalFileUrl } from "@docmost/editor-ext";
 import classes from "./audio-view.module.css";
 import { useTranslation } from "react-i18next";
 import RamzyAudioPlayer from "./ramzy-audio-player";
-import { ingestAudioFile } from "@/features/editor/components/media/media-ingest.ts";
+import {
+  enrichExistingAudio,
+  ingestAudioFile,
+} from "@/features/editor/components/media/media-ingest.ts";
 import { isAudioFile } from "@/features/editor/components/media/media-file-utils.ts";
 
 export default function AudioView(props: NodeViewProps) {
@@ -24,6 +27,7 @@ export default function AudioView(props: NodeViewProps) {
   const [replacing, setReplacing] = useState(false);
   const [dropActive, setDropActive] = useState(false);
   const dragDepth = useRef(0);
+  const backfillAttempted = useRef("");
 
   const safeSrc = useMemo(() => {
     if (!src || !isInternalFileUrl(src)) return null;
@@ -45,6 +49,33 @@ export default function AudioView(props: NodeViewProps) {
   const safeArtwork = artwork && isInternalFileUrl(artwork)
     ? getFileUrl(artwork)
     : undefined;
+
+  useEffect(() => {
+    if (!editor.isEditable || !safeSrc || placeholder) return;
+    if (artwork || artist || album) return;
+    if (backfillAttempted.current === src) return;
+    // @ts-ignore
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+    backfillAttempted.current = src;
+
+    const fileName = decodeURIComponent(String(src).split("/").pop() || "audio.mp3");
+    void enrichExistingAudio(safeSrc, pageId, fileName).then((enrichment) => {
+      if (editor.isDestroyed) return;
+      const next: Record<string, any> = {};
+      if (enrichment.title) next.title = enrichment.title;
+      if (enrichment.artist) next.artist = enrichment.artist;
+      if (enrichment.album) next.album = enrichment.album;
+      if (enrichment.description) next.description = enrichment.description;
+      if (enrichment.artwork) next.artwork = enrichment.artwork;
+      if (enrichment.artworkAttachmentId) {
+        next.artworkAttachmentId = enrichment.artworkAttachmentId;
+      }
+      if (enrichment.artworkSource) next.artworkSource = enrichment.artworkSource;
+      if (enrichment.durationSeconds) next.durationSeconds = enrichment.durationSeconds;
+      if (Object.keys(next).length) updateAttributes(next);
+    });
+  }, [album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isAudioFile(file)) return;
@@ -111,7 +142,7 @@ export default function AudioView(props: NodeViewProps) {
         }}
       >
         {safeSrc && (
-          <Group pos="relative" w="100%">
+          <div style={{ position: "relative", width: "100%" }}>
             <RamzyAudioPlayer
               src={safeSrc}
               title={title}
@@ -120,17 +151,23 @@ export default function AudioView(props: NodeViewProps) {
               artwork={safeArtwork}
             />
             {replacing && (
-              <Group
-                pos="absolute"
-                inset={0}
-                justify="center"
-                style={{ background: "rgba(255,255,255,.76)", backdropFilter: "blur(2px)" }}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  background: "rgba(255,255,255,.76)",
+                  backdropFilter: "blur(2px)",
+                }}
               >
                 <Loader size={22} />
                 <Text size="sm">Replacing & processing…</Text>
-              </Group>
+              </div>
             )}
-          </Group>
+          </div>
         )}
         {!safeSrc && previewSrc && (
           <Group pos="relative" w="100%">
