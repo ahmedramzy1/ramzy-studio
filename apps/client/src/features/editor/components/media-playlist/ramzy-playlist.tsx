@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 
 const SIGNAL = "#3B5BFF";
 const BODY = '"DM Sans", system-ui, sans-serif';
 const MONO = '"JetBrains Mono", "Courier New", monospace';
+const PLAYLIST_DRAG_TYPE = "application/x-ramzy-playlist-key";
 
 export interface RamzyPlaylistItemView {
   key: string;
@@ -17,6 +18,7 @@ export interface RamzyPlaylistProps {
   editable?: boolean;
   onSelect?: (key: string) => void;
   onMove?: (key: string, direction: -1 | 1) => void;
+  onReorder?: (sourceKey: string, targetKey: string) => void;
   onRemove?: (key: string) => void;
   maxHeight?: number;
 }
@@ -35,9 +37,11 @@ export default function RamzyPlaylist({
   editable = false,
   onSelect,
   onMove,
+  onReorder,
   onRemove,
   maxHeight = 360,
 }: RamzyPlaylistProps) {
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
   if (!items.length) return null;
 
   return (
@@ -52,12 +56,40 @@ export default function RamzyPlaylist({
       <div style={{ maxHeight, overflowY: "auto", overscrollBehavior: "contain" }}>
         {items.map((item, index) => {
           const active = item.key === activeKey;
+          const dragOver = dragOverKey === item.key;
           return (
             <div
               key={item.key}
               role="button"
               tabIndex={0}
               aria-current={active ? "true" : undefined}
+              draggable={editable && !!onReorder}
+              onDragStart={(event) => {
+                if (!editable || !onReorder) return;
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData(PLAYLIST_DRAG_TYPE, item.key);
+              }}
+              onDragOver={(event) => {
+                if (!editable || !onReorder) return;
+                if (!event.dataTransfer.types.includes(PLAYLIST_DRAG_TYPE)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = "move";
+                setDragOverKey(item.key);
+              }}
+              onDragLeave={() => {
+                if (dragOverKey === item.key) setDragOverKey(null);
+              }}
+              onDrop={(event) => {
+                if (!editable || !onReorder) return;
+                const sourceKey = event.dataTransfer.getData(PLAYLIST_DRAG_TYPE);
+                if (!sourceKey) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setDragOverKey(null);
+                if (sourceKey !== item.key) onReorder(sourceKey, item.key);
+              }}
+              onDragEnd={() => setDragOverKey(null)}
               onClick={() => onSelect?.(item.key)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -75,8 +107,9 @@ export default function RamzyPlaylist({
                   index === items.length - 1
                     ? 0
                     : "1px solid var(--mantine-color-default-border)",
+                boxShadow: dragOver ? `inset 0 2px 0 ${SIGNAL}` : undefined,
                 background: active ? "rgba(59,91,255,.08)" : "transparent",
-                cursor: onSelect ? "pointer" : "default",
+                cursor: editable && onReorder ? "grab" : onSelect ? "pointer" : "default",
               }}
             >
               <div
