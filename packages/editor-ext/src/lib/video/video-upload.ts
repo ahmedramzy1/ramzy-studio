@@ -26,6 +26,7 @@ const findVideoNodeByPlaceholderId = (
 
   return result;
 };
+
 const getVideoDimensions = (
   url: string,
 ): Promise<
@@ -44,16 +45,14 @@ const getVideoDimensions = (
 
       resolve({ width, height, aspectRatio });
     };
-    video.onerror = () => {
-      resolve(undefined);
-    };
+    video.onerror = () => resolve(undefined);
     video.src = url;
   });
 };
+
 const handleVideoUpload =
-  ({ validateFn, onUpload }: MediaUploadOptions): UploadFn =>
+  ({ validateFn, onUpload, enrichFn }: MediaUploadOptions): UploadFn =>
   async (file, editor, pos, pageId) => {
-    // check if the file is valid
     const validated = validateFn?.(file);
     // @ts-ignore
     if (!validated) return;
@@ -89,7 +88,6 @@ const handleVideoUpload =
         const isEmptyTextBlock = parent.isTextblock && !parent.childCount;
 
         if (isEmptyTextBlock) {
-          // Replace e.g. empty paragraph with the video
           tr.replaceRangeWith(pos - 1, pos + 1, initialPlaceholderNode);
         } else {
           tr.insert(pos, initialPlaceholderNode);
@@ -98,28 +96,32 @@ const handleVideoUpload =
         return true;
       };
     };
-    const replacePlaceholderWithVideo = (attachment: IAttachment): Command => {
+
+    const replacePlaceholderWithVideo = (
+      attachment: IAttachment,
+      enrichment: Record<string, any>,
+    ): Command => {
       return ({ tr }) => {
         const { pos: currentPos = null } =
           findVideoNodeByPlaceholderId(tr.doc, placeholderId) || {};
 
-        //  If the placeholder is not found or attachment is missing, abort the process
-        if (currentPos === null || !attachment) return;
+        if (currentPos === null || !attachment) return false;
 
-        // Update the placeholder node with the actual video data
         tr.setNodeMarkup(currentPos, undefined, {
           src: `/api/files/${attachment.id}/${attachment.fileName}`,
           attachmentId: attachment.id,
-          title: attachment.fileName,
+          alt: file.name.replace(/\.[^.]+$/, ""),
           size: attachment.fileSize,
           width,
           height,
           aspectRatio,
+          ...enrichment,
         });
 
         return true;
       };
     };
+
     const removePlaceholder = (): Command => {
       return ({ tr }) => {
         const { pos: currentPos = null } =
@@ -128,16 +130,15 @@ const handleVideoUpload =
         if (currentPos === null) return false;
 
         tr.delete(currentPos, currentPos + 2);
-
         return true;
       };
     };
 
-    // Only show the placeholder if the upload takes more than 250ms
     const insertPlaceholderTimeout = setTimeout(() => {
       editor.commands.command(insertPlaceholder());
       placeholderInserted = true;
     }, 250);
+
     const disposePreviewFile = () => {
       URL.revokeObjectURL(objectUrl);
 
@@ -147,20 +148,27 @@ const handleVideoUpload =
     };
 
     try {
-      const attachment: IAttachment = await onUpload(file, pageId);
+      const [attachment, enrichment] = await Promise.all([
+        onUpload(file, pageId) as Promise<IAttachment>,
+        enrichFn
+          ? enrichFn(file, pageId).catch(() => ({}))
+          : Promise.resolve<Record<string, any>>({}),
+      ]);
 
       clearTimeout(insertPlaceholderTimeout);
 
       if (placeholderInserted) {
         setTimeout(() => {
-          editor.commands.command(replacePlaceholderWithVideo(attachment));
+          editor.commands.command(
+            replacePlaceholderWithVideo(attachment, enrichment),
+          );
           disposePreviewFile();
         }, 100);
       } else {
         editor
           .chain()
           .command(insertPlaceholder())
-          .command(replacePlaceholderWithVideo(attachment))
+          .command(replacePlaceholderWithVideo(attachment, enrichment))
           .run();
         disposePreviewFile();
       }

@@ -4,20 +4,20 @@ import type {
   SlashMenuGroupedItemsType,
   SlashMenuItemType,
 } from "@/features/editor/components/slash-menu/types";
+import {
+  insertMediaFiles,
+  mediaAccept,
+} from "@/features/editor/components/media/media-authoring-actions.ts";
 
 /**
- * Portfolio Mode deliberately exposes only commands that help author a strong
- * product-design case study. Docmost keeps its full command set everywhere
- * else; this is a curated authoring profile, not a fork of the editor engine.
+ * Portfolio Mode follows the v8 Ramzy Writer ownership model:
+ * - block/text styles (Heading 1/2/3...) belong to the text-style selector
+ * - slash commands insert content/structural blocks
  *
- * Portfolio-specific nodes (gallery, comparison, metrics, device frames, etc.)
- * will be added to this list as they are implemented.
+ * Docmost keeps its complete command set outside Portfolio Mode.
  */
 export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Text",
-  "Heading 1",
-  "Heading 2",
-  "Heading 3",
   "Bullet list",
   "Numbered list",
   "Quote",
@@ -25,8 +25,6 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Callout",
   "Toggle block",
   "Image",
-  "Video",
-  "Audio",
   "Embed PDF",
   "Table",
   "2 Columns",
@@ -48,18 +46,45 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Footnote",
 ]);
 
+function mediaPickerCommand(kind: "video" | "audio"): SlashMenuItemType["command"] {
+  return ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).run();
+
+    // Portfolio editor storage owns the canonical linked page id.
+    // @ts-ignore
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = mediaAccept(kind);
+    input.multiple = true;
+    input.style.display = "none";
+    document.body.appendChild(input);
+
+    input.onchange = async () => {
+      try {
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+        const pos = editor.state.selection.from;
+        await insertMediaFiles({ editor, files, pageId, kind, pos });
+      } finally {
+        input.remove();
+      }
+    };
+
+    input.click();
+  };
+}
+
+/**
+ * Keep the v8 first-class playlist commands visible before the generic media
+ * commands instead of burying them after Docmost's basic command list.
+ */
 const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   {
-    title: "Tabs",
-    description: "Organize content into switchable tabs.",
-    searchTerms: ["tabs", "tab", "sections", "switch"],
-    icon: IconAppWindow,
-    command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).insertTabs().run(),
-  },
-  {
     title: "Video Playlist",
-    description: "Add a Ramzy Player with a selectable video queue.",
+    description: "One Ramzy Player with a sortable video library.",
     searchTerms: ["video", "playlist", "queue", "media", "player"],
     icon: IconVideo,
     command: ({ editor, range }) =>
@@ -72,7 +97,7 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   },
   {
     title: "Audio Playlist",
-    description: "Add Ramzy Wave with a selectable audio queue.",
+    description: "One Ramzy Wave with a sortable audio library.",
     searchTerms: ["audio", "playlist", "music", "tracks", "queue", "wave"],
     icon: IconMusic,
     command: ({ editor, range }) =>
@@ -82,6 +107,28 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
         .deleteRange(range)
         .setMediaPlaylist({ kind: "audio", items: [] })
         .run(),
+  },
+  {
+    title: "Video",
+    description: "Upload one video; selecting multiple videos creates one playlist.",
+    searchTerms: ["video", "mp4", "media", "upload", "player"],
+    icon: IconVideo,
+    command: mediaPickerCommand("video"),
+  },
+  {
+    title: "Audio",
+    description: "Upload one track; selecting multiple tracks creates one playlist.",
+    searchTerms: ["audio", "music", "sound", "mp3", "upload", "wave"],
+    icon: IconMusic,
+    command: mediaPickerCommand("audio"),
+  },
+  {
+    title: "Tabs",
+    description: "Organize content into switchable tabs.",
+    searchTerms: ["tabs", "tab", "sections", "switch"],
+    icon: IconAppWindow,
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).insertTabs().run(),
   },
 ];
 
@@ -97,8 +144,10 @@ function matchesQuery(item: SlashMenuItemType, query: string): boolean {
 export function isPortfolioAuthoringMode(): boolean {
   if (typeof window === "undefined") return false;
 
+  const path = window.location.pathname;
   return (
-    window.location.pathname.startsWith("/portfolio/edit/") ||
+    path.startsWith("/portfolio/edit/") ||
+    path.startsWith("/admin/projects/") ||
     new URLSearchParams(window.location.search).get("portfolio") === "1"
   );
 }
@@ -127,8 +176,8 @@ export function getPortfolioSuggestionItems({
 
   if (portfolioOnly.length) {
     portfolioGroups.basic = [
-      ...(portfolioGroups.basic ?? []),
       ...portfolioOnly,
+      ...(portfolioGroups.basic ?? []),
     ];
   }
 

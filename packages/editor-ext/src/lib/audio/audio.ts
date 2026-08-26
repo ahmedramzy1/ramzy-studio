@@ -12,6 +12,14 @@ export interface AudioAttributes {
   src?: string;
   attachmentId?: string;
   size?: number;
+  title?: string;
+  artist?: string;
+  album?: string;
+  description?: string;
+  artwork?: string;
+  artworkAttachmentId?: string;
+  artworkSource?: "embedded" | "custom";
+  durationSeconds?: number;
   placeholder?: {
     id: string;
     name: string;
@@ -24,6 +32,12 @@ declare module "@tiptap/core" {
       setAudio: (attributes: AudioAttributes) => ReturnType;
     };
   }
+}
+
+function parseNumber(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export const TiptapAudio = Node.create<AudioOptions>({
@@ -66,9 +80,70 @@ export const TiptapAudio = Node.create<AudioOptions>({
       },
       size: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-size"),
+        parseHTML: (element) => parseNumber(element.getAttribute("data-size")),
         renderHTML: (attributes: AudioAttributes) => ({
           "data-size": attributes.size,
+        }),
+      },
+      title: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-title") || "",
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-title": attributes.title || "",
+        }),
+      },
+      artist: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-artist") || "",
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-artist": attributes.artist || "",
+        }),
+      },
+      album: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-album") || "",
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-album": attributes.album || "",
+        }),
+      },
+      description: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-description") || "",
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-description": attributes.description || "",
+        }),
+      },
+      artwork: {
+        default: "",
+        parseHTML: (element) => {
+          const value = sanitizeUrl(element.getAttribute("data-artwork"));
+          return isInternalFileUrl(value) ? value : "";
+        },
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-artwork": isInternalFileUrl(attributes.artwork)
+            ? sanitizeUrl(attributes.artwork)
+            : "",
+        }),
+      },
+      artworkAttachmentId: {
+        default: undefined,
+        parseHTML: (element) => element.getAttribute("data-artwork-attachment-id"),
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-artwork-attachment-id": attributes.artworkAttachmentId,
+        }),
+      },
+      artworkSource: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-artwork-source") || "",
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-artwork-source": attributes.artworkSource || "",
+        }),
+      },
+      durationSeconds: {
+        default: null,
+        parseHTML: (element) => parseNumber(element.getAttribute("data-duration-seconds")),
+        renderHTML: (attributes: AudioAttributes) => ({
+          "data-duration-seconds": attributes.durationSeconds,
         }),
       },
       placeholder: {
@@ -79,11 +154,7 @@ export const TiptapAudio = Node.create<AudioOptions>({
   },
 
   parseHTML() {
-    return [
-      {
-        tag: "audio",
-      },
-    ];
+    return [{ tag: "audio" }];
   },
 
   renderHTML({ HTMLAttributes }) {
@@ -102,12 +173,11 @@ export const TiptapAudio = Node.create<AudioOptions>({
     return {
       setAudio:
         (attrs: AudioAttributes) =>
-        ({ commands }) => {
-          return commands.insertContent({
+        ({ commands }) =>
+          commands.insertContent({
             type: "audio",
-            attrs: attrs,
-          });
-        },
+            attrs,
+          }),
     };
   },
 
@@ -117,7 +187,7 @@ export const TiptapAudio = Node.create<AudioOptions>({
       return ReactNodeViewRenderer(this.options.view);
     }
 
-    return ({ node, HTMLAttributes }) => {
+    return ({ node }) => {
       const dom = document.createElement("div");
       const audio = document.createElement("audio");
       const src = node.attrs.src;
