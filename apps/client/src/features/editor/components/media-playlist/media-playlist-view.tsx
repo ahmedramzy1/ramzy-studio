@@ -61,6 +61,16 @@ export default function MediaPlaylistView({
     setItems(next);
   };
 
+  const reorder = (sourceKey: string, targetKey: string) => {
+    const from = items.findIndex((item) => item.key === sourceKey);
+    const to = items.findIndex((item) => item.key === targetKey);
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...items];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setItems(next);
+  };
+
   const remove = (key: string) => {
     const index = items.findIndex((item) => item.key === key);
     const next = items.filter((item) => item.key !== key);
@@ -205,6 +215,7 @@ export default function MediaPlaylistView({
           editable={editable}
           onSelect={select}
           onMove={move}
+          onReorder={reorder}
           onRemove={remove}
           maxHeight={kind === "video" ? 330 : 360}
         />
