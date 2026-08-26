@@ -28,7 +28,7 @@ const findAudioNodeByPlaceholderId = (
 };
 
 const handleAudioUpload =
-  ({ validateFn, onUpload }: MediaUploadOptions): UploadFn =>
+  ({ validateFn, onUpload, enrichFn }: MediaUploadOptions): UploadFn =>
   async (file, editor, pos, pageId) => {
     const validated = validateFn?.(file);
     // @ts-ignore
@@ -67,17 +67,22 @@ const handleAudioUpload =
       };
     };
 
-    const replacePlaceholderWithAudio = (attachment: IAttachment): Command => {
+    const replacePlaceholderWithAudio = (
+      attachment: IAttachment,
+      enrichment: Record<string, any>,
+    ): Command => {
       return ({ tr }) => {
         const { pos: currentPos = null } =
           findAudioNodeByPlaceholderId(tr.doc, placeholderId) || {};
 
-        if (currentPos === null || !attachment) return;
+        if (currentPos === null || !attachment) return false;
 
         tr.setNodeMarkup(currentPos, undefined, {
           src: `/api/files/${attachment.id}/${attachment.fileName}`,
           attachmentId: attachment.id,
           size: attachment.fileSize,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          ...enrichment,
         });
 
         return true;
@@ -111,20 +116,27 @@ const handleAudioUpload =
     };
 
     try {
-      const attachment: IAttachment = await onUpload(file, pageId);
+      const [attachment, enrichment] = await Promise.all([
+        onUpload(file, pageId) as Promise<IAttachment>,
+        enrichFn
+          ? enrichFn(file, pageId).catch(() => ({}))
+          : Promise.resolve<Record<string, any>>({}),
+      ]);
 
       clearTimeout(insertPlaceholderTimeout);
 
       if (placeholderInserted) {
         setTimeout(() => {
-          editor.commands.command(replacePlaceholderWithAudio(attachment));
+          editor.commands.command(
+            replacePlaceholderWithAudio(attachment, enrichment),
+          );
           disposePreviewFile();
         }, 100);
       } else {
         editor
           .chain()
           .command(insertPlaceholder())
-          .command(replacePlaceholderWithAudio(attachment))
+          .command(replacePlaceholderWithAudio(attachment, enrichment))
           .run();
         disposePreviewFile();
       }
