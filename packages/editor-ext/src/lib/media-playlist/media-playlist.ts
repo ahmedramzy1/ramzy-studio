@@ -10,7 +10,18 @@ export interface MediaPlaylistItem {
   title: string;
   subtitle?: string;
   artwork?: string;
+  artworkAttachmentId?: string;
+  artworkSource?: "embedded" | "custom";
   poster?: string;
+  posterAttachmentId?: string;
+  artist?: string;
+  album?: string;
+  description?: string;
+  durationSeconds?: number;
+  dateAdded?: string;
+  width?: number;
+  height?: number;
+  aspectRatio?: number;
 }
 
 export interface MediaPlaylistAttributes {
@@ -18,6 +29,7 @@ export interface MediaPlaylistAttributes {
   title?: string;
   items: MediaPlaylistItem[];
   activeKey?: string;
+  autoplay?: boolean;
   loop?: boolean;
 }
 
@@ -92,6 +104,13 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
           "data-active-key": attributes.activeKey || "",
         }),
       },
+      autoplay: {
+        default: false,
+        parseHTML: (element) => element.getAttribute("data-autoplay") === "true",
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          "data-autoplay": attributes.autoplay ? "true" : "false",
+        }),
+      },
       loop: {
         default: false,
         parseHTML: (element) => element.getAttribute("data-loop") === "true",
@@ -129,6 +148,7 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
               title: attrs.title || "",
               items: attrs.items || [],
               activeKey: attrs.activeKey || "",
+              autoplay: attrs.autoplay || false,
               loop: attrs.loop || false,
             },
           }),
