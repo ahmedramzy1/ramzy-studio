@@ -94,14 +94,6 @@ function matchesQuery(item: SlashMenuItemType, query: string): boolean {
   );
 }
 
-/**
- * Returns whether the current editor host is a portfolio authoring surface.
- *
- * Standalone Studio uses the /portfolio/edit/* route. Embedded hosts such as
- * ahmedramzy.com cannot share that pathname, so they opt in explicitly through
- * ?portfolio=1. Keeping the signal host-controlled avoids assuming every
- * /admin route is a portfolio editor.
- */
 export function isPortfolioAuthoringMode(): boolean {
   if (typeof window === "undefined") return false;
 
