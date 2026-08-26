@@ -3,6 +3,7 @@ import { uploadFile } from "@/features/page/services/page-service.ts";
 import { extractAudioMetadata } from "./audio-metadata";
 import {
   captureVideoThumbnailFile,
+  captureVideoThumbnailUrl,
   fileStem,
   inspectVideoFile,
   readMediaDuration,
@@ -67,6 +68,24 @@ export async function enrichVideoFile(
   };
 }
 
+export async function enrichExistingVideo(
+  src: string,
+  pageId: string,
+  baseName = "video",
+): Promise<MediaEnrichment> {
+  const thumbnailFile = await captureVideoThumbnailUrl(src, baseName);
+  if (!thumbnailFile) return {};
+  try {
+    const uploadedPoster = await uploadFile(thumbnailFile, pageId);
+    return {
+      poster: attachmentSrc(uploadedPoster),
+      posterAttachmentId: uploadedPoster.id,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export async function enrichAudioFile(
   file: File,
   pageId: string,
@@ -98,6 +117,24 @@ export async function enrichAudioFile(
     artworkSource: artwork ? "embedded" : undefined,
     durationSeconds,
   };
+}
+
+export async function enrichExistingAudio(
+  src: string,
+  pageId: string,
+  fileName = "audio",
+): Promise<MediaEnrichment> {
+  try {
+    const response = await fetch(src, { credentials: "include" });
+    if (!response.ok) return {};
+    const blob = await response.blob();
+    const file = new File([blob], fileName, {
+      type: blob.type || "audio/mpeg",
+    });
+    return await enrichAudioFile(file, pageId);
+  } catch {
+    return {};
+  }
 }
 
 export async function ingestVideoFile(
