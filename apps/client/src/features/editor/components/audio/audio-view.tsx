@@ -1,16 +1,29 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Group, Loader, Text } from "@mantine/core";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { getFileUrl } from "@/lib/config.ts";
 import { isInternalFileUrl } from "@docmost/editor-ext";
 import classes from "./audio-view.module.css";
 import { useTranslation } from "react-i18next";
 import RamzyAudioPlayer from "./ramzy-audio-player";
+import { ingestAudioFile } from "@/features/editor/components/media/media-ingest.ts";
+import { isAudioFile } from "@/features/editor/components/media/media-file-utils.ts";
 
 export default function AudioView(props: NodeViewProps) {
   const { t } = useTranslation();
-  const { editor, node } = props;
-  const { src, placeholder } = node.attrs;
+  const { editor, node, updateAttributes } = props;
+  const {
+    src,
+    placeholder,
+    title: storedTitle,
+    artist,
+    album,
+    description,
+    artwork,
+  } = node.attrs;
+  const [replacing, setReplacing] = useState(false);
+  const [dropActive, setDropActive] = useState(false);
+  const dragDepth = useRef(0);
 
   const safeSrc = useMemo(() => {
     if (!src || !isInternalFileUrl(src)) return null;
@@ -28,16 +41,96 @@ export default function AudioView(props: NodeViewProps) {
     return null;
   }, [placeholder, editor]);
 
-  const title = placeholder?.name || t("Audio");
+  const title = storedTitle || placeholder?.name || t("Audio");
+  const safeArtwork = artwork && isInternalFileUrl(artwork)
+    ? getFileUrl(artwork)
+    : undefined;
+
+  const replaceFromDrop = async (file: File) => {
+    if (!editor.isEditable || replacing || !isAudioFile(file)) return;
+    // @ts-ignore
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+
+    setReplacing(true);
+    try {
+      const item = await ingestAudioFile(file, pageId);
+      updateAttributes({
+        src: item.src,
+        attachmentId: item.attachmentId,
+        title: item.title,
+        artist: item.artist || "",
+        album: item.album || "",
+        description: item.description || "",
+        artwork: item.artwork || "",
+        artworkAttachmentId: item.artworkAttachmentId,
+        artworkSource: item.artworkSource || "",
+        durationSeconds: item.durationSeconds,
+        placeholder: null,
+      });
+    } finally {
+      setReplacing(false);
+      setDropActive(false);
+      dragDepth.current = 0;
+    }
+  };
 
   return (
-    <NodeViewWrapper data-drag-handle>
-      <div className={`${classes.audioWrapper} ${!safeSrc && placeholder ? classes.skeleton : ""}`}>
+    <NodeViewWrapper
+      data-drag-handle
+      onDragEnter={(event) => {
+        if (!editor.isEditable || !event.dataTransfer?.types.includes("Files")) return;
+        event.preventDefault();
+        dragDepth.current += 1;
+        setDropActive(true);
+      }}
+      onDragOver={(event) => {
+        if (!editor.isEditable || !event.dataTransfer?.types.includes("Files")) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={() => {
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDropActive(false);
+      }}
+      onDrop={(event) => {
+        if (!editor.isEditable || !event.dataTransfer?.files.length) return;
+        const file = Array.from(event.dataTransfer.files).find(isAudioFile);
+        if (!file) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void replaceFromDrop(file);
+      }}
+    >
+      <div
+        className={`${classes.audioWrapper} ${!safeSrc && placeholder ? classes.skeleton : ""}`}
+        style={{
+          outline: dropActive ? "2px solid #3B5BFF" : undefined,
+          outlineOffset: dropActive ? 4 : undefined,
+          borderRadius: dropActive ? 8 : undefined,
+        }}
+      >
         {safeSrc && (
-          <RamzyAudioPlayer
-            src={safeSrc}
-            title={title}
-          />
+          <Group pos="relative" w="100%">
+            <RamzyAudioPlayer
+              src={safeSrc}
+              title={title}
+              artist={artist || undefined}
+              description={description || album || undefined}
+              artwork={safeArtwork}
+            />
+            {replacing && (
+              <Group
+                pos="absolute"
+                inset={0}
+                justify="center"
+                style={{ background: "rgba(255,255,255,.76)", backdropFilter: "blur(2px)" }}
+              >
+                <Loader size={22} />
+                <Text size="sm">Replacing & processing…</Text>
+              </Group>
+            )}
+          </Group>
         )}
         {!safeSrc && previewSrc && (
           <Group pos="relative" w="100%">
