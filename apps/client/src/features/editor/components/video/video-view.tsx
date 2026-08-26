@@ -1,12 +1,15 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Group, Loader, Text } from "@mantine/core";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getFileUrl } from "@/lib/config.ts";
 import clsx from "clsx";
 import classes from "./video-view.module.css";
 import { useTranslation } from "react-i18next";
 import RamzyVideoPlayer from "./ramzy-video-player";
-import { ingestVideoFile } from "@/features/editor/components/media/media-ingest.ts";
+import {
+  enrichExistingVideo,
+  ingestVideoFile,
+} from "@/features/editor/components/media/media-ingest.ts";
 import { isVideoFile } from "@/features/editor/components/media/media-file-utils.ts";
 
 export default function VideoView(props: NodeViewProps) {
@@ -16,6 +19,7 @@ export default function VideoView(props: NodeViewProps) {
   const [replacing, setReplacing] = useState(false);
   const dragDepth = useRef(0);
   const [dropActive, setDropActive] = useState(false);
+  const backfillAttempted = useRef("");
 
   const alignClass = useMemo(() => {
     if (align === "left") return "alignLeft";
@@ -38,6 +42,24 @@ export default function VideoView(props: NodeViewProps) {
   const playerStyle = aspectRatio
     ? { aspectRatio: String(aspectRatio) }
     : undefined;
+
+  useEffect(() => {
+    if (!editor.isEditable || !src || poster || placeholder) return;
+    if (backfillAttempted.current === src) return;
+    // @ts-ignore
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+    backfillAttempted.current = src;
+
+    const fileName = decodeURIComponent(String(src).split("/").pop() || alt || "video");
+    void enrichExistingVideo(getFileUrl(src), pageId, fileName).then((enrichment) => {
+      if (!enrichment.poster || editor.isDestroyed) return;
+      updateAttributes({
+        poster: enrichment.poster,
+        posterAttachmentId: enrichment.posterAttachmentId,
+      });
+    });
+  }, [alt, editor, placeholder, poster, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isVideoFile(file)) return;
@@ -118,15 +140,21 @@ export default function VideoView(props: NodeViewProps) {
               style={playerStyle}
             />
             {replacing && (
-              <Group
-                pos="absolute"
-                inset={0}
-                justify="center"
-                style={{ background: "rgba(0,0,0,.36)", color: "white" }}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  background: "rgba(0,0,0,.36)",
+                  color: "white",
+                }}
               >
                 <Loader size={22} color="white" />
                 <Text size="sm" c="white">Replacing & processing…</Text>
-              </Group>
+              </div>
             )}
           </div>
         )}
