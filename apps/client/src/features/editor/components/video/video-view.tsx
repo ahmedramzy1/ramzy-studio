@@ -15,7 +15,7 @@ import { isVideoFile } from "@/features/editor/components/media/media-file-utils
 export default function VideoView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { editor, node, selected, updateAttributes } = props;
-  const { src, width, align, alt, aspectRatio, placeholder, poster } = node.attrs;
+  const { src, width, align, alt, placeholder, poster } = node.attrs;
   const [replacing, setReplacing] = useState(false);
   const dragDepth = useRef(0);
   const [dropActive, setDropActive] = useState(false);
@@ -24,24 +24,26 @@ export default function VideoView(props: NodeViewProps) {
   const alignClass = useMemo(() => {
     if (align === "left") return "alignLeft";
     if (align === "right") return "alignRight";
-    if (align === "center") return "alignCenter";
     return "alignCenter";
   }, [align]);
+
+  // Intrinsic video pixels are metadata, not authoring layout width. Older
+  // uploads wrote videoWidth into the node and the node view treated that
+  // number as CSS pixels, causing the tiny -> huge jump Ahmed caught in AURA.
+  // Only an explicit percentage produced by authoring resize controls owns
+  // display width; otherwise a video reserves its final 100% / 16:9 geometry
+  // from the first placeholder frame through the loaded V8 player.
+  const displayWidth =
+    typeof width === "string" && width.trim().endsWith("%")
+      ? width
+      : "100%";
 
   const previewSrc = useMemo(() => {
     editor.storage.shared.videoPreviews =
       editor.storage.shared.videoPreviews || {};
-
-    if (placeholder?.id) {
-      return editor.storage.shared.videoPreviews[placeholder.id];
-    }
-
+    if (placeholder?.id) return editor.storage.shared.videoPreviews[placeholder.id];
     return null;
   }, [placeholder, editor]);
-
-  const playerStyle = aspectRatio
-    ? { aspectRatio: String(aspectRatio) }
-    : undefined;
 
   useEffect(() => {
     if (!editor.isEditable || !src || poster || placeholder) return;
@@ -77,7 +79,9 @@ export default function VideoView(props: NodeViewProps) {
         poster: item.poster || "",
         posterAttachmentId: item.posterAttachmentId,
         durationSeconds: item.durationSeconds,
-        width: item.width,
+        // Keep intrinsic dimensions as metadata for future authoring controls,
+        // but VideoView never interprets numeric width as display pixels.
+        width: typeof width === "string" && width.endsWith("%") ? width : item.width,
         height: item.height,
         aspectRatio: item.aspectRatio,
         placeholder: null,
@@ -124,62 +128,62 @@ export default function VideoView(props: NodeViewProps) {
           alignClass,
         )}
         style={{
-          aspectRatio: !src && !aspectRatio ? "16 / 9" : undefined,
-          width,
+          position: "relative",
+          width: displayWidth,
+          maxWidth: "100%",
+          aspectRatio: "16 / 9",
+          minWidth: 0,
+          background: "#0F0F0F",
           outline: dropActive ? "2px solid #3B5BFF" : undefined,
           outlineOffset: dropActive ? 4 : undefined,
-          borderRadius: dropActive ? 8 : undefined,
+          borderRadius: 8,
         }}
       >
         {src && (
-          <div style={{ position: "relative" }}>
+          <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
             <RamzyVideoPlayer
               src={getFileUrl(src)}
               poster={poster ? getFileUrl(poster) : undefined}
               title={alt || t("Video")}
-              style={playerStyle}
+              style={{ width: "100%", height: "100%" }}
             />
             {replacing && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  background: "rgba(0,0,0,.36)",
-                  color: "white",
-                }}
-              >
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(0,0,0,.36)", color: "white" }}>
                 <Loader size={22} color="white" />
                 <Text size="sm" c="white">Replacing & processing…</Text>
               </div>
             )}
           </div>
         )}
+
         {!src && previewSrc && (
-          <Group pos="relative" w="100%">
+          <div style={{ position: "absolute", inset: 0 }}>
             <RamzyVideoPlayer
               src={previewSrc}
               title={placeholder?.name || t("Video")}
-              style={playerStyle}
+              style={{ width: "100%", height: "100%" }}
             />
-            <Loader size={20} pos="absolute" top={6} right={6} />
-          </Group>
+            <Loader size={20} pos="absolute" top={10} right={10} color="white" />
+          </div>
         )}
+
         {!src && !previewSrc && placeholder && (
-          <Group justify="center" wrap="nowrap" gap="xs" maw="100%" px="md">
-            <Loader size={20} style={{ flexShrink: 0 }} />
-            <Text component="span" size="sm" truncate="end">
+          <Group
+            pos="absolute"
+            inset={0}
+            justify="center"
+            wrap="nowrap"
+            gap="xs"
+            px="md"
+            c="white"
+          >
+            <Loader size={20} color="white" style={{ flexShrink: 0 }} />
+            <Text component="span" size="sm" c="white" truncate="end">
               {placeholder?.name
                 ? t("Uploading {{name}}", { name: placeholder.name })
                 : t("Uploading file")}
             </Text>
           </Group>
-        )}
-        {!src && !previewSrc && !placeholder && (
-          <div style={{ width: "100%", aspectRatio: "16 / 9" }} />
         )}
       </div>
     </NodeViewWrapper>
