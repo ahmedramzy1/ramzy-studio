@@ -10,15 +10,14 @@ import {
 } from "@/features/editor/components/media/media-authoring-actions.ts";
 
 /**
- * Portfolio Mode deliberately exposes only commands that help author a strong
- * product-design case study. Docmost keeps its full command set everywhere
- * else; this is a curated authoring profile, not a fork of the editor engine.
+ * Portfolio Mode follows the v8 Ramzy Writer ownership model:
+ * - block/text styles (Heading 1/2/3...) belong to the text-style selector
+ * - slash commands insert content/structural blocks
+ *
+ * Docmost keeps its complete command set outside Portfolio Mode.
  */
 export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Text",
-  "Heading 1",
-  "Heading 2",
-  "Heading 3",
   "Bullet list",
   "Numbered list",
   "Quote",
@@ -78,32 +77,14 @@ function mediaPickerCommand(kind: "video" | "audio"): SlashMenuItemType["command
   };
 }
 
+/**
+ * Keep the v8 first-class playlist commands visible before the generic media
+ * commands instead of burying them after Docmost's basic command list.
+ */
 const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   {
-    title: "Video",
-    description: "Upload one video or select multiple videos to build a Ramzy playlist.",
-    searchTerms: ["video", "mp4", "media", "upload", "playlist", "player"],
-    icon: IconVideo,
-    command: mediaPickerCommand("video"),
-  },
-  {
-    title: "Audio",
-    description: "Upload one audio file or select multiple tracks to build a Ramzy playlist.",
-    searchTerms: ["audio", "music", "sound", "mp3", "upload", "playlist", "wave"],
-    icon: IconMusic,
-    command: mediaPickerCommand("audio"),
-  },
-  {
-    title: "Tabs",
-    description: "Organize content into switchable tabs.",
-    searchTerms: ["tabs", "tab", "sections", "switch"],
-    icon: IconAppWindow,
-    command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).insertTabs().run(),
-  },
-  {
     title: "Video Playlist",
-    description: "Add an empty Ramzy Player playlist and upload its queue inside the block.",
+    description: "One Ramzy Player with a sortable video library.",
     searchTerms: ["video", "playlist", "queue", "media", "player"],
     icon: IconVideo,
     command: ({ editor, range }) =>
@@ -116,7 +97,7 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   },
   {
     title: "Audio Playlist",
-    description: "Add an empty Ramzy Wave playlist and upload its tracks inside the block.",
+    description: "One Ramzy Wave with a sortable audio library.",
     searchTerms: ["audio", "playlist", "music", "tracks", "queue", "wave"],
     icon: IconMusic,
     command: ({ editor, range }) =>
@@ -126,6 +107,28 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
         .deleteRange(range)
         .setMediaPlaylist({ kind: "audio", items: [] })
         .run(),
+  },
+  {
+    title: "Video",
+    description: "Upload one video; selecting multiple videos creates one playlist.",
+    searchTerms: ["video", "mp4", "media", "upload", "player"],
+    icon: IconVideo,
+    command: mediaPickerCommand("video"),
+  },
+  {
+    title: "Audio",
+    description: "Upload one track; selecting multiple tracks creates one playlist.",
+    searchTerms: ["audio", "music", "sound", "mp3", "upload", "wave"],
+    icon: IconMusic,
+    command: mediaPickerCommand("audio"),
+  },
+  {
+    title: "Tabs",
+    description: "Organize content into switchable tabs.",
+    searchTerms: ["tabs", "tab", "sections", "switch"],
+    icon: IconAppWindow,
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).insertTabs().run(),
   },
 ];
 
@@ -173,8 +176,8 @@ export function getPortfolioSuggestionItems({
 
   if (portfolioOnly.length) {
     portfolioGroups.basic = [
-      ...(portfolioGroups.basic ?? []),
       ...portfolioOnly,
+      ...(portfolioGroups.basic ?? []),
     ];
   }
 
