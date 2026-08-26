@@ -46,8 +46,8 @@ jobs:
       - name: Lint runtime build configuration
         run: pnpm --filter ./apps/client exec eslint vite.portfolio-runtime.config.ts
 
-      - name: Test portfolio draft save contract
-        run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts
+      - name: Test portfolio draft save + capability showcase contracts
+        run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts src/features/editor/portfolio/capability-showcase.test.ts
 
       - name: Test media authoring contract
         run: pnpm --filter ./apps/client exec vitest run src/features/editor/components/media/media-authoring-actions.test.ts src/features/editor/components/media/media-session.test.ts
