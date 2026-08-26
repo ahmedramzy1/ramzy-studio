@@ -4,14 +4,15 @@ import type {
   SlashMenuGroupedItemsType,
   SlashMenuItemType,
 } from "@/features/editor/components/slash-menu/types";
+import {
+  insertMediaFiles,
+  mediaAccept,
+} from "@/features/editor/components/media/media-authoring-actions.ts";
 
 /**
  * Portfolio Mode deliberately exposes only commands that help author a strong
  * product-design case study. Docmost keeps its full command set everywhere
  * else; this is a curated authoring profile, not a fork of the editor engine.
- *
- * Portfolio-specific nodes (gallery, comparison, metrics, device frames, etc.)
- * will be added to this list as they are implemented.
  */
 export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Text",
@@ -25,8 +26,6 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Callout",
   "Toggle block",
   "Image",
-  "Video",
-  "Audio",
   "Embed PDF",
   "Table",
   "2 Columns",
@@ -48,7 +47,52 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Footnote",
 ]);
 
+function mediaPickerCommand(kind: "video" | "audio"): SlashMenuItemType["command"] {
+  return ({ editor, range }) => {
+    editor.chain().focus().deleteRange(range).run();
+
+    // Portfolio editor storage owns the canonical linked page id.
+    // @ts-ignore
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = mediaAccept(kind);
+    input.multiple = true;
+    input.style.display = "none";
+    document.body.appendChild(input);
+
+    input.onchange = async () => {
+      try {
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+        const pos = editor.state.selection.from;
+        await insertMediaFiles({ editor, files, pageId, kind, pos });
+      } finally {
+        input.remove();
+      }
+    };
+
+    input.click();
+  };
+}
+
 const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
+  {
+    title: "Video",
+    description: "Upload one video or select multiple videos to build a Ramzy playlist.",
+    searchTerms: ["video", "mp4", "media", "upload", "playlist", "player"],
+    icon: IconVideo,
+    command: mediaPickerCommand("video"),
+  },
+  {
+    title: "Audio",
+    description: "Upload one audio file or select multiple tracks to build a Ramzy playlist.",
+    searchTerms: ["audio", "music", "sound", "mp3", "upload", "playlist", "wave"],
+    icon: IconMusic,
+    command: mediaPickerCommand("audio"),
+  },
   {
     title: "Tabs",
     description: "Organize content into switchable tabs.",
@@ -59,7 +103,7 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   },
   {
     title: "Video Playlist",
-    description: "Add a Ramzy Player with a selectable video queue.",
+    description: "Add an empty Ramzy Player playlist and upload its queue inside the block.",
     searchTerms: ["video", "playlist", "queue", "media", "player"],
     icon: IconVideo,
     command: ({ editor, range }) =>
@@ -72,7 +116,7 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   },
   {
     title: "Audio Playlist",
-    description: "Add Ramzy Wave with a selectable audio queue.",
+    description: "Add an empty Ramzy Wave playlist and upload its tracks inside the block.",
     searchTerms: ["audio", "playlist", "music", "tracks", "queue", "wave"],
     icon: IconMusic,
     command: ({ editor, range }) =>
@@ -97,8 +141,10 @@ function matchesQuery(item: SlashMenuItemType, query: string): boolean {
 export function isPortfolioAuthoringMode(): boolean {
   if (typeof window === "undefined") return false;
 
+  const path = window.location.pathname;
   return (
-    window.location.pathname.startsWith("/portfolio/edit/") ||
+    path.startsWith("/portfolio/edit/") ||
+    path.startsWith("/admin/projects/") ||
     new URLSearchParams(window.location.search).get("portfolio") === "1"
   );
 }
