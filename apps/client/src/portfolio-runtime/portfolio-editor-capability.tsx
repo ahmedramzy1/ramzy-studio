@@ -6,7 +6,7 @@ import {
 } from "@/portfolio-runtime/portfolio-editor-with-history";
 import { seedCapabilityShowcaseIfEmpty } from "@/features/editor/portfolio/capability-mega";
 
-const CANONICAL_AURA_PAGE_ID = "01a026e2-c3cc-721e-a4f1-5dae7db809bc";
+const CANONICAL_AURA_PAGE_ID = "01a026e2-221d-7944-bf2c-9341efe88db9";
 
 type SeedFeedback =
   | { kind: "building" | "saved" | "error"; message: string }
