@@ -1,5 +1,5 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import clsx from "clsx";
 import {
   ActionIcon,
@@ -34,6 +34,7 @@ export default function EmbedView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { node, selected, updateAttributes, editor } = props;
   const { src, provider, width: nodeWidth, height: nodeHeight } = node.attrs;
+  const [loadRequested, setLoadRequested] = useState(false);
 
   const embedUrl = useMemo(() => {
     if (src) {
@@ -83,7 +84,7 @@ export default function EmbedView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper data-drag-handle className={classes.embedNodeView}>
-      {embedUrl ? (
+      {embedUrl && loadRequested ? (
         <div className={classes.embedContainer}>
           <ResizableWrapper
             initialWidth={nodeWidth || 800}
@@ -122,13 +123,17 @@ export default function EmbedView(props: NodeViewProps) {
             <Card
               radius="md"
               p="xs"
+              withBorder
+              className={clsx(selected ? "ProseMirror-selectednode" : "")}
+              onClick={() => {
+                if (embedUrl) setLoadRequested(true);
+              }}
               style={{
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
+                cursor: embedUrl ? "pointer" : undefined,
               }}
-              withBorder
-              className={clsx(selected ? "ProseMirror-selectednode" : "")}
             >
               <div style={{ display: "flex", alignItems: "center" }}>
                 <ActionIcon
@@ -140,7 +145,7 @@ export default function EmbedView(props: NodeViewProps) {
                 </ActionIcon>
 
                 <Text component="span" size="lg" c="dimmed">
-                  {t("Embed {{provider}}", {
+                  {t(embedUrl ? "Load {{provider}} embed" : "Embed {{provider}}", {
                     provider: getEmbedProviderById(provider)?.name,
                   })}
                 </Text>
