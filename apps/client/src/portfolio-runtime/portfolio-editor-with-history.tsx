@@ -229,7 +229,7 @@ export function RamzyStudioPortfolioEditor(
 
   return (
     <div style={{ position: "relative" }}>
-      {props.editable !== false && (
+      {props.editable !== false && !props.disableHistory && (
         <div
           style={{
             display: "flex",

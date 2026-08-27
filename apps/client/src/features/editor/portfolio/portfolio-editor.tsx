@@ -39,6 +39,10 @@ export interface RamzyStudioPortfolioEditorProps {
    */
   onEditorChange?: (editor: Editor | null) => void;
   onUpdate?: (content: JSONContent, editor: Editor) => void;
+  /** Merge a bounded editor slice back into the canonical saved document. */
+  transformContentForSave?: (content: JSONContent) => JSONContent;
+  /** Hide full-document history restore when only one bounded slice is mounted. */
+  disableHistory?: boolean;
   onSessionExpired?: () => void;
   onSaveStateChange?: (
     state: RamzyPortfolioSaveState,
@@ -63,6 +67,7 @@ export function RamzyStudioPortfolioEditor({
   onCreate,
   onEditorChange,
   onUpdate,
+  transformContentForSave,
   onSessionExpired,
   onSaveStateChange,
 }: RamzyStudioPortfolioEditorProps) {
@@ -85,6 +90,7 @@ export function RamzyStudioPortfolioEditor({
           onCreate={onCreate}
           onEditorChange={onEditorChange}
           onUpdate={onUpdate}
+          transformContentForSave={transformContentForSave}
           onSessionExpired={onSessionExpired}
           onSaveStateChange={onSaveStateChange}
         />
@@ -101,6 +107,7 @@ function DirectPortfolioEditor({
   onCreate,
   onEditorChange,
   onUpdate,
+  transformContentForSave,
   onSessionExpired,
   onSaveStateChange,
 }: RamzyStudioPortfolioEditorProps) {
@@ -256,18 +263,24 @@ function DirectPortfolioEditor({
       editorRef.current = nextEditor;
       setEditor(nextEditor);
       onCreate?.(nextEditor);
-      onUpdate?.(nextEditor.getJSON(), nextEditor);
+      const content = transformContentForSave
+        ? transformContentForSave(nextEditor.getJSON())
+        : nextEditor.getJSON();
+      onUpdate?.(content, nextEditor);
     },
-    [onCreate, onUpdate],
+    [onCreate, onUpdate, transformContentForSave],
   );
 
   const handleUpdate = useCallback(
     (nextEditor: Editor) => {
-      const content = nextEditor.getJSON();
+      const editorContent = nextEditor.getJSON();
+      const content = transformContentForSave
+        ? transformContentForSave(editorContent)
+        : editorContent;
       onUpdate?.(content, nextEditor);
       scheduleSave(content);
     },
-    [onUpdate, scheduleSave],
+    [onUpdate, scheduleSave, transformContentForSave],
   );
 
   return (
