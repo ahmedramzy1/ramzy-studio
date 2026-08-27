@@ -35,6 +35,7 @@ export default function MediaPlaylistView({
   const [playNonce, setPlayNonce] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
+  const [activated, setActivated] = useState(false);
 
   useEffect(() => {
     if (items.some((item) => item.key === localActiveKey)) return;
@@ -161,6 +162,29 @@ export default function MediaPlaylistView({
   const isPlayingRequest = !!active && playKey === active.key;
   const hasPrevious = activeIndex > 0 || (!!node.attrs.loop && items.length > 1);
   const hasNext = activeIndex < items.length - 1 || (!!node.attrs.loop && items.length > 1);
+
+  if (!activated && items.length > 0) {
+    return (
+      <NodeViewWrapper data-drag-handle data-ramzy-playlist-kind={kind}>
+        <button
+          type="button"
+          onClick={() => setActivated(true)}
+          style={{
+            width: "100%",
+            minHeight: kind === "video" ? 180 : 112,
+            border: "1px solid var(--mantine-color-default-border)",
+            borderRadius: 8,
+            background: "var(--mantine-color-default-hover)",
+            color: "inherit",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          Load {kind === "video" ? "video" : "audio"} playlist · {items.length} item{items.length === 1 ? "" : "s"}
+        </button>
+      </NodeViewWrapper>
+    );
+  }
 
   return (
     <NodeViewWrapper
