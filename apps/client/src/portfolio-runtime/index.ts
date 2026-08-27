@@ -4,7 +4,7 @@ import "@/features/editor/styles/portfolio-embedded.css";
 export {
   RamzyStudioPortfolioEditor,
   type RamzyStudioPortfolioEditorProps,
-} from "@/portfolio-runtime/portfolio-editor-with-history";
+} from "@/portfolio-runtime/portfolio-editor-capability";
 
 export {
   type RamzyPortfolioSaveState,
