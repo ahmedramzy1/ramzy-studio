@@ -1,5 +1,4 @@
 import type { Editor, JSONContent } from "@tiptap/core";
-import { uploadFile } from "@/features/page/services/page-service.ts";
 import {
   buildCapabilityShowcaseDocument,
   prepareCapabilityShowcaseAssets,
@@ -25,9 +24,23 @@ export function isCapabilityDocumentEmpty(document: JSONContent | null | undefin
   });
 }
 
-function attachmentSrc(attachment: { id: string; fileName?: string }, fallbackName: string) {
-  const fileName = attachment.fileName || fallbackName;
-  return `/api/files/${attachment.id}/${encodeURIComponent(fileName)}`;
+function arrayBufferDataUrl(buffer: ArrayBuffer, mimeType: string) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return `data:${mimeType};base64,${btoa(binary)}`;
+}
+
+function blobDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not encode generated AURA media."));
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function svgFile(name: string, label: string, square = false) {
@@ -41,7 +54,7 @@ function svgFile(name: string, label: string, square = false) {
   <text x="${square ? 300 : 100}" y="${square ? 315 : 690}" text-anchor="${square ? "middle" : "start"}" font-family="Arial, sans-serif" font-size="${square ? 54 : 72}" font-weight="700" fill="#F5F8FC">${label}</text>
   ${square ? "" : '<text x="100" y="755" font-family="Arial, sans-serif" font-size="30" fill="#A8C4FF">Ramzy Studio capability media</text>'}
 </svg>`;
-  return new File([svg], name, { type: "image/svg+xml" });
+  return { name, src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` };
 }
 
 function makeWaveFile(name: string, frequency: number, durationSeconds = 1) {
@@ -76,10 +89,14 @@ function makeWaveFile(name: string, frequency: number, durationSeconds = 1) {
     view.setInt16(44 + i * 2, Math.round(sample * 32767), true);
   }
 
-  return new File([buffer], name, { type: "audio/wav" });
+  return { name, src: arrayBufferDataUrl(buffer, "audio/wav") };
 }
 
-async function makeVideoFile(name: string, label: string, seconds = 0.7): Promise<File> {
+async function makeVideoFile(
+  name: string,
+  label: string,
+  seconds = 0.7,
+): Promise<{ name: string; src: string }> {
   if (typeof document === "undefined" || typeof MediaRecorder === "undefined") {
     throw new Error("This browser cannot generate the AURA capability video fixture.");
   }
@@ -132,7 +149,8 @@ async function makeVideoFile(name: string, label: string, seconds = 0.7): Promis
   await stopped;
   stream.getTracks().forEach((track) => track.stop());
 
-  return new File([new Blob(chunks, { type: "video/webm" })], name, { type: "video/webm" });
+  const blob = new Blob(chunks, { type: "video/webm" });
+  return { name, src: await blobDataUrl(blob) };
 }
 
 async function ensureSelfContainedMedia(editor: Editor, pageId: string) {
@@ -142,12 +160,8 @@ async function ensureSelfContainedMedia(editor: Editor, pageId: string) {
   const alreadyHasAudio = nodes.some((node) => node.type === "audio" || (node.type === "mediaPlaylist" && node.attrs?.kind === "audio"));
   if (alreadyHasVideo && alreadyHasAudio) return existing;
 
-  const [posterAttachment, artworkAttachment] = await Promise.all([
-    uploadFile(svgFile("aura-video-poster.svg", "AURA FIELD FILM"), pageId),
-    uploadFile(svgFile("aura-audio-artwork.svg", "AURA", true), pageId),
-  ]);
-  const poster = attachmentSrc(posterAttachment, "aura-video-poster.svg");
-  const artwork = attachmentSrc(artworkAttachment, "aura-audio-artwork.svg");
+  const poster = svgFile("aura-video-poster.svg", "AURA FIELD FILM").src;
+  const artwork = svgFile("aura-audio-artwork.svg", "AURA", true).src;
 
   const mediaNodes: JSONContent[] = [];
 
@@ -156,16 +170,15 @@ async function ensureSelfContainedMedia(editor: Editor, pageId: string) {
       makeVideoFile("aura-field-film-01.webm", "AURA / 01"),
       makeVideoFile("aura-field-film-02.webm", "AURA / 02"),
     ]);
-    const uploaded = await Promise.all(videoFiles.map((file) => uploadFile(file, pageId)));
-    uploaded.forEach((attachment, index) => {
+    videoFiles.forEach((file, index) => {
       mediaNodes.push({
         type: "video",
         attrs: {
-          src: attachmentSrc(attachment, videoFiles[index].name),
-          attachmentId: attachment.id,
+          src: file.src,
+          attachmentId: null,
           alt: `AURA field film ${String(index + 1).padStart(2, "0")}`,
           poster,
-          posterAttachmentId: posterAttachment.id,
+          posterAttachmentId: null,
           durationSeconds: 0.7,
           width: "100%",
           height: 180,
@@ -181,19 +194,18 @@ async function ensureSelfContainedMedia(editor: Editor, pageId: string) {
       makeWaveFile("aura-field-recording-01.wav", 440),
       makeWaveFile("aura-field-recording-02.wav", 554),
     ];
-    const uploaded = await Promise.all(audioFiles.map((file) => uploadFile(file, pageId)));
-    uploaded.forEach((attachment, index) => {
+    audioFiles.forEach((file, index) => {
       mediaNodes.push({
         type: "audio",
         attrs: {
-          src: attachmentSrc(attachment, audioFiles[index].name),
-          attachmentId: attachment.id,
+          src: file.src,
+          attachmentId: null,
           title: `AURA field recording ${String(index + 1).padStart(2, "0")}`,
           artist: "AURA Labs",
           album: "Spatial observation",
           description: "Generated canonical capability-test recording",
           artwork,
-          artworkAttachmentId: artworkAttachment.id,
+          artworkAttachmentId: null,
           artworkSource: "custom",
           durationSeconds: 1,
           placeholder: null,
