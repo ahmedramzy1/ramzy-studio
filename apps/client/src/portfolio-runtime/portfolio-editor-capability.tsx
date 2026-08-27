@@ -1,9 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { JSONContent } from "@tiptap/core";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Editor, JSONContent } from "@tiptap/core";
 import {
   RamzyStudioPortfolioEditor as PortfolioEditorWithHistory,
   type RamzyStudioPortfolioEditorProps,
 } from "@/portfolio-runtime/portfolio-editor-with-history";
+import {
+  isCapabilityDocumentEmpty,
+  seedCapabilityShowcaseIfEmpty,
+} from "@/features/editor/portfolio/capability-mega";
 import { savePortfolioDraft } from "@/features/editor/portfolio/portfolio-draft-save";
 
 const CANONICAL_AURA_PAGE_ID = "01a026e2-221d-7944-bf2c-9341efe88db9";
@@ -11,8 +15,12 @@ const EMPTY_DOCUMENT: JSONContent = {
   type: "doc",
   content: [{ type: "paragraph" }],
 };
-const BROKEN_AURA_SIGNATURE =
+const GENERATED_AURA_SIGNATURE =
   "AURA is a concept for calm spatial intelligence";
+
+type BuildFeedback =
+  | { kind: "building" | "saved" | "error"; message: string }
+  | null;
 
 function documentContainsText(
   content: JSONContent | null | undefined,
@@ -35,58 +43,108 @@ function documentContainsText(
 }
 
 /**
- * Emergency recovery guard for the first all-at-once AURA capability seed.
+ * Canonical AURA builder with frozen-draft recovery.
  *
- * That generated document can lock the browser while TipTap mounts it. Detect
- * only that exact generated draft, keep it away from the editor's first render,
- * and replace it through Studio's normal authenticated draft-save lifecycle.
- * Empty and user-authored AURA drafts are never cleared.
- *
- * Capability construction is deliberately no longer automatic on page load.
- * The replacement builder must be explicit, cancellable, and validated in
- * bounded sections before it is enabled again.
+ * The original all-at-once generated draft is intercepted before TipTap mounts
+ * it. BUILD starts from a safe blank document, clears that exact generated
+ * draft through Studio's authenticated save path, then reconstructs AURA using
+ * the bounded idle-time builder. User-authored documents are never cleared.
  */
 export function RamzyStudioPortfolioEditor(
   props: RamzyStudioPortfolioEditorProps,
 ) {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [feedback, setFeedback] = useState<BuildFeedback>(null);
+  const attemptedEditorsRef = useRef(new WeakSet<Editor>());
+
   const shouldRecover = useMemo(
     () =>
       props.editable !== false &&
       props.pageId === CANONICAL_AURA_PAGE_ID &&
-      documentContainsText(props.initialContent, BROKEN_AURA_SIGNATURE),
+      documentContainsText(props.initialContent, GENERATED_AURA_SIGNATURE),
     [props.editable, props.initialContent, props.pageId],
   );
-  const recoveryStartedRef = useRef(false);
-  const [recoveryState, setRecoveryState] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
-  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+
+  const effectiveInitialContent = shouldRecover
+    ? EMPTY_DOCUMENT
+    : props.initialContent;
+
+  const handleEditorChange = useCallback(
+    (nextEditor: Editor | null) => {
+      setEditor(nextEditor);
+      props.onEditorChange?.(nextEditor);
+    },
+    [props.onEditorChange],
+  );
 
   useEffect(() => {
-    if (!shouldRecover || recoveryStartedRef.current) return;
+    if (
+      props.editable === false ||
+      props.pageId !== CANONICAL_AURA_PAGE_ID ||
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      attemptedEditorsRef.current.has(editor)
+    ) {
+      return;
+    }
 
-    recoveryStartedRef.current = true;
-    setRecoveryState("saving");
+    if (
+      !shouldRecover &&
+      !isCapabilityDocumentEmpty(editor.getJSON())
+    ) {
+      return;
+    }
 
-    void savePortfolioDraft({
-      apiUrl: props.session.apiUrl,
-      accessToken: props.session.accessToken,
-      pageId: props.pageId,
-      content: EMPTY_DOCUMENT,
-    })
-      .then(() => {
-        setRecoveryState("saved");
-      })
-      .catch((error) => {
-        console.error("AURA draft recovery failed", error);
-        setRecoveryError(
-          error instanceof Error
-            ? error.message
-            : "Could not recover the AURA Studio draft.",
-        );
-        setRecoveryState("error");
-      });
+    attemptedEditorsRef.current.add(editor);
+    let cancelled = false;
+    setFeedback({
+      kind: "building",
+      message: shouldRecover
+        ? "Recovering and rebuilding AURA safely…"
+        : "Building AURA in responsive sections…",
+    });
+
+    const rebuild = async () => {
+      if (shouldRecover) {
+        await savePortfolioDraft({
+          apiUrl: props.session.apiUrl,
+          accessToken: props.session.accessToken,
+          pageId: props.pageId,
+          content: EMPTY_DOCUMENT,
+        });
+      }
+
+      if (cancelled || editor.isDestroyed) return;
+      const result = await seedCapabilityShowcaseIfEmpty(editor, props.pageId);
+
+      if (cancelled || editor.isDestroyed) return;
+      setFeedback(
+        result.seeded
+          ? {
+              kind: "saved",
+              message: "AURA capability document built. Autosaving…",
+            }
+          : null,
+      );
+    };
+
+    void rebuild().catch((error) => {
+      if (cancelled) return;
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not build the canonical AURA capability document.";
+      console.error("AURA capability build failed", error);
+      setFeedback({ kind: "error", message });
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
+    editor,
+    props.editable,
     props.pageId,
     props.session.accessToken,
     props.session.apiUrl,
@@ -95,33 +153,30 @@ export function RamzyStudioPortfolioEditor(
 
   return (
     <div>
-      {shouldRecover && recoveryState !== "idle" && (
+      {feedback && (
         <div
-          role={recoveryState === "error" ? "alert" : "status"}
+          role={feedback.kind === "error" ? "alert" : "status"}
           style={{
             marginBottom: 8,
             fontSize: 12,
             lineHeight: 1.5,
             color:
-              recoveryState === "error"
+              feedback.kind === "error"
                 ? "var(--mantine-color-red-6)"
-                : recoveryState === "saved"
+                : feedback.kind === "saved"
                   ? "var(--mantine-color-green-7)"
                   : "inherit",
-            opacity: recoveryState === "saving" ? 0.7 : 0.9,
+            opacity: feedback.kind === "building" ? 0.7 : 0.9,
           }}
         >
-          {recoveryState === "saving"
-            ? "Recovering the AURA draft…"
-            : recoveryState === "saved"
-              ? "AURA draft recovered. Automatic capability building is paused."
-              : recoveryError || "Could not recover the AURA Studio draft."}
+          {feedback.message}
         </div>
       )}
 
       <PortfolioEditorWithHistory
         {...props}
-        initialContent={shouldRecover ? EMPTY_DOCUMENT : props.initialContent}
+        initialContent={effectiveInitialContent}
+        onEditorChange={handleEditorChange}
       />
     </div>
   );
