@@ -18,6 +18,7 @@ export default function PdfView(props: NodeViewProps) {
   const { editor, node, getPos, selected, updateAttributes } = props;
   const { src, placeholder, width: nodeWidth, height: nodeHeight } = node.attrs;
   const [hasError, setHasError] = useState(false);
+  const [activated, setActivated] = useState(false);
 
   const safeSrc = useMemo(() => {
     if (!src || !isInternalFileUrl(src)) return null;
@@ -85,6 +86,29 @@ export default function PdfView(props: NodeViewProps) {
             </Group>
           )}
         </div>
+      </NodeViewWrapper>
+    );
+  }
+
+  if (!activated) {
+    return (
+      <NodeViewWrapper data-drag-handle>
+        <button
+          type="button"
+          onClick={() => setActivated(true)}
+          style={{
+            width: "100%",
+            minHeight: 120,
+            border: "1px solid var(--mantine-color-default-border)",
+            borderRadius: 8,
+            background: "var(--mantine-color-default-hover)",
+            color: "inherit",
+            cursor: "pointer",
+            font: "inherit",
+          }}
+        >
+          Load PDF preview
+        </button>
       </NodeViewWrapper>
     );
   }
