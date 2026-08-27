@@ -647,7 +647,32 @@ export async function rebuildCapabilityShowcase(
   // safely without destroying the existing AURA document.
   editor.schema.nodeFromJSON(document as any);
 
-  editor.commands.setContent(document, { emitUpdate: true });
+  const nodes = document.content || [];
+  const chunkSize = 10;
+  const firstChunk = nodes.slice(0, chunkSize);
+
+  editor.commands.setContent(
+    { type: "doc", content: firstChunk },
+    { emitUpdate: false },
+  );
+
+  for (let index = chunkSize; index < nodes.length; index += chunkSize) {
+    await new Promise<void>((resolve) => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        window.requestIdleCallback(() => resolve(), { timeout: 120 });
+      } else if (typeof requestAnimationFrame !== "undefined") {
+        requestAnimationFrame(() => resolve());
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+
+    const chunk = nodes.slice(index, index + chunkSize);
+    editor.commands.insertContentAt(editor.state.doc.content.size, chunk, {
+      updateSelection: false,
+    });
+  }
+
   editor.commands.focus("start");
-  return document;
+  return editor.getJSON();
 }
