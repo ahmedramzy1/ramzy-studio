@@ -31,7 +31,9 @@ export default function AudioView(props: NodeViewProps) {
   const backfillAttempted = useRef("");
 
   const safeSrc = useMemo(() => {
-    if (!src || !isInternalFileUrl(src)) return null;
+    if (!src) return null;
+    if (String(src).startsWith("data:audio/")) return src;
+    if (!isInternalFileUrl(src)) return null;
     return getFileUrl(src);
   }, [src]);
 
@@ -47,12 +49,22 @@ export default function AudioView(props: NodeViewProps) {
   }, [placeholder, editor]);
 
   const title = storedTitle || placeholder?.name || t("Audio");
-  const safeArtwork = artwork && isInternalFileUrl(artwork)
-    ? getFileUrl(artwork)
+  const safeArtwork = artwork
+    ? String(artwork).startsWith("data:image/")
+      ? artwork
+      : isInternalFileUrl(artwork)
+        ? getFileUrl(artwork)
+        : undefined
     : undefined;
 
   useEffect(() => {
-    if (!activated || !editor.isEditable || !safeSrc || placeholder) return;
+    if (
+      !activated ||
+      !editor.isEditable ||
+      !safeSrc ||
+      String(src).startsWith("data:") ||
+      placeholder
+    ) return;
     if (artwork || artist || album) return;
     if (backfillAttempted.current === src) return;
     // @ts-ignore
