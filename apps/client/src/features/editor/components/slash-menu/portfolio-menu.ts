@@ -1,7 +1,6 @@
 import {
   IconAppWindow,
   IconMusic,
-  IconSparkles,
   IconVideo,
 } from "@tabler/icons-react";
 import getSuggestionItems from "@/features/editor/components/slash-menu/menu-items";
@@ -13,7 +12,6 @@ import {
   insertMediaFiles,
   mediaAccept,
 } from "@/features/editor/components/media/media-authoring-actions.ts";
-import { rebuildCapabilityShowcase } from "@/features/editor/portfolio/capability-showcase.ts";
 
 /**
  * Portfolio Mode follows the v8 Ramzy Writer ownership model:
@@ -91,36 +89,12 @@ function mediaPickerCommand(kind: "video" | "audio"): SlashMenuItemType["command
 }
 
 /**
- * Keep the v8 first-class playlist commands visible before the generic media
- * commands instead of burying them after Docmost's basic command list.
+ * Keep the v8 first-class media/playlist commands visible before the generic
+ * Docmost command list. The canonical AURA capability document is now seeded
+ * automatically from the hydrated Studio editor; there is deliberately no
+ * manual rebuild command in the authoring surface.
  */
 const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
-  {
-    title: "Rebuild capability showcase",
-    description:
-      "Replace this draft with the canonical full Ramzy Studio capability case study while reusing its real media attachments.",
-    searchTerms: ["rebuild", "showcase", "aura", "capabilities", "all blocks"],
-    icon: IconSparkles,
-    command: ({ editor }) => {
-      // @ts-ignore Portfolio editor storage owns the canonical linked page id.
-      const pageId = editor.storage?.pageId as string | undefined;
-      if (!pageId || typeof window === "undefined") return;
-
-      const approved = window.confirm(
-        "Rebuild this draft as the full Ramzy Studio capability showcase? The current document remains untouched unless asset preparation and schema validation both succeed. Existing video/audio attachments will be reused.",
-      );
-      if (!approved) return;
-
-      void rebuildCapabilityShowcase(editor, pageId).catch((error) => {
-        console.error("Capability showcase rebuild failed", error);
-        window.alert(
-          error instanceof Error
-            ? `Capability showcase rebuild failed: ${error.message}`
-            : "Capability showcase rebuild failed. The existing draft was not replaced.",
-        );
-      });
-    },
-  },
   {
     title: "Video Playlist",
     description: "One Ramzy Player with a sortable video library.",
