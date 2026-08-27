@@ -4,17 +4,18 @@ import "@/features/editor/styles/portfolio-embedded.css";
 export {
   RamzyStudioPortfolioEditor,
   type RamzyStudioPortfolioEditorProps,
-} from "@/portfolio-runtime/portfolio-editor-capability";
+} from "@/portfolio-runtime/portfolio-editor-with-history";
 
 export {
   type RamzyPortfolioSaveState,
 } from "@/features/editor/portfolio/portfolio-editor";
 
 export {
-  seedCapabilityShowcaseIfEmpty,
-  isCapabilityDocumentEmpty,
-  type CapabilitySeedResult,
-} from "@/features/editor/portfolio/capability-mega";
+  buildPortfolioTestProjectDocument,
+  PORTFOLIO_TEST_PROJECT_KEYS,
+  PORTFOLIO_TEST_PROJECT_COVERAGE,
+  type PortfolioTestProjectKey,
+} from "@/features/editor/portfolio/test-projects";
 
 export {
   RamzyStudioPortfolioRenderer,
