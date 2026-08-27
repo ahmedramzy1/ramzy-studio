@@ -5,6 +5,7 @@ import {
   buildCapabilityShowcaseDocument,
   type CapabilityShowcaseAssets,
 } from "./capability-showcase";
+import { isCapabilityDocumentEmpty } from "./capability-mega";
 
 const internal = (id: string, name: string) => `/api/files/${id}/${name}`;
 
@@ -56,6 +57,35 @@ function nodeTypes(node: JSONContent, result = new Set<string>()) {
 }
 
 describe("AURA capability showcase", () => {
+  it("seeds only documents that are truly empty after hydration", () => {
+    expect(isCapabilityDocumentEmpty(null)).toBe(true);
+    expect(isCapabilityDocumentEmpty({ type: "doc", content: [] })).toBe(true);
+    expect(
+      isCapabilityDocumentEmpty({
+        type: "doc",
+        content: [{ type: "paragraph" }, { type: "paragraph", content: [] }],
+      }),
+    ).toBe(true);
+
+    expect(
+      isCapabilityDocumentEmpty({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Existing Studio content" }],
+          },
+        ],
+      }),
+    ).toBe(false);
+    expect(
+      isCapabilityDocumentEmpty({
+        type: "doc",
+        content: [{ type: "image", attrs: { src: internal("x", "x.png") } }],
+      }),
+    ).toBe(false);
+  });
+
   it("is valid against the exact current Studio document schema", () => {
     const document = buildCapabilityShowcaseDocument(existing, assets);
     const schema = getSchema(mainExtensions);
