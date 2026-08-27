@@ -19,6 +19,7 @@ export default function VideoView(props: NodeViewProps) {
   const [replacing, setReplacing] = useState(false);
   const dragDepth = useRef(0);
   const [dropActive, setDropActive] = useState(false);
+  const [activated, setActivated] = useState(false);
   const backfillAttempted = useRef("");
 
   const alignClass = useMemo(() => {
@@ -46,7 +47,7 @@ export default function VideoView(props: NodeViewProps) {
   }, [placeholder, editor]);
 
   useEffect(() => {
-    if (!editor.isEditable || !src || poster || placeholder) return;
+    if (!activated || !editor.isEditable || !src || poster || placeholder) return;
     if (backfillAttempted.current === src) return;
     // @ts-ignore
     const pageId = editor.storage?.pageId as string | undefined;
@@ -61,7 +62,7 @@ export default function VideoView(props: NodeViewProps) {
         posterAttachmentId: enrichment.posterAttachmentId,
       });
     });
-  }, [alt, editor, placeholder, poster, src, updateAttributes]);
+  }, [activated, alt, editor, placeholder, poster, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isVideoFile(file)) return;
@@ -139,7 +140,16 @@ export default function VideoView(props: NodeViewProps) {
           borderRadius: 8,
         }}
       >
-        {src && (
+        {src && !activated && (
+          <button
+            type="button"
+            onClick={() => setActivated(true)}
+            style={{ position: "absolute", inset: 0, width: "100%", border: 0, background: poster ? `url(${getFileUrl(poster)}) center / cover` : "#0F0F0F", color: "white", cursor: "pointer", font: "inherit" }}
+          >
+            Load video
+          </button>
+        )}
+        {src && activated && (
           <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
             <RamzyVideoPlayer
               src={getFileUrl(src)}
