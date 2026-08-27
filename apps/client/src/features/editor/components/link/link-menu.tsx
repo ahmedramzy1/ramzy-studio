@@ -1,5 +1,5 @@
 import { FC, useCallback, useEffect, useRef } from "react";
-import { BubbleMenu } from "@tiptap/react/menus";
+import { StableBubbleMenu as BubbleMenu } from "../common/stable-bubble-menu.tsx";
 import type { Editor } from "@tiptap/react";
 import { useAtom } from "jotai";
 import { isTextSelected } from "@docmost/editor-ext";

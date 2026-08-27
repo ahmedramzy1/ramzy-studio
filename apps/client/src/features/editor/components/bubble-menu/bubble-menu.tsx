@@ -1,4 +1,4 @@
-import { BubbleMenu, BubbleMenuProps } from "@tiptap/react/menus";
+import { StableBubbleMenu as BubbleMenu, type BubbleMenuProps } from "../common/stable-bubble-menu.tsx";
 import { isNodeSelection, useEditorState } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import { FC, useEffect, useRef, useState } from "react";
