@@ -26,6 +26,7 @@ export default function AudioView(props: NodeViewProps) {
   } = node.attrs;
   const [replacing, setReplacing] = useState(false);
   const [dropActive, setDropActive] = useState(false);
+  const [activated, setActivated] = useState(false);
   const dragDepth = useRef(0);
   const backfillAttempted = useRef("");
 
@@ -51,7 +52,7 @@ export default function AudioView(props: NodeViewProps) {
     : undefined;
 
   useEffect(() => {
-    if (!editor.isEditable || !safeSrc || placeholder) return;
+    if (!activated || !editor.isEditable || !safeSrc || placeholder) return;
     if (artwork || artist || album) return;
     if (backfillAttempted.current === src) return;
     // @ts-ignore
@@ -75,7 +76,7 @@ export default function AudioView(props: NodeViewProps) {
       if (enrichment.durationSeconds) next.durationSeconds = enrichment.durationSeconds;
       if (Object.keys(next).length) updateAttributes(next);
     });
-  }, [album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
+  }, [activated, album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isAudioFile(file)) return;
@@ -141,7 +142,16 @@ export default function AudioView(props: NodeViewProps) {
           borderRadius: dropActive ? 8 : undefined,
         }}
       >
-        {safeSrc && (
+        {safeSrc && !activated && (
+          <button
+            type="button"
+            onClick={() => setActivated(true)}
+            style={{ width: "100%", minHeight: 96, border: "1px solid var(--mantine-color-default-border)", borderRadius: 8, background: "var(--mantine-color-default-hover)", color: "inherit", cursor: "pointer", font: "inherit" }}
+          >
+            Load audio · {title}
+          </button>
+        )}
+        {safeSrc && activated && (
           <div style={{ position: "relative", width: "100%" }}>
             <RamzyAudioPlayer
               src={safeSrc}
