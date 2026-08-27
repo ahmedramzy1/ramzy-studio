@@ -1,6 +1,9 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { uploadFile } from "@/features/page/services/page-service.ts";
-import { rebuildCapabilityShowcase } from "./capability-showcase";
+import {
+  buildCapabilityShowcaseDocument,
+  prepareCapabilityShowcaseAssets,
+} from "./capability-showcase";
 
 export type CapabilitySeedResult = {
   seeded: boolean;
@@ -137,7 +140,7 @@ async function ensureSelfContainedMedia(editor: Editor, pageId: string) {
   const nodes = existing.content || [];
   const alreadyHasVideo = nodes.some((node) => node.type === "video" || (node.type === "mediaPlaylist" && node.attrs?.kind === "video"));
   const alreadyHasAudio = nodes.some((node) => node.type === "audio" || (node.type === "mediaPlaylist" && node.attrs?.kind === "audio"));
-  if (alreadyHasVideo && alreadyHasAudio) return;
+  if (alreadyHasVideo && alreadyHasAudio) return existing;
 
   const [posterAttachment, artworkAttachment] = await Promise.all([
     uploadFile(svgFile("aura-video-poster.svg", "AURA FIELD FILM"), pageId),
@@ -199,12 +202,10 @@ async function ensureSelfContainedMedia(editor: Editor, pageId: string) {
     });
   }
 
-  if (mediaNodes.length > 0) {
-    editor.commands.setContent(
-      { type: "doc", content: [...(existing.content || []), ...mediaNodes] },
-      { emitUpdate: false },
-    );
-  }
+  return {
+    type: "doc",
+    content: [...(existing.content || []), ...mediaNodes],
+  };
 }
 
 /**
@@ -222,7 +223,15 @@ export async function seedCapabilityShowcaseIfEmpty(
     return { seeded: false, document: hydrated };
   }
 
-  await ensureSelfContainedMedia(editor, pageId);
-  const document = await rebuildCapabilityShowcase(editor, pageId);
+  // Build off-screen. Mutating the live collaborative editor while assets upload
+  // causes every construction chunk to fan out through React, TipTap, Yjs and
+  // autosave at once.
+  const source = await ensureSelfContainedMedia(editor, pageId);
+  const assets = await prepareCapabilityShowcaseAssets(source, pageId);
+  const document = buildCapabilityShowcaseDocument(source, assets);
+
+  // Validate against the exact hydrated editor schema without mounting the
+  // generated nodes or firing editor update transactions.
+  editor.schema.nodeFromJSON(document as any);
   return { seeded: true, document };
 }
