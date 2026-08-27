@@ -1,6 +1,8 @@
 import "@/features/editor/styles/index.css";
 import "@/features/editor/styles/portfolio-embedded.css";
 
+// Runtime mounting is side-effect free: datasets and test drafts are built only
+// by the website's explicit authenticated Admin action.
 export {
   RamzyStudioPortfolioEditor,
   type RamzyStudioPortfolioEditorProps,
