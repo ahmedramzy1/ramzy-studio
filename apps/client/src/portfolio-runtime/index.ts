@@ -11,6 +11,12 @@ export {
 } from "@/features/editor/portfolio/portfolio-editor";
 
 export {
+  seedCapabilityShowcaseIfEmpty,
+  isCapabilityDocumentEmpty,
+  type CapabilitySeedResult,
+} from "@/features/editor/portfolio/capability-mega";
+
+export {
   RamzyStudioPortfolioRenderer,
   type RamzyStudioPortfolioRendererProps,
 } from "@/features/editor/portfolio/portfolio-renderer";
