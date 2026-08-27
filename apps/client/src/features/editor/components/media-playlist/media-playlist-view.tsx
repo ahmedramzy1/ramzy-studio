@@ -5,6 +5,11 @@ import type { MediaPlaylistItem } from "@docmost/editor-ext";
 import { getFileUrl } from "@/lib/config.ts";
 import RamzyAudioPlayer from "@/features/editor/components/audio/ramzy-audio-player.tsx";
 import RamzyVideoPlayer from "@/features/editor/components/video/ramzy-video-player.tsx";
+import RamzyExternalVideoPlayer from "@/features/editor/components/video/ramzy-external-video-player.tsx";
+import {
+  detectExternalVideoProvider,
+  externalVideoEmbedUrl,
+} from "@/features/editor/components/video/external-video.ts";
 import RamzyPlaylist from "./ramzy-playlist";
 import { ingestMediaBatch } from "@/features/editor/components/media/media-ingest.ts";
 import {
@@ -13,6 +18,11 @@ import {
 } from "@/features/editor/components/media/media-authoring-actions.ts";
 
 const BODY = '"DM Sans", system-ui, sans-serif';
+
+function mediaUrl(value?: string) {
+  if (!value) return undefined;
+  return value.startsWith("data:") ? value : getFileUrl(value);
+}
 
 export default function MediaPlaylistView({
   editor,
@@ -150,15 +160,31 @@ export default function MediaPlaylistView({
       (kind === "audio" ? item.artist || item.album : undefined),
     artwork:
       item.artwork || item.poster
-        ? getFileUrl(item.artwork || item.poster || "")
+        ? mediaUrl(item.artwork || item.poster)
         : undefined,
     durationSeconds: item.durationSeconds,
     dateAdded: item.dateAdded,
-    sourceLabel: kind === "video" ? "Uploaded video" : "Uploaded audio",
+    sourceLabel:
+      kind === "video"
+        ? item.source === "youtube"
+          ? "YouTube"
+          : item.source === "vimeo"
+            ? "Vimeo"
+            : "Uploaded video"
+        : "Uploaded audio",
   }));
 
-  const activeArtwork = active?.artwork ? getFileUrl(active.artwork) : undefined;
-  const activePoster = active?.poster ? getFileUrl(active.poster) : undefined;
+  const activeArtwork = mediaUrl(active?.artwork);
+  const activePoster = mediaUrl(active?.poster);
+  const activeExternalUrl = active?.externalUrl || "";
+  const activeProvider =
+    active?.source === "youtube" || active?.source === "vimeo"
+      ? active.source
+      : detectExternalVideoProvider(activeExternalUrl);
+  const activeEmbed = activeProvider
+    ? externalVideoEmbedUrl(activeProvider, activeExternalUrl)
+    : null;
+  const activeMediaSrc = mediaUrl(active?.src);
   const isPlayingRequest = !!active && playKey === active.key;
   const hasPrevious = activeIndex > 0 || (!!node.attrs.loop && items.length > 1);
   const hasNext = activeIndex < items.length - 1 || (!!node.attrs.loop && items.length > 1);
@@ -237,27 +263,42 @@ export default function MediaPlaylistView({
 
         {active ? (
           kind === "video" ? (
-            <RamzyVideoPlayer
-              key={active.key}
-              src={getFileUrl(active.src)}
-              poster={activePoster}
-              title={active.title || "Video"}
-              autoPlay={isPlayingRequest}
-              playRequestToken={playNonce}
-              loop={false}
-              onEnded={() => playNext(false)}
-              onPrevious={playPrevious}
-              onNext={() => playNext(true)}
-              hasPrevious={hasPrevious}
-              hasNext={hasNext}
-              playlistTitle={node.attrs.title || "Video playlist"}
-              playlistTrackCount={items.length}
-              playlistIndex={activeIndex}
-            />
+            activeEmbed && activeProvider ? (
+              <RamzyExternalVideoPlayer
+                embedUrl={activeEmbed}
+                provider={activeProvider}
+                title={active.title || "Video"}
+                playRequestToken={playNonce}
+                onEnded={() => playNext(false)}
+                onPrevious={playPrevious}
+                onNext={() => playNext(true)}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                playlistTitle={node.attrs.title || "Video playlist"}
+                playlistTrackCount={items.length}
+                playlistIndex={activeIndex}
+              />
+            ) : activeMediaSrc ? (
+              <RamzyVideoPlayer
+                src={activeMediaSrc}
+                poster={activePoster}
+                title={active.title || "Video"}
+                autoPlay={isPlayingRequest}
+                playRequestToken={playNonce}
+                loop={false}
+                onEnded={() => playNext(false)}
+                onPrevious={playPrevious}
+                onNext={() => playNext(true)}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                playlistTitle={node.attrs.title || "Video playlist"}
+                playlistTrackCount={items.length}
+                playlistIndex={activeIndex}
+              />
+            ) : null
           ) : (
             <RamzyAudioPlayer
-              key={active.key}
-              src={getFileUrl(active.src)}
+              src={activeMediaSrc || ""}
               title={active.title || "Audio"}
               artist={active.artist}
               description={active.description || active.album}
