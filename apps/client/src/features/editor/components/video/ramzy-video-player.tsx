@@ -2,7 +2,7 @@
 // Canonical Ahmed Ramzy video player ported from ahmedramzy.com v8.0.0.
 // Source release: 2beb19718c9192d75cbd6929d9762fb64909253b.
 
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FONT, R, SIGNAL, type DsMode } from "../media/v8-media-tokens";
 import RamzyVolumeControl from "../media/ramzy-volume-control";
@@ -112,6 +112,9 @@ export default function RamzyVideoPlayer({
   const anchorRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [playerHost] = useState<HTMLDivElement | null>(() =>
+    typeof document === "undefined" ? null : document.createElement("div"),
+  );
   const sessionId = `ramzy-video-${useId().replace(/:/g, "")}`;
   const shortcutRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
   const shortcutEnabledRef = useRef(true);
@@ -148,6 +151,41 @@ export default function RamzyVideoPlayer({
   const progress = duration > 0 ? clamp(currentTime / duration) : 0;
   const bufferProgress = duration > 0 ? clamp(buffered / duration) : 0;
   const fullscreen = pseudoFullscreen || nativeFullscreen;
+
+  // Keep the portal target stable for the lifetime of the player. Moving this
+  // host between the inline anchor and document.body preserves the same
+  // HTMLVideoElement, including playback, currentTime and buffered data.
+  // Changing the portal target itself would remount the video and show its
+  // poster again whenever the follow-player opens or closes.
+  useLayoutEffect(() => {
+    if (!playerHost) return;
+    const floating = floatingMounted || pseudoFullscreen;
+    const parent = floating ? document.body : anchorRef.current;
+    if (!parent) return;
+
+    if (floating) {
+      playerHost.style.display = "contents";
+      playerHost.style.position = "";
+      playerHost.style.inset = "";
+      playerHost.style.width = "";
+      playerHost.style.height = "";
+    } else {
+      playerHost.style.display = "block";
+      playerHost.style.position = "absolute";
+      playerHost.style.inset = "0";
+      playerHost.style.width = "100%";
+      playerHost.style.height = "100%";
+    }
+
+    if (playerHost.parentNode !== parent) parent.appendChild(playerHost);
+  }, [floatingMounted, playerHost, pseudoFullscreen]);
+
+  useEffect(
+    () => () => {
+      playerHost?.remove();
+    },
+    [playerHost],
+  );
 
   useEffect(() => {
     const video = videoRef.current;
@@ -218,11 +256,8 @@ export default function RamzyVideoPlayer({
     };
     const left = () => {
       setNativePiP(false);
-      if (!video.paused) video.pause();
-      setPlaying(false);
       if (!inlineVisible) {
-        setFloatingDismissed(true);
-        setFloatingFallback(false);
+        setFloatingDismissed(false);
       }
     };
     video.addEventListener("enterpictureinpicture", entered as EventListener);
@@ -683,9 +718,7 @@ export default function RamzyVideoPlayer({
 
   return (
     <div ref={anchorRef} className={className} data-ramzy-video-anchor="true" style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", ...style }}>
-      {(floatingMounted || pseudoFullscreen) && typeof document !== "undefined"
-        ? createPortal(player, document.body)
-        : player}
+      {playerHost ? createPortal(player, playerHost) : player}
     </div>
   );
 }
