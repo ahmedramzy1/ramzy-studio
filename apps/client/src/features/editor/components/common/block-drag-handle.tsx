@@ -9,6 +9,7 @@ export function BlockDragHandle({ label = "Drag block" }: { label?: string }) {
   return (
     <div
       data-drag-handle
+      data-ramzy-block-drag-handle
       contentEditable={false}
       role="button"
       tabIndex={-1}

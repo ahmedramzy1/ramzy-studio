@@ -346,7 +346,7 @@ export function DragHandlePlugin(
 
       function onDragHandleDrag(e: DragEvent) {
         hideDragHandle();
-        let scrollY = window.scrollY;
+        const scrollY = window.scrollY;
         if (e.clientY < options.scrollThreshold) {
           window.scrollTo({ top: scrollY - 30, behavior: "smooth" });
         } else if (window.innerHeight - e.clientY < options.scrollThreshold) {
@@ -410,6 +410,12 @@ export function DragHandlePlugin(
             node.matches(excludedTagList) ||
             notDragging
           ) {
+            hideDragHandle();
+            return;
+          }
+
+          const nodeView = node.closest(".react-renderer") ?? node;
+          if (nodeView.querySelector("[data-ramzy-block-drag-handle]")) {
             hideDragHandle();
             return;
           }

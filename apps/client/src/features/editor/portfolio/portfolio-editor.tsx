@@ -30,6 +30,11 @@ import SearchAndReplaceDialog from "@/features/editor/components/search-and-repl
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
+import {
+  clearPortfolioGridDropIndicator,
+  handlePortfolioGridDrop,
+  updatePortfolioGridDropIndicator,
+} from "./portfolio-grid-drop";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
@@ -260,6 +265,21 @@ function DirectPortfolioEditor({
       attributes: {
         class: "ramzy-portfolio-editor",
       },
+      handleDOMEvents: {
+        dragover: (view, event) =>
+          updatePortfolioGridDropIndicator(view, event),
+        dragleave: (view, event) => {
+          const nextTarget = event.relatedTarget;
+          if (!(nextTarget instanceof Node) || !view.dom.contains(nextTarget)) {
+            clearPortfolioGridDropIndicator(view);
+          }
+          return false;
+        },
+        dragend: (view) => {
+          clearPortfolioGridDropIndicator(view);
+          return false;
+        },
+      },
       handlePaste: (_view, event) => {
         if (!editorRef.current) return false;
         return handlePaste(
@@ -290,7 +310,8 @@ function DirectPortfolioEditor({
         );
         return true;
       },
-      handleDrop: (_view, event, _slice, moved) => {
+      handleDrop: (view, event, _slice, moved) => {
+        if (handlePortfolioGridDrop(view, event)) return true;
         if (!editorRef.current) return false;
         return handleFileDrop(editorRef.current, event, moved, pageId);
       },

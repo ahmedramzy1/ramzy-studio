@@ -86,6 +86,24 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   padding: 0;
 }
 
+/* Horizontal drag targets use the same durable columns nodes as the slash
+ * command. The inset edge makes the pending left/right column placement clear
+ * without shifting the document while the pointer moves. */
+.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-left,
+.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-right {
+  position: relative;
+  border-radius: 8px;
+  background: color-mix(in srgb, #70cff8 9%, transparent);
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-left {
+  box-shadow: inset 4px 0 #70cff8;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-right {
+  box-shadow: inset -4px 0 #70cff8;
+}
+
 .ProseMirror.ramzy-portfolio-editor
   div[data-type="columns"][data-gap="compact"] {
   --ramzy-columns-gap: 1rem;
