@@ -318,22 +318,24 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             +
           </span>
         </button>
-        <button
-          type="button"
-          className="ramzy-final-insert-prompt"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={insertAtEnd}
-          style={{
-            border: 0,
-            background: "transparent",
-            color: "var(--mantine-color-dimmed)",
-            padding: "5px 0",
-            cursor: "text",
-            opacity: 0,
-          }}
-        >
-          Type / to insert content
-        </button>
+        {!isDocumentEmpty ? (
+          <button
+            type="button"
+            className="ramzy-final-insert-prompt"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={insertAtEnd}
+            style={{
+              border: 0,
+              background: "transparent",
+              color: "var(--mantine-color-dimmed)",
+              padding: "5px 0",
+              cursor: "text",
+              opacity: 0,
+            }}
+          >
+            Type / to insert content
+          </button>
+        ) : null}
       </div>
 
       {openMenu ? (
