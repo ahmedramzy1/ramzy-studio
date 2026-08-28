@@ -269,6 +269,27 @@ function DirectPortfolioEditor({
           session.user.id,
         );
       },
+      handleKeyDown: (view, event) => {
+        if (event.key !== "Backspace") return false;
+
+        const { selection, doc } = view.state;
+        if (!selection.empty || selection.$from.depth !== 1) return false;
+
+        const paragraph = selection.$from.parent;
+        if (paragraph.type.name !== "paragraph" || paragraph.content.size > 0) {
+          return false;
+        }
+
+        if (doc.childCount === 1) return false;
+
+        const position = selection.$from.before(1);
+        view.dispatch(
+          view.state.tr
+            .delete(position, position + paragraph.nodeSize)
+            .scrollIntoView(),
+        );
+        return true;
+      },
       handleDrop: (_view, event, _slice, moved) => {
         if (!editorRef.current) return false;
         return handleFileDrop(editorRef.current, event, moved, pageId);
