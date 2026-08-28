@@ -1,5 +1,6 @@
 import type { MediaPlaylistItem } from "@docmost/editor-ext";
 import { uploadFile } from "@/features/page/services/page-service.ts";
+import api from "@/lib/api-client";
 import { extractAudioMetadata } from "./audio-metadata";
 import {
   captureVideoThumbnailFile,
@@ -34,6 +35,35 @@ export function createMediaKey(prefix = "media") {
     return crypto.randomUUID();
   }
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export async function generateVideoCaptions(
+  attachmentId: string,
+  pageId: string,
+  language?: string,
+) {
+  const response = await api.post<{
+    vtt: string;
+    language: string;
+    label: string;
+  }>("/files/captions", {
+    attachmentId,
+    language: language?.trim() || undefined,
+  });
+  const result = response.data;
+  const captionFile = new File(
+    [result.vtt],
+    `captions-${Date.now().toString(36)}.vtt`,
+    { type: "text/vtt" },
+  );
+  const attachment = await uploadFile(captionFile, pageId);
+  return {
+    key: createMediaKey("captions"),
+    src: attachmentSrc(attachment),
+    attachmentId: attachment.id,
+    label: result.label || "Auto captions",
+    language: result.language || language || "und",
+  };
 }
 
 export async function enrichVideoFile(

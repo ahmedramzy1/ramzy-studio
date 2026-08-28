@@ -1,6 +1,6 @@
 import { BubbleMenu as BaseBubbleMenu } from "@tiptap/react/menus";
 import { findParentNode, posToDOMRect, useEditorState } from "@tiptap/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Node as PMNode } from "@tiptap/pm/model";
 import { isEditorReady } from "@docmost/editor-ext";
 import {
@@ -24,6 +24,8 @@ import {
   IconLayoutAlignRight,
   IconDownload,
   IconArrowsHorizontal,
+  IconPhotoEdit,
+  IconSubtitles,
   IconTextCaption,
   IconTrash,
 } from "@tabler/icons-react";
@@ -31,15 +33,17 @@ import { useTranslation } from "react-i18next";
 import { getFileUrl } from "@/lib/config.ts";
 import { useAltTextControl } from "@/features/editor/components/common/use-alt-text-control.tsx";
 import classes from "../common/toolbar-menu.module.css";
-import {
-  normalizeVideoCaption,
-  VIDEO_WIDTH_PRESETS,
-} from "./video-layout";
+import { normalizeVideoCaption, VIDEO_WIDTH_PRESETS } from "./video-layout";
+import { uploadFile } from "@/features/page/services/page-service.ts";
+import { generateVideoCaptions } from "@/features/editor/components/media/media-ingest.ts";
 
 export function VideoMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
   const [captionEditing, setCaptionEditing] = useState(false);
   const [captionDraft, setCaptionDraft] = useState("");
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [captionsGenerating, setCaptionsGenerating] = useState(false);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   const editorState = useEditorState({
     editor,
@@ -59,6 +63,10 @@ export function VideoMenu({ editor }: EditorMenuProps) {
         alt: videoAttrs?.alt || "",
         caption: videoAttrs?.caption || "",
         width: videoAttrs?.width || "100%",
+        attachmentId: videoAttrs?.attachmentId || "",
+        captions: Array.isArray(videoAttrs?.captions)
+          ? videoAttrs.captions
+          : [],
       };
     },
   });
@@ -132,6 +140,60 @@ export function VideoMenu({ editor }: EditorMenuProps) {
   const handleDelete = useCallback(() => {
     editor.commands.deleteSelection();
   }, [editor]);
+
+  const uploadThumbnail = useCallback(
+    async (file?: File) => {
+      if (!file || !file.type.startsWith("image/") || thumbnailUploading)
+        return;
+      // @ts-ignore portfolio editor storage owns the canonical linked page id.
+      const pageId = editor.storage?.pageId as string | undefined;
+      if (!pageId) return;
+      setThumbnailUploading(true);
+      try {
+        const attachment = await uploadFile(file, pageId);
+        editor
+          .chain()
+          .focus(undefined, { scrollIntoView: false })
+          .updateAttributes("video", {
+            poster: `/api/files/${attachment.id}/${attachment.fileName}`,
+            posterAttachmentId: attachment.id,
+          })
+          .run();
+      } finally {
+        setThumbnailUploading(false);
+      }
+    },
+    [editor, thumbnailUploading],
+  );
+
+  const generateCaptions = useCallback(async () => {
+    if (!editorState?.attachmentId || captionsGenerating) return;
+    // @ts-ignore portfolio editor storage owns the canonical linked page id.
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+    const language = window.prompt(
+      "Caption language (leave blank to detect automatically)",
+      "",
+    );
+    if (language === null) return;
+    setCaptionsGenerating(true);
+    try {
+      const track = await generateVideoCaptions(
+        editorState.attachmentId,
+        pageId,
+        language,
+      );
+      editor
+        .chain()
+        .focus(undefined, { scrollIntoView: false })
+        .updateAttributes("video", {
+          captions: [...editorState.captions, track],
+        })
+        .run();
+    } finally {
+      setCaptionsGenerating(false);
+    }
+  }, [captionsGenerating, editor, editorState]);
 
   const setWidth = useCallback(
     (width: number) => {
@@ -209,7 +271,10 @@ export function VideoMenu({ editor }: EditorMenuProps) {
               if (event.key === "Escape") {
                 event.preventDefault();
                 setCaptionEditing(false);
-              } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+              } else if (
+                event.key === "Enter" &&
+                (event.metaKey || event.ctrlKey)
+              ) {
                 event.preventDefault();
                 saveCaption();
               }
@@ -221,7 +286,11 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             maxLength={240}
           />
           <Group justify="flex-end" gap="xs" mt="xs">
-            <Button size="compact-xs" variant="default" onClick={() => setCaptionEditing(false)}>
+            <Button
+              size="compact-xs"
+              variant="default"
+              onClick={() => setCaptionEditing(false)}
+            >
               {t("Cancel")}
             </Button>
             <Button size="compact-xs" onClick={saveCaption}>
@@ -231,106 +300,162 @@ export function VideoMenu({ editor }: EditorMenuProps) {
         </Paper>
       ) : (
         <div className={classes.toolbar}>
-        <Tooltip position="top" label={t("Align left")} withinPortal={false}>
-          <ActionIcon
-            onClick={alignLeft}
-            size="lg"
-            aria-label={t("Align left")}
-            variant="subtle"
-            className={clsx({ [classes.active]: editorState?.isAlignLeft })}
-          >
-            <IconLayoutAlignLeft size={18} />
-          </ActionIcon>
-        </Tooltip>
-
-        <Tooltip position="top" label={t("Align center")} withinPortal={false}>
-          <ActionIcon
-            onClick={alignCenter}
-            size="lg"
-            aria-label={t("Align center")}
-            variant="subtle"
-            className={clsx({ [classes.active]: editorState?.isAlignCenter })}
-          >
-            <IconLayoutAlignCenter size={18} />
-          </ActionIcon>
-        </Tooltip>
-
-        <Tooltip position="top" label={t("Align right")} withinPortal={false}>
-          <ActionIcon
-            onClick={alignRight}
-            size="lg"
-            aria-label={t("Align right")}
-            variant="subtle"
-            className={clsx({ [classes.active]: editorState?.isAlignRight })}
-          >
-            <IconLayoutAlignRight size={18} />
-          </ActionIcon>
-        </Tooltip>
-
-        <div className={classes.divider} />
-
-        <Menu withinPortal={false} position="bottom-start" shadow="md">
-          <Menu.Target>
+          <Tooltip position="top" label={t("Align left")} withinPortal={false}>
             <ActionIcon
+              onClick={alignLeft}
               size="lg"
-              aria-label={t("Video width")}
-              title={t("Video width")}
+              aria-label={t("Align left")}
+              variant="subtle"
+              className={clsx({ [classes.active]: editorState?.isAlignLeft })}
+            >
+              <IconLayoutAlignLeft size={18} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip
+            position="top"
+            label={t("Align center")}
+            withinPortal={false}
+          >
+            <ActionIcon
+              onClick={alignCenter}
+              size="lg"
+              aria-label={t("Align center")}
+              variant="subtle"
+              className={clsx({ [classes.active]: editorState?.isAlignCenter })}
+            >
+              <IconLayoutAlignCenter size={18} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip position="top" label={t("Align right")} withinPortal={false}>
+            <ActionIcon
+              onClick={alignRight}
+              size="lg"
+              aria-label={t("Align right")}
+              variant="subtle"
+              className={clsx({ [classes.active]: editorState?.isAlignRight })}
+            >
+              <IconLayoutAlignRight size={18} />
+            </ActionIcon>
+          </Tooltip>
+
+          <div className={classes.divider} />
+
+          <Menu withinPortal={false} position="bottom-start" shadow="md">
+            <Menu.Target>
+              <ActionIcon
+                size="lg"
+                aria-label={t("Video width")}
+                title={t("Video width")}
+                variant="subtle"
+              >
+                <IconArrowsHorizontal size={18} />
+              </ActionIcon>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {VIDEO_WIDTH_PRESETS.map((width) => (
+                <Menu.Item
+                  key={width}
+                  onClick={() => setWidth(width)}
+                  fw={String(editorState?.width) === `${width}%` ? 700 : 400}
+                >
+                  {width}%
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
+
+          <Tooltip position="top" label={t("Caption")} withinPortal={false}>
+            <ActionIcon
+              onClick={openCaption}
+              size="lg"
+              aria-label={t("Caption")}
               variant="subtle"
             >
-              <IconArrowsHorizontal size={18} />
+              <IconTextCaption size={18} />
             </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            {VIDEO_WIDTH_PRESETS.map((width) => (
-              <Menu.Item
-                key={width}
-                onClick={() => setWidth(width)}
-                fw={String(editorState?.width) === `${width}%` ? 700 : 400}
-              >
-                {width}%
-              </Menu.Item>
-            ))}
-          </Menu.Dropdown>
-        </Menu>
+          </Tooltip>
 
-        <Tooltip position="top" label={t("Caption")} withinPortal={false}>
-          <ActionIcon
-            onClick={openCaption}
-            size="lg"
-            aria-label={t("Caption")}
-            variant="subtle"
+          <Tooltip
+            position="top"
+            label={
+              thumbnailUploading
+                ? t("Uploading thumbnail…")
+                : t("Change thumbnail")
+            }
+            withinPortal={false}
           >
-            <IconTextCaption size={18} />
-          </ActionIcon>
-        </Tooltip>
+            <ActionIcon
+              onClick={() => thumbnailInputRef.current?.click()}
+              size="lg"
+              aria-label={t("Change thumbnail")}
+              variant="subtle"
+              loading={thumbnailUploading}
+            >
+              <IconPhotoEdit size={18} />
+            </ActionIcon>
+          </Tooltip>
 
-        <div className={classes.divider} />
-
-        {altTextButton}
-
-        <div className={classes.divider} />
-
-        <Tooltip position="top" label={t("Download")} withinPortal={false}>
-          <ActionIcon
-            onClick={handleDownload}
-            size="lg"
-            aria-label={t("Download")}
-            variant="subtle"
+          <Tooltip
+            position="top"
+            label={
+              captionsGenerating
+                ? t("Generating captions…")
+                : t("Generate captions")
+            }
+            withinPortal={false}
           >
-            <IconDownload size={18} />
-          </ActionIcon>
-        </Tooltip>
+            <ActionIcon
+              onClick={() => void generateCaptions()}
+              size="lg"
+              aria-label={t("Generate captions")}
+              variant="subtle"
+              loading={captionsGenerating}
+              disabled={!editorState?.attachmentId}
+            >
+              <IconSubtitles size={18} />
+            </ActionIcon>
+          </Tooltip>
 
-        <Tooltip position="top" label={t("Delete")} withinPortal={false}>
-          <ActionIcon
-            onClick={handleDelete}
-            size="lg"
-            aria-label={t("Delete")}
-            variant="subtle"
-          >
-            <IconTrash size={18} />
-          </ActionIcon>
-        </Tooltip>
+          <input
+            ref={thumbnailInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(event) => {
+              void uploadThumbnail(event.currentTarget.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
+
+          <div className={classes.divider} />
+
+          {altTextButton}
+
+          <div className={classes.divider} />
+
+          <Tooltip position="top" label={t("Download")} withinPortal={false}>
+            <ActionIcon
+              onClick={handleDownload}
+              size="lg"
+              aria-label={t("Download")}
+              variant="subtle"
+            >
+              <IconDownload size={18} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip position="top" label={t("Delete")} withinPortal={false}>
+            <ActionIcon
+              onClick={handleDelete}
+              size="lg"
+              aria-label={t("Delete")}
+              variant="subtle"
+            >
+              <IconTrash size={18} />
+            </ActionIcon>
+          </Tooltip>
         </div>
       )}
     </BaseBubbleMenu>

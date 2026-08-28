@@ -1,4 +1,12 @@
-import { Button, Group, Loader, Modal, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Button,
+  Group,
+  Loader,
+  Modal,
+  Stack,
+  Text,
+  TextInput,
+} from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -8,6 +16,8 @@ import RamzyAudioPlayer from "@/features/editor/components/audio/ramzy-audio-pla
 import RamzyVideoPlayer from "@/features/editor/components/video/ramzy-video-player.tsx";
 import RamzyPlaylist from "./ramzy-playlist";
 import { ingestMediaBatch } from "@/features/editor/components/media/media-ingest.ts";
+import { generateVideoCaptions } from "@/features/editor/components/media/media-ingest.ts";
+import { uploadFile } from "@/features/page/services/page-service.ts";
 import {
   filterMediaFiles,
   mediaAccept,
@@ -28,6 +38,7 @@ export default function MediaPlaylistView({
   selected,
 }: NodeViewProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const editable = editor.isEditable;
   const kind = node.attrs.kind === "video" ? "video" : "audio";
   const items = useMemo<MediaPlaylistItem[]>(
@@ -42,7 +53,11 @@ export default function MediaPlaylistView({
   const [playNonce, setPlayNonce] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
-  const [removeCandidateKey, setRemoveCandidateKey] = useState<string | null>(null);
+  const [removeCandidateKey, setRemoveCandidateKey] = useState<string | null>(
+    null,
+  );
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
+  const [captionsGenerating, setCaptionsGenerating] = useState(false);
 
   useEffect(() => {
     if (items.some((item) => item.key === localActiveKey)) return;
@@ -71,13 +86,23 @@ export default function MediaPlaylistView({
   };
 
   const playPrevious = () => {
-    const key = stepPlaylistKey(items, active?.key || localActiveKey, -1, !!node.attrs.loop);
+    const key = stepPlaylistKey(
+      items,
+      active?.key || localActiveKey,
+      -1,
+      !!node.attrs.loop,
+    );
     if (key) play(key);
   };
 
   const playNext = (force = false) => {
     if (!force && !node.attrs.autoplay) return;
-    const key = stepPlaylistKey(items, active?.key || localActiveKey, 1, !!node.attrs.loop);
+    const key = stepPlaylistKey(
+      items,
+      active?.key || localActiveKey,
+      1,
+      !!node.attrs.loop,
+    );
     if (key) play(key);
   };
 
@@ -100,6 +125,60 @@ export default function MediaPlaylistView({
     const result = removePlaylistItem(items, key, localActiveKey);
     setItems(result.items, result.nextActiveKey);
     setRemoveCandidateKey(null);
+  };
+
+  const replaceActiveThumbnail = async (file?: File) => {
+    if (!active || !file?.type.startsWith("image/") || thumbnailUploading)
+      return;
+    // @ts-ignore portfolio editor storage owns the canonical linked page id.
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+    setThumbnailUploading(true);
+    try {
+      const attachment = await uploadFile(file, pageId);
+      setItems(
+        items.map((item) =>
+          item.key === active.key
+            ? {
+                ...item,
+                poster: `/api/files/${attachment.id}/${attachment.fileName}`,
+                posterAttachmentId: attachment.id,
+              }
+            : item,
+        ),
+      );
+    } finally {
+      setThumbnailUploading(false);
+    }
+  };
+
+  const generateActiveCaptions = async () => {
+    if (!active?.attachmentId || captionsGenerating) return;
+    // @ts-ignore portfolio editor storage owns the canonical linked page id.
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId) return;
+    const language = window.prompt(
+      "Caption language (leave blank to detect automatically)",
+      "",
+    );
+    if (language === null) return;
+    setCaptionsGenerating(true);
+    try {
+      const track = await generateVideoCaptions(
+        active.attachmentId,
+        pageId,
+        language,
+      );
+      setItems(
+        items.map((item) =>
+          item.key === active.key
+            ? { ...item, captions: [...(item.captions || []), track] }
+            : item,
+        ),
+      );
+    } finally {
+      setCaptionsGenerating(false);
+    }
   };
 
   const uploadFiles = async (files: FileList | File[]) => {
@@ -137,11 +216,15 @@ export default function MediaPlaylistView({
     sourceLabel: kind === "video" ? "Uploaded video" : "Uploaded audio",
   }));
 
-  const activeArtwork = active?.artwork ? getFileUrl(active.artwork) : undefined;
+  const activeArtwork = active?.artwork
+    ? getFileUrl(active.artwork)
+    : undefined;
   const activePoster = active?.poster ? getFileUrl(active.poster) : undefined;
   const isPlayingRequest = !!active && playKey === active.key;
-  const hasPrevious = activeIndex > 0 || (!!node.attrs.loop && items.length > 1);
-  const hasNext = activeIndex < items.length - 1 || (!!node.attrs.loop && items.length > 1);
+  const hasPrevious =
+    activeIndex > 0 || (!!node.attrs.loop && items.length > 1);
+  const hasNext =
+    activeIndex < items.length - 1 || (!!node.attrs.loop && items.length > 1);
 
   return (
     <NodeViewWrapper
@@ -185,11 +268,19 @@ export default function MediaPlaylistView({
         {(editable || node.attrs.title) && (
           <TextInput
             value={node.attrs.title || ""}
-            onChange={(event) => updateAttributes({ title: event.currentTarget.value })}
+            onChange={(event) =>
+              updateAttributes({ title: event.currentTarget.value })
+            }
             readOnly={!editable}
-            placeholder={kind === "video" ? "Video playlist title…" : "Audio playlist title…"}
+            placeholder={
+              kind === "video"
+                ? "Video playlist title…"
+                : "Audio playlist title…"
+            }
             variant={editable ? "default" : "unstyled"}
-            styles={{ input: { fontFamily: BODY, fontSize: 16, fontWeight: 650 } }}
+            styles={{
+              input: { fontFamily: BODY, fontSize: 16, fontWeight: 650 },
+            }}
           />
         )}
 
@@ -199,6 +290,10 @@ export default function MediaPlaylistView({
               key={active.key}
               src={getFileUrl(active.src)}
               poster={activePoster}
+              captions={(active.captions || []).map((track) => ({
+                ...track,
+                src: getFileUrl(track.src),
+              }))}
               title={active.title || "Video"}
               autoPlay={isPlayingRequest}
               playRequestToken={playNonce}
@@ -289,10 +384,33 @@ export default function MediaPlaylistView({
                 "+ Add track(s)"
               )}
             </Button>
+            {kind === "video" && active && (
+              <>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  loading={thumbnailUploading}
+                  onClick={() => thumbnailInputRef.current?.click()}
+                >
+                  Change thumbnail
+                </Button>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  loading={captionsGenerating}
+                  disabled={!active.attachmentId}
+                  onClick={() => void generateActiveCaptions()}
+                >
+                  Generate captions
+                </Button>
+              </>
+            )}
             <Button
               size="xs"
               variant={node.attrs.autoplay ? "filled" : "subtle"}
-              onClick={() => updateAttributes({ autoplay: !node.attrs.autoplay })}
+              onClick={() =>
+                updateAttributes({ autoplay: !node.attrs.autoplay })
+              }
             >
               Autoplay next
             </Button>
@@ -313,7 +431,19 @@ export default function MediaPlaylistView({
           multiple
           style={{ display: "none" }}
           onChange={(event) => {
-            if (event.target.files?.length) void uploadFiles(event.target.files);
+            if (event.target.files?.length)
+              void uploadFiles(event.target.files);
+            event.currentTarget.value = "";
+          }}
+        />
+
+        <input
+          ref={thumbnailInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(event) => {
+            void replaceActiveThumbnail(event.currentTarget.files?.[0]);
             event.currentTarget.value = "";
           }}
         />
@@ -327,13 +457,22 @@ export default function MediaPlaylistView({
         >
           <Stack gap="md">
             <Text size="sm" ff={BODY}>
-              Remove {items.find((item) => item.key === removeCandidateKey)?.title || "this item"} from this playlist? The uploaded media stays in your library.
+              Remove{" "}
+              {items.find((item) => item.key === removeCandidateKey)?.title ||
+                "this item"}{" "}
+              from this playlist? The uploaded media stays in your library.
             </Text>
             <Group justify="flex-end" gap="xs">
-              <Button variant="default" onClick={() => setRemoveCandidateKey(null)}>
+              <Button
+                variant="default"
+                onClick={() => setRemoveCandidateKey(null)}
+              >
                 Cancel
               </Button>
-              <Button color="red" onClick={() => removeCandidateKey && remove(removeCandidateKey)}>
+              <Button
+                color="red"
+                onClick={() => removeCandidateKey && remove(removeCandidateKey)}
+              >
                 Remove
               </Button>
             </Group>

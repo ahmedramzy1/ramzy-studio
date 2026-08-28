@@ -1,6 +1,6 @@
-import { ReactNodeViewRenderer } from "@tiptap/react";
-import { Range, Node } from "@tiptap/core";
-import type { ResizableNodeViewDirection } from "../resizable-nodeview";
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { Range, Node } from '@tiptap/core';
+import type { ResizableNodeViewDirection } from '../resizable-nodeview';
 
 export type VideoResizeOptions = {
   enabled: boolean;
@@ -27,6 +27,15 @@ export interface VideoAttributes {
   src?: string;
   alt?: string;
   caption?: string;
+  captions?: Array<{
+    key: string;
+    src: string;
+    attachmentId?: string;
+    label: string;
+    language: string;
+  }>;
+  poster?: string;
+  posterAttachmentId?: string;
   align?: string;
   attachmentId?: string;
   size?: number;
@@ -39,14 +48,14 @@ export interface VideoAttributes {
   };
 }
 
-declare module "@tiptap/core" {
+declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     videoBlock: {
       setVideo: (attributes: VideoAttributes) => ReturnType;
       setVideoAt: (
-        attributes: VideoAttributes & { pos: number | Range }
+        attributes: VideoAttributes & { pos: number | Range },
       ) => ReturnType;
-      setVideoAlign: (align: "left" | "center" | "right") => ReturnType;
+      setVideoAlign: (align: 'left' | 'center' | 'right') => ReturnType;
       setVideoWidth: (width: number) => ReturnType;
       setVideoCaption: (caption: string) => ReturnType;
       setVideoSize: (width: number, height: number) => ReturnType;
@@ -55,9 +64,9 @@ declare module "@tiptap/core" {
 }
 
 export const TiptapVideo = Node.create<VideoOptions>({
-  name: "video",
+  name: 'video',
 
-  group: "block",
+  group: 'block',
   isolating: true,
   atom: true,
   defining: true,
@@ -74,67 +83,88 @@ export const TiptapVideo = Node.create<VideoOptions>({
   addAttributes() {
     return {
       src: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("src"),
+        default: '',
+        parseHTML: (element) => element.getAttribute('src'),
         renderHTML: (attributes) => ({ src: attributes.src }),
       },
       alt: {
         default: undefined,
-        parseHTML: (element) => element.getAttribute("aria-label"),
+        parseHTML: (element) => element.getAttribute('aria-label'),
         renderHTML: (attributes: VideoAttributes) => ({
-          "aria-label": attributes.alt,
+          'aria-label': attributes.alt,
         }),
       },
       caption: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-caption") || "",
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-caption') || '',
         renderHTML: (attributes: VideoAttributes) => ({
-          "data-caption": attributes.caption || "",
+          'data-caption': attributes.caption || '',
+        }),
+      },
+      captions: {
+        default: [],
+        parseHTML: (element) => {
+          try {
+            return JSON.parse(element.getAttribute('data-captions') || '[]');
+          } catch {
+            return [];
+          }
+        },
+        renderHTML: (attributes: VideoAttributes) => ({
+          'data-captions': JSON.stringify(attributes.captions || []),
         }),
       },
       attachmentId: {
         default: undefined,
-        parseHTML: (element) => element.getAttribute("data-attachment-id"),
+        parseHTML: (element) => element.getAttribute('data-attachment-id'),
         renderHTML: (attributes: VideoAttributes) => ({
-          "data-attachment-id": attributes.attachmentId,
+          'data-attachment-id': attributes.attachmentId,
         }),
       },
       width: {
         default: null,
         parseHTML: (element) => {
-          const raw = element.getAttribute("width");
+          const raw = element.getAttribute('width');
           if (!raw) return null;
-          if (raw.endsWith("%")) return raw;
+          if (raw.endsWith('%')) return raw;
           const num = parseFloat(raw);
           return isNaN(num) ? null : num;
         },
-        renderHTML: (attributes: VideoAttributes) => ({ width: attributes.width }),
+        renderHTML: (attributes: VideoAttributes) => ({
+          width: attributes.width,
+        }),
       },
       height: {
         default: null,
         parseHTML: (element) => {
-          const raw = element.getAttribute("height");
+          const raw = element.getAttribute('height');
           if (!raw) return null;
           const num = parseFloat(raw);
           return isNaN(num) ? null : num;
         },
-        renderHTML: (attributes: VideoAttributes) => ({ height: attributes.height }),
+        renderHTML: (attributes: VideoAttributes) => ({
+          height: attributes.height,
+        }),
       },
       size: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-size"),
-        renderHTML: (attributes: VideoAttributes) => ({ "data-size": attributes.size }),
+        parseHTML: (element) => element.getAttribute('data-size'),
+        renderHTML: (attributes: VideoAttributes) => ({
+          'data-size': attributes.size,
+        }),
       },
       align: {
-        default: "center",
-        parseHTML: (element) => element.getAttribute("data-align"),
-        renderHTML: (attributes: VideoAttributes) => ({ "data-align": attributes.align }),
+        default: 'center',
+        parseHTML: (element) => element.getAttribute('data-align'),
+        renderHTML: (attributes: VideoAttributes) => ({
+          'data-align': attributes.align,
+        }),
       },
       aspectRatio: {
         default: null,
-        parseHTML: (element) => element.getAttribute("data-aspect-ratio"),
+        parseHTML: (element) => element.getAttribute('data-aspect-ratio'),
         renderHTML: (attributes: VideoAttributes) => ({
-          "data-aspect-ratio": attributes.aspectRatio,
+          'data-aspect-ratio': attributes.aspectRatio,
         }),
       },
       placeholder: {
@@ -145,14 +175,14 @@ export const TiptapVideo = Node.create<VideoOptions>({
   },
 
   parseHTML() {
-    return [{ tag: "video" }];
+    return [{ tag: 'video' }];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
-      "video",
-      { controls: "true", ...HTMLAttributes },
-      ["source", HTMLAttributes],
+      'video',
+      { controls: 'true', ...HTMLAttributes },
+      ['source', HTMLAttributes],
     ];
   },
 
@@ -161,29 +191,29 @@ export const TiptapVideo = Node.create<VideoOptions>({
       setVideo:
         (attrs: VideoAttributes) =>
         ({ commands }) =>
-          commands.insertContent({ type: "video", attrs }),
+          commands.insertContent({ type: 'video', attrs }),
 
       setVideoAlign:
         (align) =>
         ({ commands }) =>
-          commands.updateAttributes("video", { align }),
+          commands.updateAttributes('video', { align }),
 
       setVideoWidth:
         (width) =>
         ({ commands }) =>
-          commands.updateAttributes("video", {
+          commands.updateAttributes('video', {
             width: `${Math.max(25, Math.min(100, width))}%`,
           }),
 
       setVideoCaption:
         (caption) =>
         ({ commands }) =>
-          commands.updateAttributes("video", { caption }),
+          commands.updateAttributes('video', { caption }),
 
       setVideoSize:
         (width, height) =>
         ({ commands }) =>
-          commands.updateAttributes("video", { width, height }),
+          commands.updateAttributes('video', { width, height }),
     };
   },
 
