@@ -11,6 +11,8 @@ interface BlockControl {
   position: number;
   size: number;
   top: number;
+  bottom: number;
+  insertionTop: number;
   isSectionHeading: boolean;
   isEmptyTextBlock: boolean;
   usesDedicatedHandle: boolean;
@@ -58,10 +60,16 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         const dom = editor.view.nodeDOM(offset);
         if (dom instanceof HTMLElement) {
           const rect = dom.getBoundingClientRect();
+          const top = rect.top - overlayRect.top;
+          const previous = nextBlocks[nextBlocks.length - 1];
           nextBlocks.push({
             position: offset,
             size: node.nodeSize,
-            top: rect.top - overlayRect.top,
+            top,
+            bottom: rect.bottom - overlayRect.top,
+            insertionTop: previous
+              ? (previous.bottom + top) / 2 - 14
+              : top - 38,
             isSectionHeading:
               node.type.name === "heading" && node.attrs.level === 1,
             isEmptyTextBlock: node.isTextblock && node.textContent.length === 0,
@@ -268,10 +276,29 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       }}
     >
       {!isDocumentEmpty &&
-        blocks
-          .map((block) => (
+        blocks.map((block) => (
+          <React.Fragment key={`${block.position}-${Math.round(block.top)}`}>
+            {!block.isEmptyTextBlock ? (
+              <button
+                type="button"
+                className="ramzy-boundary-insert-control"
+                style={{
+                  ...controlButtonStyle,
+                  position: "absolute",
+                  left: block.usesDedicatedHandle ? -76 : -54,
+                  top: block.insertionTop,
+                }}
+                aria-label="Insert content here"
+                title="Insert content here"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => insertAt(block.position)}
+              >
+                <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
+                  +
+                </span>
+              </button>
+            ) : null}
             <div
-              key={`${block.position}-${Math.round(block.top)}`}
               className="ramzy-inline-block-controls"
               style={{
                 position: "absolute",
@@ -282,20 +309,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
                 pointerEvents: "none",
               }}
             >
-              {!block.isSectionHeading && !block.isEmptyTextBlock ? (
-                <button
-                  type="button"
-                  style={controlButtonStyle}
-                  aria-label="Insert content above"
-                  title="Insert content above"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => insertAt(block.position)}
-                >
-                  <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
-                    +
-                  </span>
-                </button>
-              ) : null}
               <button
                 type="button"
                 style={{
@@ -320,7 +333,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
                 </span>
               </button>
             </div>
-          ))}
+          </React.Fragment>
+        ))}
 
       {isDocumentEmpty ||
       (!isEditingLastBlock && !hasTrailingEmptyTextBlock) ? (
@@ -452,8 +466,9 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       ) : null}
 
       <style>{`
-        .ramzy-inline-block-controls{opacity:.22;transition:opacity 120ms ease}
+        .ramzy-inline-block-controls,.ramzy-boundary-insert-control{opacity:.22;transition:opacity 120ms ease}
         .ramzy-inline-block-controls:hover,.ramzy-inline-block-controls:focus-within{opacity:1}
+        .ramzy-boundary-insert-control:hover,.ramzy-boundary-insert-control:focus-visible{opacity:1;color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
         .ramzy-inline-block-controls button:hover,.ramzy-final-insert-row button:first-child:hover{color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
         .ramzy-final-insert-row:hover .ramzy-final-insert-prompt,.ramzy-final-insert-row:focus-within .ramzy-final-insert-prompt{opacity:1!important}
         .ramzy-block-menu-item{width:100%;min-height:34px;border:0;border-radius:6px;background:transparent;color:var(--mantine-color-text);display:flex;align-items:center;gap:10px;padding:6px 9px;text-align:left;cursor:pointer}
