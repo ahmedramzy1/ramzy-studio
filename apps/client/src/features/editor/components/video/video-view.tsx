@@ -1,4 +1,5 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { Group, Loader, Text } from "@mantine/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getFileUrl } from "@/lib/config.ts";
@@ -97,6 +98,7 @@ export default function VideoView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper
+      style={{ position: "relative" }}
       onDragEnter={(event) => {
         if (!editor.isEditable || !event.dataTransfer?.types.includes("Files")) return;
         event.preventDefault();
@@ -121,6 +123,7 @@ export default function VideoView(props: NodeViewProps) {
         void replaceFromDrop(file);
       }}
     >
+      {editor.isEditable && <BlockDragHandle label="Drag video block" />}
       <figure
         className={clsx(classes.videoFigure, alignClass)}
         style={{
