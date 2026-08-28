@@ -1,28 +1,45 @@
 import { BubbleMenu as BaseBubbleMenu } from "@tiptap/react/menus";
 import { findParentNode, posToDOMRect, useEditorState } from "@tiptap/react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Node as PMNode } from "@tiptap/pm/model";
 import { isEditorReady } from "@docmost/editor-ext";
 import {
   EditorMenuProps,
   ShouldShowProps,
 } from "@/features/editor/components/table/types/types.ts";
-import { ActionIcon, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Button,
+  Group,
+  Menu,
+  Paper,
+  Text,
+  Textarea,
+  Tooltip,
+} from "@mantine/core";
 import clsx from "clsx";
 import {
   IconLayoutAlignCenter,
   IconLayoutAlignLeft,
   IconLayoutAlignRight,
   IconDownload,
+  IconArrowsHorizontal,
+  IconTextCaption,
   IconTrash,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { getFileUrl } from "@/lib/config.ts";
 import { useAltTextControl } from "@/features/editor/components/common/use-alt-text-control.tsx";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  normalizeVideoCaption,
+  VIDEO_WIDTH_PRESETS,
+} from "./video-layout";
 
 export function VideoMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const [captionEditing, setCaptionEditing] = useState(false);
+  const [captionDraft, setCaptionDraft] = useState("");
 
   const editorState = useEditorState({
     editor,
@@ -40,6 +57,8 @@ export function VideoMenu({ editor }: EditorMenuProps) {
         isAlignRight: ctx.editor.isActive("video", { align: "right" }),
         src: videoAttrs?.src || null,
         alt: videoAttrs?.alt || "",
+        caption: videoAttrs?.caption || "",
+        width: videoAttrs?.width || "100%",
       };
     },
   });
@@ -114,6 +133,39 @@ export function VideoMenu({ editor }: EditorMenuProps) {
     editor.commands.deleteSelection();
   }, [editor]);
 
+  const setWidth = useCallback(
+    (width: number) => {
+      editor
+        .chain()
+        .focus(undefined, { scrollIntoView: false })
+        .setVideoWidth(width)
+        .run();
+    },
+    [editor],
+  );
+
+  const openCaption = useCallback(() => {
+    setCaptionDraft(editorState?.caption || "");
+    setCaptionEditing(true);
+  }, [editorState?.caption]);
+
+  const saveCaption = useCallback(() => {
+    editor
+      .chain()
+      .focus(undefined, { scrollIntoView: false })
+      .setVideoCaption(normalizeVideoCaption(captionDraft))
+      .run();
+    setCaptionEditing(false);
+  }, [captionDraft, editor]);
+
+  useEffect(() => {
+    const handleSelectionUpdate = () => {
+      if (!editor.isActive("video")) setCaptionEditing(false);
+    };
+    editor.on("selectionUpdate", handleSelectionUpdate);
+    return () => editor.off("selectionUpdate", handleSelectionUpdate);
+  }, [editor]);
+
   const {
     button: altTextButton,
     panel: altTextPanel,
@@ -139,6 +191,42 @@ export function VideoMenu({ editor }: EditorMenuProps) {
     >
       {isEditingAlt ? (
         altTextPanel
+      ) : captionEditing ? (
+        <Paper withBorder shadow="md" radius={6} p="sm" w={340}>
+          <Text size="sm" fw={600} mb={2}>
+            {t("Video caption")}
+          </Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            {t("Shown below the video in Build, Preview and Public.")}
+          </Text>
+          <Textarea
+            size="xs"
+            value={captionDraft}
+            onChange={(event) => setCaptionDraft(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                setCaptionEditing(false);
+              } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                saveCaption();
+              }
+            }}
+            autoFocus
+            autosize
+            minRows={2}
+            maxRows={4}
+            maxLength={240}
+          />
+          <Group justify="flex-end" gap="xs" mt="xs">
+            <Button size="compact-xs" variant="default" onClick={() => setCaptionEditing(false)}>
+              {t("Cancel")}
+            </Button>
+            <Button size="compact-xs" onClick={saveCaption}>
+              {t("Save")}
+            </Button>
+          </Group>
+        </Paper>
       ) : (
         <div className={classes.toolbar}>
         <Tooltip position="top" label={t("Align left")} withinPortal={false}>
@@ -174,6 +262,43 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             className={clsx({ [classes.active]: editorState?.isAlignRight })}
           >
             <IconLayoutAlignRight size={18} />
+          </ActionIcon>
+        </Tooltip>
+
+        <div className={classes.divider} />
+
+        <Menu withinPortal={false} position="bottom-start" shadow="md">
+          <Menu.Target>
+            <ActionIcon
+              size="lg"
+              aria-label={t("Video width")}
+              title={t("Video width")}
+              variant="subtle"
+            >
+              <IconArrowsHorizontal size={18} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            {VIDEO_WIDTH_PRESETS.map((width) => (
+              <Menu.Item
+                key={width}
+                onClick={() => setWidth(width)}
+                fw={String(editorState?.width) === `${width}%` ? 700 : 400}
+              >
+                {width}%
+              </Menu.Item>
+            ))}
+          </Menu.Dropdown>
+        </Menu>
+
+        <Tooltip position="top" label={t("Caption")} withinPortal={false}>
+          <ActionIcon
+            onClick={openCaption}
+            size="lg"
+            aria-label={t("Caption")}
+            variant="subtle"
+          >
+            <IconTextCaption size={18} />
           </ActionIcon>
         </Tooltip>
 

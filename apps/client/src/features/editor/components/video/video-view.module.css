@@ -1,3 +1,10 @@
+.videoFigure {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0;
+  border: 0;
+}
+
 .videoWrapper {
   display: flex;
   justify-content: center;
@@ -5,6 +12,15 @@
   max-width: 100%;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.caption {
+  margin-top: 10px;
+  color: var(--mantine-color-dimmed);
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .skeleton {

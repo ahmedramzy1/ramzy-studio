@@ -26,6 +26,7 @@ export interface VideoOptions {
 export interface VideoAttributes {
   src?: string;
   alt?: string;
+  caption?: string;
   align?: string;
   attachmentId?: string;
   size?: number;
@@ -47,6 +48,7 @@ declare module "@tiptap/core" {
       ) => ReturnType;
       setVideoAlign: (align: "left" | "center" | "right") => ReturnType;
       setVideoWidth: (width: number) => ReturnType;
+      setVideoCaption: (caption: string) => ReturnType;
       setVideoSize: (width: number, height: number) => ReturnType;
     };
   }
@@ -81,6 +83,13 @@ export const TiptapVideo = Node.create<VideoOptions>({
         parseHTML: (element) => element.getAttribute("aria-label"),
         renderHTML: (attributes: VideoAttributes) => ({
           "aria-label": attributes.alt,
+        }),
+      },
+      caption: {
+        default: "",
+        parseHTML: (element) => element.getAttribute("data-caption") || "",
+        renderHTML: (attributes: VideoAttributes) => ({
+          "data-caption": attributes.caption || "",
         }),
       },
       attachmentId: {
@@ -163,8 +172,13 @@ export const TiptapVideo = Node.create<VideoOptions>({
         (width) =>
         ({ commands }) =>
           commands.updateAttributes("video", {
-            width: `${Math.max(0, Math.min(100, width))}%`,
+            width: `${Math.max(25, Math.min(100, width))}%`,
           }),
+
+      setVideoCaption:
+        (caption) =>
+        ({ commands }) =>
+          commands.updateAttributes("video", { caption }),
 
       setVideoSize:
         (width, height) =>

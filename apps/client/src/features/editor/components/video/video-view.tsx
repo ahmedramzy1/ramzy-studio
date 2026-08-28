@@ -11,11 +11,15 @@ import {
   ingestVideoFile,
 } from "@/features/editor/components/media/media-ingest.ts";
 import { isVideoFile } from "@/features/editor/components/media/media-file-utils.ts";
+import {
+  normalizeVideoWidth,
+  videoAlignmentMargins,
+} from "./video-layout";
 
 export default function VideoView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { editor, node, selected, updateAttributes } = props;
-  const { src, width, align, alt, placeholder, poster } = node.attrs;
+  const { src, width, align, alt, caption, placeholder, poster } = node.attrs;
   const [replacing, setReplacing] = useState(false);
   const dragDepth = useRef(0);
   const [dropActive, setDropActive] = useState(false);
@@ -33,10 +37,8 @@ export default function VideoView(props: NodeViewProps) {
   // Only an explicit percentage produced by authoring resize controls owns
   // display width; otherwise a video reserves its final 100% / 16:9 geometry
   // from the first placeholder frame through the loaded V8 player.
-  const displayWidth =
-    typeof width === "string" && width.trim().endsWith("%")
-      ? width
-      : "100%";
+  const displayWidth = normalizeVideoWidth(width);
+  const alignmentStyle = videoAlignmentMargins(align);
 
   const previewSrc = useMemo(() => {
     editor.storage.shared.videoPreviews =
@@ -120,25 +122,32 @@ export default function VideoView(props: NodeViewProps) {
         void replaceFromDrop(file);
       }}
     >
-      <div
-        className={clsx(
-          selected && "ProseMirror-selectednode",
-          classes.videoWrapper,
-          !src && placeholder && classes.skeleton,
-          alignClass,
-        )}
+      <figure
+        className={clsx(classes.videoFigure, alignClass)}
         style={{
-          position: "relative",
           width: displayWidth,
           maxWidth: "100%",
-          aspectRatio: "16 / 9",
           minWidth: 0,
-          background: "#0F0F0F",
-          outline: dropActive ? "2px solid #3B5BFF" : undefined,
-          outlineOffset: dropActive ? 4 : undefined,
-          borderRadius: 8,
+          ...alignmentStyle,
         }}
       >
+        <div
+          className={clsx(
+            selected && "ProseMirror-selectednode",
+            classes.videoWrapper,
+            !src && placeholder && classes.skeleton,
+          )}
+          style={{
+            position: "relative",
+            width: "100%",
+            aspectRatio: "16 / 9",
+            minWidth: 0,
+            background: "#0F0F0F",
+            outline: dropActive ? "2px solid #3B5BFF" : undefined,
+            outlineOffset: dropActive ? 4 : undefined,
+            borderRadius: 8,
+          }}
+        >
         {src && (
           <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
             <RamzyVideoPlayer
@@ -185,7 +194,9 @@ export default function VideoView(props: NodeViewProps) {
             </Text>
           </Group>
         )}
-      </div>
+        </div>
+        {caption && <figcaption className={classes.caption}>{caption}</figcaption>}
+      </figure>
     </NodeViewWrapper>
   );
 }
