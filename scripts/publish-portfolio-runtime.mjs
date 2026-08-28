@@ -233,22 +233,6 @@ export declare const RamzyStudioPortfolioEditor: ComponentType<RamzyStudioPortfo
 export declare const RamzyStudioPortfolioRenderer: ComponentType<RamzyStudioPortfolioRendererProps>;
 export declare const RamzyPortfolioEditor: ComponentType<RamzyPortfolioEditorProps>;
 
-export type PortfolioTestProjectKey =
-  | 'orbit-mobility-command'
-  | 'luma-adaptive-care'
-  | 'atlas-operations-platform'
-  | 'echo-field-intelligence'
-  | 'tide-climate-planning';
-
-export declare const PORTFOLIO_TEST_PROJECT_KEYS: readonly PortfolioTestProjectKey[];
-export declare const PORTFOLIO_TEST_PROJECT_COVERAGE: Record<
-  PortfolioTestProjectKey,
-  readonly string[]
->;
-export declare function buildPortfolioTestProjectDocument(
-  key: PortfolioTestProjectKey,
-): Promise<RamzyPortfolioDocument>;
-
 export declare function extractPortfolioOutline(
   document: RamzyPortfolioDocument | null | undefined,
   options?: PortfolioOutlineOptions,

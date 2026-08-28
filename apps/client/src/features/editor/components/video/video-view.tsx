@@ -6,11 +6,6 @@ import clsx from "clsx";
 import classes from "./video-view.module.css";
 import { useTranslation } from "react-i18next";
 import RamzyVideoPlayer from "./ramzy-video-player";
-import RamzyExternalVideoPlayer from "./ramzy-external-video-player";
-import {
-  detectExternalVideoProvider,
-  externalVideoEmbedUrl,
-} from "./external-video";
 import {
   enrichExistingVideo,
   ingestVideoFile,
@@ -20,20 +15,10 @@ import { isVideoFile } from "@/features/editor/components/media/media-file-utils
 export default function VideoView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { editor, node, selected, updateAttributes } = props;
-  const {
-    src,
-    source,
-    externalUrl,
-    width,
-    align,
-    alt,
-    placeholder,
-    poster,
-  } = node.attrs;
+  const { src, width, align, alt, placeholder, poster } = node.attrs;
   const [replacing, setReplacing] = useState(false);
   const dragDepth = useRef(0);
   const [dropActive, setDropActive] = useState(false);
-  const [activated, setActivated] = useState(false);
   const backfillAttempted = useRef("");
 
   const alignClass = useMemo(() => {
@@ -53,25 +38,6 @@ export default function VideoView(props: NodeViewProps) {
       ? width
       : "100%";
 
-  const externalProvider =
-    source === "youtube" || source === "vimeo"
-      ? source
-      : detectExternalVideoProvider(externalUrl || src || "");
-  const externalEmbed = externalProvider
-    ? externalVideoEmbedUrl(externalProvider, externalUrl || src || "")
-    : null;
-  const hasVideo = Boolean(externalEmbed || src);
-  const nativeSrc = src
-    ? String(src).startsWith("data:video/")
-      ? src
-      : getFileUrl(src)
-    : "";
-  const posterSrc = poster
-    ? String(poster).startsWith("data:image/")
-      ? poster
-      : getFileUrl(poster)
-    : undefined;
-
   const previewSrc = useMemo(() => {
     editor.storage.shared.videoPreviews =
       editor.storage.shared.videoPreviews || {};
@@ -80,15 +46,7 @@ export default function VideoView(props: NodeViewProps) {
   }, [placeholder, editor]);
 
   useEffect(() => {
-    if (
-      !activated ||
-      !editor.isEditable ||
-      !src ||
-      externalProvider ||
-      String(src).startsWith("data:") ||
-      poster ||
-      placeholder
-    ) return;
+    if (!editor.isEditable || !src || poster || placeholder) return;
     if (backfillAttempted.current === src) return;
     // @ts-ignore
     const pageId = editor.storage?.pageId as string | undefined;
@@ -103,7 +61,7 @@ export default function VideoView(props: NodeViewProps) {
         posterAttachmentId: enrichment.posterAttachmentId,
       });
     });
-  }, [activated, alt, editor, externalProvider, placeholder, poster, src, updateAttributes]);
+  }, [alt, editor, placeholder, poster, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isVideoFile(file)) return;
@@ -116,8 +74,6 @@ export default function VideoView(props: NodeViewProps) {
       const item = await ingestVideoFile(file, pageId);
       updateAttributes({
         src: item.src,
-        source: "upload",
-        externalUrl: "",
         attachmentId: item.attachmentId,
         alt: item.title,
         poster: item.poster || "",
@@ -168,7 +124,7 @@ export default function VideoView(props: NodeViewProps) {
         className={clsx(
           selected && "ProseMirror-selectednode",
           classes.videoWrapper,
-          !hasVideo && placeholder && classes.skeleton,
+          !src && placeholder && classes.skeleton,
           alignClass,
         )}
         style={{
@@ -183,32 +139,14 @@ export default function VideoView(props: NodeViewProps) {
           borderRadius: 8,
         }}
       >
-        {hasVideo && !activated && (
-          <button
-            type="button"
-            onClick={() => setActivated(true)}
-            style={{ position: "absolute", inset: 0, width: "100%", border: 0, background: posterSrc ? `url(${posterSrc}) center / cover` : "#0F0F0F", color: "white", cursor: "pointer", font: "inherit" }}
-          >
-            Load video
-          </button>
-        )}
-        {hasVideo && activated && (
+        {src && (
           <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-            {externalEmbed && externalProvider ? (
-              <RamzyExternalVideoPlayer
-                embedUrl={externalEmbed}
-                provider={externalProvider}
-                title={alt || t("Video")}
-                style={{ width: "100%", height: "100%" }}
-              />
-            ) : (
-              <RamzyVideoPlayer
-                src={nativeSrc}
-                poster={posterSrc}
-                title={alt || t("Video")}
-                style={{ width: "100%", height: "100%" }}
-              />
-            )}
+            <RamzyVideoPlayer
+              src={getFileUrl(src)}
+              poster={poster ? getFileUrl(poster) : undefined}
+              title={alt || t("Video")}
+              style={{ width: "100%", height: "100%" }}
+            />
             {replacing && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(0,0,0,.36)", color: "white" }}>
                 <Loader size={22} color="white" />
@@ -218,7 +156,7 @@ export default function VideoView(props: NodeViewProps) {
           </div>
         )}
 
-        {!hasVideo && previewSrc && (
+        {!src && previewSrc && (
           <div style={{ position: "absolute", inset: 0 }}>
             <RamzyVideoPlayer
               src={previewSrc}
@@ -229,7 +167,7 @@ export default function VideoView(props: NodeViewProps) {
           </div>
         )}
 
-        {!hasVideo && !previewSrc && placeholder && (
+        {!src && !previewSrc && placeholder && (
           <Group
             pos="absolute"
             inset={0}

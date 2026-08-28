@@ -25,14 +25,9 @@ export interface VideoOptions {
 
 export interface VideoAttributes {
   src?: string;
-  source?: "upload" | "youtube" | "vimeo";
-  externalUrl?: string;
   alt?: string;
   align?: string;
   attachmentId?: string;
-  poster?: string;
-  posterAttachmentId?: string;
-  durationSeconds?: number;
   size?: number;
   width?: number | string;
   height?: number;
@@ -81,20 +76,6 @@ export const TiptapVideo = Node.create<VideoOptions>({
         parseHTML: (element) => element.getAttribute("src"),
         renderHTML: (attributes) => ({ src: attributes.src }),
       },
-      source: {
-        default: "upload",
-        parseHTML: (element) => element.getAttribute("data-source") || "upload",
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-source": attributes.source || "upload",
-        }),
-      },
-      externalUrl: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-external-url") || "",
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-external-url": attributes.externalUrl || "",
-        }),
-      },
       alt: {
         default: undefined,
         parseHTML: (element) => element.getAttribute("aria-label"),
@@ -107,30 +88,6 @@ export const TiptapVideo = Node.create<VideoOptions>({
         parseHTML: (element) => element.getAttribute("data-attachment-id"),
         renderHTML: (attributes: VideoAttributes) => ({
           "data-attachment-id": attributes.attachmentId,
-        }),
-      },
-      poster: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-poster") || "",
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-poster": attributes.poster || "",
-        }),
-      },
-      posterAttachmentId: {
-        default: undefined,
-        parseHTML: (element) => element.getAttribute("data-poster-attachment-id"),
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-poster-attachment-id": attributes.posterAttachmentId,
-        }),
-      },
-      durationSeconds: {
-        default: null,
-        parseHTML: (element) => {
-          const value = Number(element.getAttribute("data-duration-seconds"));
-          return Number.isFinite(value) ? value : null;
-        },
-        renderHTML: (attributes: VideoAttributes) => ({
-          "data-duration-seconds": attributes.durationSeconds,
         }),
       },
       width: {

@@ -17,7 +17,7 @@ import {
   IconTableRow,
   IconTrashX,
 } from "@tabler/icons-react";
-import { StableBubbleMenu as BubbleMenu } from "../common/stable-bubble-menu.tsx";
+import { BubbleMenu } from "@tiptap/react/menus";
 import { isCellSelection, isEditorReady, isTextSelected } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";

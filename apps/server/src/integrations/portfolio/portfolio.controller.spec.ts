@@ -1,7 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
 import { PortfolioController } from './portfolio.controller';
-import { getSchema } from '@tiptap/core';
-import { tiptapExtensions } from '../../collaboration/collaboration.util';
 
 describe('PortfolioController contract', () => {
   const shareService = {
@@ -96,39 +94,6 @@ describe('PortfolioController contract', () => {
       pageHistoryService.createPortfolioPublicationSnapshot,
     ).toHaveBeenCalledWith(page, content, 'user-1');
     expect(result.publication.id).toBe('publication-1');
-  });
-
-  it('accepts every canonical AURA node in the server Yjs replacement schema', () => {
-    const schema = getSchema(tiptapExtensions);
-
-    expect(() =>
-      schema.nodeFromJSON({
-        type: 'doc',
-        content: [
-          {
-            type: 'tabs',
-            content: [
-              {
-                type: 'tabPanel',
-                attrs: { label: 'Research' },
-                content: [{ type: 'paragraph' }],
-              },
-            ],
-          },
-          {
-            type: 'mediaPlaylist',
-            attrs: {
-              kind: 'video',
-              title: 'AURA field films',
-              items: [],
-              activeKey: '',
-              autoplay: false,
-              loop: false,
-            },
-          },
-        ],
-      }),
-    ).not.toThrow();
   });
 
   it('never exposes a publication snapshot that belongs to another page', async () => {

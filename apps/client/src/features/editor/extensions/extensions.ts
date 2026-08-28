@@ -37,8 +37,6 @@ import {
   TiptapVideo,
   TiptapAudio,
   MediaPlaylist,
-  Tabs,
-  TabPanel,
   LinkExtension,
   Selection,
   Attachment,
@@ -341,8 +339,6 @@ export const mainExtensions = [
   MediaPlaylist.configure({
     view: MediaPlaylistView,
   }),
-  Tabs,
-  TabPanel,
   Callout.configure({
     view: CalloutView,
   }),

@@ -14,6 +14,19 @@ import {
 } from "@docmost/editor-ext/portfolio";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { handleFileDrop, handlePaste } from "@/features/editor/components/common/editor-paste-handler";
+import { EditorBubbleMenu } from "@/features/editor/components/bubble-menu/bubble-menu";
+import { EditorLinkMenu } from "@/features/editor/components/link/link-menu";
+import TableMenu from "@/features/editor/components/table/table-menu";
+import { TableHandlesLayer } from "@/features/editor/components/table/handle/table-handles-layer";
+import ImageMenu from "@/features/editor/components/image/image-menu";
+import VideoMenu from "@/features/editor/components/video/video-menu";
+import PdfMenu from "@/features/editor/components/pdf/pdf-menu";
+import CalloutMenu from "@/features/editor/components/callout/callout-menu";
+import SubpagesMenu from "@/features/editor/components/subpages/subpages-menu";
+import ExcalidrawMenu from "@/features/editor/components/excalidraw/excalidraw-menu-lazy";
+import DrawioMenu from "@/features/editor/components/drawio/drawio-menu";
+import ColumnsMenu from "@/features/editor/components/columns/columns-menu";
+import SearchAndReplaceDialog from "@/features/editor/components/search-and-replace/search-and-replace-dialog";
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
@@ -39,10 +52,6 @@ export interface RamzyStudioPortfolioEditorProps {
    */
   onEditorChange?: (editor: Editor | null) => void;
   onUpdate?: (content: JSONContent, editor: Editor) => void;
-  /** Merge a bounded editor slice back into the canonical saved document. */
-  transformContentForSave?: (content: JSONContent) => JSONContent;
-  /** Hide full-document history restore when only one bounded slice is mounted. */
-  disableHistory?: boolean;
   onSessionExpired?: () => void;
   onSaveStateChange?: (
     state: RamzyPortfolioSaveState,
@@ -67,7 +76,6 @@ export function RamzyStudioPortfolioEditor({
   onCreate,
   onEditorChange,
   onUpdate,
-  transformContentForSave,
   onSessionExpired,
   onSaveStateChange,
 }: RamzyStudioPortfolioEditorProps) {
@@ -90,7 +98,6 @@ export function RamzyStudioPortfolioEditor({
           onCreate={onCreate}
           onEditorChange={onEditorChange}
           onUpdate={onUpdate}
-          transformContentForSave={transformContentForSave}
           onSessionExpired={onSessionExpired}
           onSaveStateChange={onSaveStateChange}
         />
@@ -107,7 +114,6 @@ function DirectPortfolioEditor({
   onCreate,
   onEditorChange,
   onUpdate,
-  transformContentForSave,
   onSessionExpired,
   onSaveStateChange,
 }: RamzyStudioPortfolioEditorProps) {
@@ -263,24 +269,18 @@ function DirectPortfolioEditor({
       editorRef.current = nextEditor;
       setEditor(nextEditor);
       onCreate?.(nextEditor);
-      const content = transformContentForSave
-        ? transformContentForSave(nextEditor.getJSON())
-        : nextEditor.getJSON();
-      onUpdate?.(content, nextEditor);
+      onUpdate?.(nextEditor.getJSON(), nextEditor);
     },
-    [onCreate, onUpdate, transformContentForSave],
+    [onCreate, onUpdate],
   );
 
   const handleUpdate = useCallback(
     (nextEditor: Editor) => {
-      const editorContent = nextEditor.getJSON();
-      const content = transformContentForSave
-        ? transformContentForSave(editorContent)
-        : editorContent;
+      const content = nextEditor.getJSON();
       onUpdate?.(content, nextEditor);
       scheduleSave(content);
     },
-    [onUpdate, scheduleSave, transformContentForSave],
+    [onUpdate, scheduleSave],
   );
 
   return (
@@ -322,11 +322,26 @@ function DirectPortfolioEditor({
         }}
       />
 
-      {/*
-        The embedded portfolio runtime intentionally excludes Studio's floating
-        BubbleMenu/TableHandle plugin layer. Native editing, slash commands,
-        keyboard shortcuts, autosave, history and undo/redo remain available.
-      */}
+      {editor && (
+        <SearchAndReplaceDialog editor={editor} editable={editable ?? true} />
+      )}
+
+      {editor && (editable ?? true) && (
+        <>
+          <EditorLinkMenu editor={editor} />
+          <EditorBubbleMenu editor={editor} />
+          <TableMenu editor={editor} />
+          <TableHandlesLayer editor={editor} />
+          <ImageMenu editor={editor} />
+          <VideoMenu editor={editor} />
+          <PdfMenu editor={editor} />
+          <CalloutMenu editor={editor} />
+          <SubpagesMenu editor={editor} />
+          <ExcalidrawMenu editor={editor} />
+          <DrawioMenu editor={editor} />
+          <ColumnsMenu editor={editor} />
+        </>
+      )}
 
       <div
         onClick={() => {

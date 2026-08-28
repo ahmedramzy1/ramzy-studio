@@ -1,4 +1,4 @@
-import { StableBubbleMenu as BaseBubbleMenu } from "../common/stable-bubble-menu.tsx";
+import { BubbleMenu as BaseBubbleMenu } from "@tiptap/react/menus";
 import { findParentNode, posToDOMRect, useEditorState } from "@tiptap/react";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Node as PMNode } from "@tiptap/pm/model";

@@ -5,9 +5,7 @@ export type MediaPlaylistKind = "audio" | "video";
 
 export interface MediaPlaylistItem {
   key: string;
-  src?: string;
-  source?: "upload" | "youtube" | "vimeo";
-  externalUrl?: string;
+  src: string;
   attachmentId?: string;
   title: string;
   subtitle?: string;

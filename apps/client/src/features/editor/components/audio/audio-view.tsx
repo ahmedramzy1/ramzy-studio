@@ -26,14 +26,11 @@ export default function AudioView(props: NodeViewProps) {
   } = node.attrs;
   const [replacing, setReplacing] = useState(false);
   const [dropActive, setDropActive] = useState(false);
-  const [activated, setActivated] = useState(false);
   const dragDepth = useRef(0);
   const backfillAttempted = useRef("");
 
   const safeSrc = useMemo(() => {
-    if (!src) return null;
-    if (String(src).startsWith("data:audio/")) return src;
-    if (!isInternalFileUrl(src)) return null;
+    if (!src || !isInternalFileUrl(src)) return null;
     return getFileUrl(src);
   }, [src]);
 
@@ -49,22 +46,12 @@ export default function AudioView(props: NodeViewProps) {
   }, [placeholder, editor]);
 
   const title = storedTitle || placeholder?.name || t("Audio");
-  const safeArtwork = artwork
-    ? String(artwork).startsWith("data:image/")
-      ? artwork
-      : isInternalFileUrl(artwork)
-        ? getFileUrl(artwork)
-        : undefined
+  const safeArtwork = artwork && isInternalFileUrl(artwork)
+    ? getFileUrl(artwork)
     : undefined;
 
   useEffect(() => {
-    if (
-      !activated ||
-      !editor.isEditable ||
-      !safeSrc ||
-      String(src).startsWith("data:") ||
-      placeholder
-    ) return;
+    if (!editor.isEditable || !safeSrc || placeholder) return;
     if (artwork || artist || album) return;
     if (backfillAttempted.current === src) return;
     // @ts-ignore
@@ -88,7 +75,7 @@ export default function AudioView(props: NodeViewProps) {
       if (enrichment.durationSeconds) next.durationSeconds = enrichment.durationSeconds;
       if (Object.keys(next).length) updateAttributes(next);
     });
-  }, [activated, album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
+  }, [album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isAudioFile(file)) return;
@@ -154,16 +141,7 @@ export default function AudioView(props: NodeViewProps) {
           borderRadius: dropActive ? 8 : undefined,
         }}
       >
-        {safeSrc && !activated && (
-          <button
-            type="button"
-            onClick={() => setActivated(true)}
-            style={{ width: "100%", minHeight: 96, border: "1px solid var(--mantine-color-default-border)", borderRadius: 8, background: "var(--mantine-color-default-hover)", color: "inherit", cursor: "pointer", font: "inherit" }}
-          >
-            Load audio · {title}
-          </button>
-        )}
-        {safeSrc && activated && (
+        {safeSrc && (
           <div style={{ position: "relative", width: "100%" }}>
             <RamzyAudioPlayer
               src={safeSrc}

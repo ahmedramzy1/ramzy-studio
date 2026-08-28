@@ -1,4 +1,5 @@
 import type { Editor, JSONContent } from "@tiptap/core";
+import { uploadFile } from "@/features/page/services/page-service.ts";
 
 export interface CapabilityShowcaseAsset {
   src: string;
@@ -141,12 +142,9 @@ function findReusableAsset(
   return result;
 }
 
-function inlineAsset(
-  src: string,
-  name: string,
-  size?: number,
-): CapabilityShowcaseAsset {
-  return { src, name, size };
+function attachmentUrl(attachment: any, fallbackName: string) {
+  const fileName = attachment?.fileName || fallbackName;
+  return `/api/files/${attachment.id}/${encodeURIComponent(fileName)}`;
 }
 
 function svgFile(name: string, title: string, subtitle: string, variant: number) {
@@ -164,7 +162,7 @@ function svgFile(name: string, title: string, subtitle: string, variant: number)
   <text x="92" y="94" font-family="Arial, sans-serif" font-size="36" font-weight="700" fill="#F5F8FC">${title}</text>
   <text x="92" y="132" font-family="Arial, sans-serif" font-size="20" fill="#A8C4FF">${subtitle}</text>
 </svg>`;
-  return inlineAsset(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, name, svg.length);
+  return new File([svg], name, { type: "image/svg+xml" });
 }
 
 function minimalPdfFile() {
@@ -190,16 +188,22 @@ function minimalPdfFile() {
     pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
   }
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return inlineAsset(
-    `data:application/pdf;charset=utf-8,${encodeURIComponent(pdf)}`,
-    "aura-capability-appendix.pdf",
-    pdf.length,
-  );
+  return new File([pdf], "aura-capability-appendix.pdf", { type: "application/pdf" });
+}
+
+async function uploadGenerated(file: File, pageId: string): Promise<CapabilityShowcaseAsset> {
+  const attachment = await uploadFile(file, pageId);
+  return {
+    src: attachmentUrl(attachment, file.name),
+    attachmentId: attachment.id,
+    name: attachment.fileName || file.name,
+    size: attachment.fileSize || file.size,
+  };
 }
 
 export async function prepareCapabilityShowcaseAssets(
   existing: JSONContent,
-  _pageId: string,
+  pageId: string,
 ): Promise<CapabilityShowcaseAssets> {
   const imageExisting = findReusableAsset(
     existing,
@@ -227,41 +231,23 @@ export async function prepareCapabilityShowcaseAssets(
     (attrs) => attrs.title === "AURA interaction sketch",
   );
 
-  const observationLog =
-    "AURA observation log\n\n- Observe before interrupting.\n- Explain every adaptation.\n- Keep manual control available.\n- Prefer calm, reversible interventions.\n";
-
-  const image =
-    imageExisting ||
-    svgFile(
-      "aura-capability-map.svg",
-      "AURA / SPATIAL OS",
-      "Environment sensing and adaptive response",
-      1,
-    );
-  const pdf = pdfExisting || minimalPdfFile();
-  const attachment =
+  const [image, pdf, attachment, drawio, excalidraw] = await Promise.all([
+    imageExisting || uploadGenerated(svgFile("aura-capability-map.svg", "AURA / SPATIAL OS", "Environment sensing and adaptive response", 1), pageId),
+    pdfExisting || uploadGenerated(minimalPdfFile(), pageId),
     attachmentExisting ||
-    inlineAsset(
-      `data:text/plain;charset=utf-8,${encodeURIComponent(observationLog)}`,
-      "aura-observation-log.txt",
-      observationLog.length,
-    );
-  const drawio =
-    drawioExisting ||
-    svgFile(
-      "aura-system-map.svg",
-      "AURA SYSTEM MAP",
-      "Signals -> interpretation -> adaptation",
-      2,
-    );
-  const excalidraw =
-    excalidrawExisting ||
-    svgFile(
-      "aura-interaction-sketch.svg",
-      "AURA INTERACTION SKETCH",
-      "A rough spatial conversation between person, room, and system",
-      3,
-    );
+      uploadGenerated(
+        new File(
+          [
+            "AURA observation log\n\n- Observe before interrupting.\n- Explain every adaptation.\n- Keep manual control available.\n- Prefer calm, reversible interventions.\n",
+          ],
+          "aura-observation-log.txt",
+          { type: "text/plain" },
+        ),
+        pageId,
+      ),
+    drawioExisting || uploadGenerated(svgFile("aura-system-map.svg", "AURA SYSTEM MAP", "Signals -> interpretation -> adaptation", 2), pageId),
+    excalidrawExisting || uploadGenerated(svgFile("aura-interaction-sketch.svg", "AURA INTERACTION SKETCH", "A rough spatial conversation between person, room, and system", 3), pageId),
+  ]);
 
   return { image, pdf, attachment, drawio, excalidraw };
 }
@@ -661,32 +647,7 @@ export async function rebuildCapabilityShowcase(
   // safely without destroying the existing AURA document.
   editor.schema.nodeFromJSON(document as any);
 
-  const nodes = document.content || [];
-  const chunkSize = 10;
-  const firstChunk = nodes.slice(0, chunkSize);
-
-  editor.commands.setContent(
-    { type: "doc", content: firstChunk },
-    { emitUpdate: false },
-  );
-
-  for (let index = chunkSize; index < nodes.length; index += chunkSize) {
-    await new Promise<void>((resolve) => {
-      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-        window.requestIdleCallback(() => resolve(), { timeout: 120 });
-      } else if (typeof requestAnimationFrame !== "undefined") {
-        requestAnimationFrame(() => resolve());
-      } else {
-        setTimeout(resolve, 0);
-      }
-    });
-
-    const chunk = nodes.slice(index, index + chunkSize);
-    editor.commands.insertContentAt(editor.state.doc.content.size, chunk, {
-      updateSelection: false,
-    });
-  }
-
+  editor.commands.setContent(document, { emitUpdate: true });
   editor.commands.focus("start");
-  return editor.getJSON();
+  return document;
 }
