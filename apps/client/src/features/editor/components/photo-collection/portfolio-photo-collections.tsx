@@ -74,6 +74,8 @@ function PhotoCollectionView({ editor, node, selected, updateAttributes }: NodeV
   async function addFiles(files: File[]) {
     const accepted = files.filter((file) => file.type.startsWith("image/"));
     if (!accepted.length) return;
+    // Portfolio runtime storage owns the linked Studio page id.
+    // @ts-ignore
     const pageId = editor.storage?.pageId as string | undefined;
     if (!pageId) return;
     setUploading(true);
