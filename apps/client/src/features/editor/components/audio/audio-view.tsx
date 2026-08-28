@@ -144,7 +144,6 @@ export default function AudioView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper
-      data-drag-handle
       onDragEnter={(event) => {
         if (!editor.isEditable || !event.dataTransfer?.types.includes("Files")) return;
         event.preventDefault();

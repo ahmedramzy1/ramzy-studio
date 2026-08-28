@@ -52,7 +52,10 @@ export interface RamzyStudioPortfolioEditorProps {
    */
   onEditorChange?: (editor: Editor | null) => void;
   onUpdate?: (content: JSONContent, editor: Editor) => void;
-  onSessionExpired?: () => void;
+  onSessionExpired?: () =>
+    | Promise<RamzyPortfolioSession | void>
+    | RamzyPortfolioSession
+    | void;
   onSaveStateChange?: (
     state: RamzyPortfolioSaveState,
     error?: string,
@@ -166,10 +169,19 @@ function DirectPortfolioEditor({
           content,
         });
       } catch (error) {
-        if (error instanceof PortfolioDraftSaveError && error.sessionExpired) {
-          onSessionExpiredRef.current?.();
+        if (!(error instanceof PortfolioDraftSaveError) || !error.sessionExpired) {
+          throw error;
         }
-        throw error;
+
+        const refreshedSession = await onSessionExpiredRef.current?.();
+        if (!refreshedSession?.accessToken) throw error;
+
+        await savePortfolioDraft({
+          apiUrl: refreshedSession.apiUrl,
+          accessToken: refreshedSession.accessToken,
+          pageId,
+          content,
+        });
       }
 
       lastSavedJsonRef.current = JSON.stringify(content);
@@ -285,27 +297,6 @@ function DirectPortfolioEditor({
 
   return (
     <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>
-      {editor && (editable ?? true) && (
-        <div className="ramzy-portfolio-history-controls" aria-label="Editing history">
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => editor.chain().focus().undo().run()}
-            title="Undo (Ctrl+Z)"
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => editor.chain().focus().redo().run()}
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            Redo
-          </button>
-        </div>
-      )}
-
       <RamzyPortfolioEditor
         pageId={pageId}
         content={initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }}

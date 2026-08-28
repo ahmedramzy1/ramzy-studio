@@ -3,6 +3,7 @@
 // Source release: 2beb19718c9192d75cbd6929d9762fb64909253b.
 
 import React, { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FONT, R, SIGNAL, type DsMode } from "../media/v8-media-tokens";
 import RamzyVolumeControl from "../media/ramzy-volume-control";
 import {
@@ -487,8 +488,7 @@ export default function RamzyVideoPlayer({
     transition: "background 120ms ease, transform 120ms ease",
   };
 
-  return (
-    <div ref={anchorRef} className={className} data-ramzy-video-anchor="true" style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", ...style }}>
+  const player = (
       <div
         ref={rootRef}
         tabIndex={0}
@@ -679,6 +679,13 @@ export default function RamzyVideoPlayer({
           [data-ramzy-media-player="video"] button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
         `}</style>
       </div>
+  );
+
+  return (
+    <div ref={anchorRef} className={className} data-ramzy-video-anchor="true" style={{ position: "relative", width: "100%", aspectRatio: "16 / 9", ...style }}>
+      {(floatingMounted || pseudoFullscreen) && typeof document !== "undefined"
+        ? createPortal(player, document.body)
+        : player}
     </div>
   );
 }

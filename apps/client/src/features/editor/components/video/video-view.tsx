@@ -97,7 +97,6 @@ export default function VideoView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper
-      data-drag-handle
       onDragEnter={(event) => {
         if (!editor.isEditable || !event.dataTransfer?.types.includes("Files")) return;
         event.preventDefault();

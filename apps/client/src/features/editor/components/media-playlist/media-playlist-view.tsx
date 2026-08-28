@@ -144,7 +144,6 @@ export default function MediaPlaylistView({
 
   return (
     <NodeViewWrapper
-      data-drag-handle
       data-ramzy-playlist-kind={kind}
       className={selected ? "ProseMirror-selectednode" : undefined}
       onDragEnter={(event) => {

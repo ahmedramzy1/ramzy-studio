@@ -95,6 +95,26 @@ function mediaPickerCommand(kind: "video" | "audio"): SlashMenuItemType["command
  */
 const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   {
+    title: "Section",
+    description: "Start a named project section.",
+    searchTerms: ["section", "chapter", "heading", "navigation"],
+    icon: IconAppWindow,
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent([
+          {
+            type: "heading",
+            attrs: { level: 1 },
+            content: [{ type: "text", text: "New section" }],
+          },
+          { type: "paragraph" },
+        ])
+        .run(),
+  },
+  {
     title: "Video Playlist",
     description: "One Ramzy Player with a sortable video library.",
     searchTerms: ["video", "playlist", "queue", "media", "player"],
