@@ -306,36 +306,6 @@ export function RamzyStudioPortfolioEditor(
         onSaveStateChange={handleSaveStateChange}
       />
 
-      {editorReady && (
-        <div
-          contentEditable={false}
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: "8px 0 28px",
-          }}
-        >
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={addSection}
-            style={{
-              minWidth: 180,
-              height: 40,
-              border: "1px dashed var(--mantine-color-default-border)",
-              borderRadius: 8,
-              background: "var(--mantine-color-body)",
-              color: "inherit",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            + Add section
-          </button>
-        </div>
-      )}
-
       {historyOpen && (
         <div
           role="dialog"
