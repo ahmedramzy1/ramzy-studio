@@ -90,6 +90,10 @@ import StatusView from "@/features/editor/components/status/status-view.tsx";
 import VideoView from "@/features/editor/components/video/video-view.tsx";
 import AudioView from "@/features/editor/components/audio/audio-view.tsx";
 import MediaPlaylistView from "@/features/editor/components/media-playlist/media-playlist-view.tsx";
+import {
+  PhotoAlbum,
+  PhotoGrid,
+} from "@/features/editor/components/photo-collection/portfolio-photo-collections.tsx";
 import AttachmentView from "@/features/editor/components/attachment/attachment-view.tsx";
 import CodeBlockView from "@/features/editor/components/code-block/code-block-view.tsx";
 import DrawioView from "../components/drawio/drawio-view";
@@ -247,7 +251,7 @@ export const mainExtensions = [
   TrailingNode,
   GlobalDragHandle.configure({
     customNodes: ["transclusionSource", "transclusionReference"],
-    atomNodes: ["base"],
+    atomNodes: ["base", "photoGrid", "photoAlbum"],
   }),
   TextStyle,
   Color,
@@ -339,6 +343,8 @@ export const mainExtensions = [
   MediaPlaylist.configure({
     view: MediaPlaylistView,
   }),
+  PhotoGrid,
+  PhotoAlbum,
   Callout.configure({
     view: CalloutView,
   }),
