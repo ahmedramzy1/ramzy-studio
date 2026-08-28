@@ -269,7 +269,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
     >
       {!isDocumentEmpty &&
         blocks
-          .filter((block) => !block.isEmptyTextBlock)
           .map((block) => (
             <div
               key={`${block.position}-${Math.round(block.top)}`}
@@ -283,7 +282,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
                 pointerEvents: "none",
               }}
             >
-              {!block.isSectionHeading ? (
+              {!block.isSectionHeading && !block.isEmptyTextBlock ? (
                 <button
                   type="button"
                   style={controlButtonStyle}
