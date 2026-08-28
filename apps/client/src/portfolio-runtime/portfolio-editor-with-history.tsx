@@ -78,7 +78,6 @@ export function RamzyStudioPortfolioEditor(
   const [restoring, setRestoring] = useState(false);
   const [restoreFeedback, setRestoreFeedback] =
     useState<RestoreFeedback>(null);
-  const [commandRevision, setCommandRevision] = useState(0);
   const restorePendingRef = useRef(false);
   const restoredVersionRef = useRef<string | number | null>(null);
 
@@ -190,19 +189,12 @@ export function RamzyStudioPortfolioEditor(
   }, [loadHistoryDetail, props.onSessionExpired, props.pageId]);
 
   useEffect(() => {
-    if (!editor || editor.isDestroyed) return;
-    const syncCommands = () => setCommandRevision((value) => value + 1);
-    syncCommands();
-    editor.on("transaction", syncCommands);
-    return () => {
-      editor.off("transaction", syncCommands);
-    };
-  }, [editor]);
+    if (!editorReady || !editor) {
+      props.onHeaderActionsChange?.(null);
+      return;
+    }
 
-  const headerActions = useMemo<RamzyStudioPortfolioHeaderActions | null>(() => {
-    if (!editorReady || !editor) return null;
-
-    return {
+    const actions: RamzyStudioPortfolioHeaderActions = {
       openHistory: () => void openHistory(),
       addSection: () => {
         editor
@@ -220,19 +212,15 @@ export function RamzyStudioPortfolioEditor(
       },
       undo: () => editor.chain().focus().undo().run(),
       redo: () => editor.chain().focus().redo().run(),
-      canUndo: editor.can().undo(),
-      canRedo: editor.can().redo(),
+      canUndo: true,
+      canRedo: true,
     };
-  }, [commandRevision, editor, editorReady, openHistory]);
 
-  useEffect(() => {
-    props.onHeaderActionsChange?.(headerActions);
-  }, [headerActions, props.onHeaderActionsChange]);
-
-  useEffect(
-    () => () => props.onHeaderActionsChange?.(null),
-    [props.onHeaderActionsChange],
-  );
+    props.onHeaderActionsChange?.(actions);
+    return () => {
+      props.onHeaderActionsChange?.(null);
+    };
+  }, [editor, editorReady, openHistory, props.onHeaderActionsChange]);
 
   const restoreSelected = useCallback(() => {
     if (!selectedHistory?.content) {
