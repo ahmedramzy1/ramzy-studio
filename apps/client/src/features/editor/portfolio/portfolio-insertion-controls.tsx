@@ -24,6 +24,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   const frameRef = useRef<number | null>(null);
   const [blocks, setBlocks] = useState<BlockControl[]>([]);
   const [lastTop, setLastTop] = useState(0);
+  const [isDocumentEmpty, setIsDocumentEmpty] = useState(editor.isEmpty);
   const [sections, setSections] = useState<SectionChoice[]>([]);
   const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
 
@@ -87,15 +88,20 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       });
 
       const last = nextBlocks[nextBlocks.length - 1];
+      const empty = editor.isEmpty;
+      const first = nextBlocks[0];
       const lastDom = last ? editor.view.nodeDOM(last.position) : null;
       const finalTop =
-        lastDom instanceof HTMLElement
+        empty && first
+          ? first.top
+          : lastDom instanceof HTMLElement
           ? lastDom.getBoundingClientRect().bottom - overlayRect.top + 10
           : 8;
 
       setBlocks(nextBlocks);
       setSections(nextSections);
       setLastTop(finalTop);
+      setIsDocumentEmpty(empty);
     });
   }, [editor]);
 
@@ -142,6 +148,15 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       })
       .setTextSelection(position + 2)
       .run();
+  }
+
+  function insertAtEnd() {
+    if (editor.isDestroyed || !editor.isEditable) return;
+    if (editor.isEmpty) {
+      editor.chain().focus("start").insertContent("/").run();
+      return;
+    }
+    insertAt(editor.state.doc.content.size);
   }
 
   function deleteBlock(control: BlockControl) {
@@ -226,7 +241,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         zIndex: 25,
       }}
     >
-      {blocks.map((block) => (
+      {!isDocumentEmpty && blocks.map((block) => (
         <div
           key={`${block.position}-${Math.round(block.top)}`}
           className="ramzy-inline-block-controls"
@@ -297,7 +312,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
           aria-label="Add content below"
           title="Add content below"
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => insertAt(editor.state.doc.content.size)}
+          onClick={insertAtEnd}
         >
           <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
             +
@@ -307,7 +322,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
           type="button"
           className="ramzy-final-insert-prompt"
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => insertAt(editor.state.doc.content.size)}
+          onClick={insertAtEnd}
           style={{
             border: 0,
             background: "transparent",
