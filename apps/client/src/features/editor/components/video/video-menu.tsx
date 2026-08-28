@@ -163,7 +163,9 @@ export function VideoMenu({ editor }: EditorMenuProps) {
       if (!editor.isActive("video")) setCaptionEditing(false);
     };
     editor.on("selectionUpdate", handleSelectionUpdate);
-    return () => editor.off("selectionUpdate", handleSelectionUpdate);
+    return () => {
+      editor.off("selectionUpdate", handleSelectionUpdate);
+    };
   }, [editor]);
 
   const {
