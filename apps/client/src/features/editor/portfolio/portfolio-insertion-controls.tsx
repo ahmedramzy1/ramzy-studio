@@ -25,6 +25,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   const [blocks, setBlocks] = useState<BlockControl[]>([]);
   const [lastTop, setLastTop] = useState(0);
   const [isDocumentEmpty, setIsDocumentEmpty] = useState(editor.isEmpty);
+  const [isEditingLastBlock, setIsEditingLastBlock] = useState(false);
   const [sections, setSections] = useState<SectionChoice[]>([]);
   const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
 
@@ -90,30 +91,45 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       const last = nextBlocks[nextBlocks.length - 1];
       const empty = editor.isEmpty;
       const first = nextBlocks[0];
+      const lastNode = last ? editor.state.doc.nodeAt(last.position) : null;
+      const selection = editor.state.selection;
+      const selectionBlockPosition =
+        selection.$from.depth > 0 ? selection.$from.before(1) : -1;
       const lastDom = last ? editor.view.nodeDOM(last.position) : null;
       const finalTop =
         empty && first
           ? first.top
           : lastDom instanceof HTMLElement
-          ? lastDom.getBoundingClientRect().bottom - overlayRect.top + 10
-          : 8;
+            ? lastDom.getBoundingClientRect().bottom - overlayRect.top + 10
+            : 8;
 
       setBlocks(nextBlocks);
       setSections(nextSections);
       setLastTop(finalTop);
       setIsDocumentEmpty(empty);
+      setIsEditingLastBlock(
+        editor.isFocused &&
+          Boolean(lastNode?.isTextblock) &&
+          selectionBlockPosition === last?.position,
+      );
     });
   }, [editor]);
 
   useEffect(() => {
     measure();
     editor.on("transaction", measure);
+    editor.on("selectionUpdate", measure);
+    editor.on("focus", measure);
+    editor.on("blur", measure);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     const observer = new ResizeObserver(measure);
     observer.observe(editor.view.dom);
     return () => {
       editor.off("transaction", measure);
+      editor.off("selectionUpdate", measure);
+      editor.off("focus", measure);
+      editor.off("blur", measure);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
       observer.disconnect();
@@ -241,102 +257,105 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         zIndex: 25,
       }}
     >
-      {!isDocumentEmpty && blocks.map((block) => (
+      {!isDocumentEmpty &&
+        blocks.map((block) => (
+          <div
+            key={`${block.position}-${Math.round(block.top)}`}
+            className="ramzy-inline-block-controls"
+            style={{
+              position: "absolute",
+              left: block.usesDedicatedHandle ? -76 : -54,
+              right: -34,
+              top: block.top,
+              height: 28,
+              pointerEvents: "none",
+            }}
+          >
+            <button
+              type="button"
+              style={controlButtonStyle}
+              aria-label="Insert content above"
+              title="Insert content above"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => insertAt(block.position)}
+            >
+              <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
+                +
+              </span>
+            </button>
+            <button
+              type="button"
+              style={{
+                ...controlButtonStyle,
+                position: "absolute",
+                right: 0,
+                top: 0,
+              }}
+              aria-label="Element actions"
+              title="Element actions"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                setOpenMenu((current) =>
+                  current?.position === block.position
+                    ? null
+                    : { ...block, view: "root" },
+                )
+              }
+            >
+              <span aria-hidden style={{ fontSize: 13, letterSpacing: -1 }}>
+                •••
+              </span>
+            </button>
+          </div>
+        ))}
+
+      {isDocumentEmpty || !isEditingLastBlock ? (
         <div
-          key={`${block.position}-${Math.round(block.top)}`}
-          className="ramzy-inline-block-controls"
+          className="ramzy-final-insert-row"
           style={{
             position: "absolute",
-            left: block.usesDedicatedHandle ? -76 : -54,
-            right: -34,
-            top: block.top,
-            height: 28,
-            pointerEvents: "none",
+            left: -68,
+            right: 0,
+            top: lastTop,
+            minHeight: 38,
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            pointerEvents: "auto",
           }}
         >
           <button
             type="button"
             style={controlButtonStyle}
-            aria-label="Insert content above"
-            title="Insert content above"
+            aria-label="Add content below"
+            title="Add content below"
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => insertAt(block.position)}
+            onClick={insertAtEnd}
           >
             <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
               +
             </span>
           </button>
-          <button
-            type="button"
-            style={{
-              ...controlButtonStyle,
-              position: "absolute",
-              right: 0,
-              top: 0,
-            }}
-            aria-label="Element actions"
-            title="Element actions"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() =>
-              setOpenMenu((current) =>
-                current?.position === block.position
-                  ? null
-                  : { ...block, view: "root" },
-              )
-            }
-          >
-            <span aria-hidden style={{ fontSize: 13, letterSpacing: -1 }}>
-              •••
-            </span>
-          </button>
+          {!isDocumentEmpty ? (
+            <button
+              type="button"
+              className="ramzy-final-insert-prompt"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={insertAtEnd}
+              style={{
+                border: 0,
+                background: "transparent",
+                color: "var(--mantine-color-dimmed)",
+                padding: "5px 0",
+                cursor: "text",
+                opacity: 0,
+              }}
+            >
+              Type / to insert content
+            </button>
+          ) : null}
         </div>
-      ))}
-
-      <div
-        className="ramzy-final-insert-row"
-        style={{
-          position: "absolute",
-          left: -68,
-          right: 0,
-          top: lastTop,
-          minHeight: 38,
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10,
-          pointerEvents: "auto",
-        }}
-      >
-        <button
-          type="button"
-          style={controlButtonStyle}
-          aria-label="Add content below"
-          title="Add content below"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={insertAtEnd}
-        >
-          <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
-            +
-          </span>
-        </button>
-        {!isDocumentEmpty ? (
-          <button
-            type="button"
-            className="ramzy-final-insert-prompt"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={insertAtEnd}
-            style={{
-              border: 0,
-              background: "transparent",
-              color: "var(--mantine-color-dimmed)",
-              padding: "5px 0",
-              cursor: "text",
-              opacity: 0,
-            }}
-          >
-            Type / to insert content
-          </button>
-        ) : null}
-      </div>
+      ) : null}
 
       {openMenu ? (
         <div
