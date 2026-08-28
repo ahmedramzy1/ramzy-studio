@@ -90,6 +90,22 @@ export function RamzyStudioPortfolioEditor(
     editor && !editor.isDestroyed && editor.isEditable,
   );
 
+  const addSection = useCallback(() => {
+    if (!editor || editor.isDestroyed || !editor.isEditable) return;
+    editor
+      .chain()
+      .focus("end")
+      .insertContent([
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: "New section" }],
+        },
+        { type: "paragraph" },
+      ])
+      .run();
+  }, [editor]);
+
   const handleCreate = useCallback(
     (nextEditor: Editor) => {
       props.onCreate?.(nextEditor);
@@ -196,20 +212,7 @@ export function RamzyStudioPortfolioEditor(
 
     const actions: RamzyStudioPortfolioHeaderActions = {
       openHistory: () => void openHistory(),
-      addSection: () => {
-        editor
-          .chain()
-          .focus()
-          .insertContent([
-            {
-              type: "heading",
-              attrs: { level: 1 },
-              content: [{ type: "text", text: "New section" }],
-            },
-            { type: "paragraph" },
-          ])
-          .run();
-      },
+      addSection,
       undo: () => editor.chain().focus().undo().run(),
       redo: () => editor.chain().focus().redo().run(),
       canUndo: true,
@@ -220,7 +223,7 @@ export function RamzyStudioPortfolioEditor(
     return () => {
       props.onHeaderActionsChange?.(null);
     };
-  }, [editor, editorReady, openHistory, props.onHeaderActionsChange]);
+  }, [addSection, editor, editorReady, openHistory, props.onHeaderActionsChange]);
 
   const restoreSelected = useCallback(() => {
     if (!selectedHistory?.content) {
@@ -302,6 +305,36 @@ export function RamzyStudioPortfolioEditor(
         onEditorChange={handleEditorChange}
         onSaveStateChange={handleSaveStateChange}
       />
+
+      {editorReady && (
+        <div
+          contentEditable={false}
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            padding: "8px 0 28px",
+          }}
+        >
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={addSection}
+            style={{
+              minWidth: 180,
+              height: 40,
+              border: "1px dashed var(--mantine-color-default-border)",
+              borderRadius: 8,
+              background: "var(--mantine-color-body)",
+              color: "inherit",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            + Add section
+          </button>
+        </div>
+      )}
 
       {historyOpen && (
         <div
