@@ -1,5 +1,6 @@
 import { Button, Group, Loader, Modal, Stack, Text, TextInput } from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MediaPlaylistItem } from "@docmost/editor-ext";
 import { getFileUrl } from "@/lib/config.ts";
@@ -146,6 +147,7 @@ export default function MediaPlaylistView({
     <NodeViewWrapper
       data-ramzy-playlist-kind={kind}
       className={selected ? "ProseMirror-selectednode" : undefined}
+      style={{ position: "relative" }}
       onDragEnter={(event) => {
         if (!editable || !event.dataTransfer?.types.includes("Files")) return;
         event.preventDefault();
@@ -170,6 +172,7 @@ export default function MediaPlaylistView({
         void uploadFiles(event.dataTransfer.files);
       }}
     >
+      {editable && <BlockDragHandle label={`Drag ${kind} playlist block`} />}
       <Stack
         gap="sm"
         py="xs"
