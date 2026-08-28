@@ -283,8 +283,13 @@ function DirectPortfolioEditor({
       setEditor(nextEditor);
       onCreate?.(nextEditor);
       onUpdate?.(nextEditor.getJSON(), nextEditor);
+      if ((editable ?? true) && nextEditor.isEmpty) {
+        requestAnimationFrame(() => {
+          if (!nextEditor.isDestroyed) nextEditor.commands.focus("start");
+        });
+      }
     },
-    [onCreate, onUpdate],
+    [editable, onCreate, onUpdate],
   );
 
   const handleUpdate = useCallback(
