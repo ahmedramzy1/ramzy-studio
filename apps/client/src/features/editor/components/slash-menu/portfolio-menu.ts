@@ -1,6 +1,8 @@
 import {
   IconAppWindow,
+  IconLayoutGrid,
   IconMusic,
+  IconPhoto,
   IconVideo,
 } from "@tabler/icons-react";
 import getSuggestionItems from "@/features/editor/components/slash-menu/menu-items";
@@ -34,6 +36,8 @@ export const PORTFOLIO_SLASH_MENU_ITEMS = new Set([
   "Callout",
   "Toggle block",
   "Image",
+  "Image Grid",
+  "Photo Album",
   "File attachment",
   "Embed PDF",
   "Table",
@@ -112,6 +116,32 @@ const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
           },
           { type: "paragraph" },
         ])
+        .run(),
+  },
+  {
+    title: "Image Grid",
+    description: "Create a balanced multi-image grid with bulk upload and reorder.",
+    searchTerms: ["image", "photo", "grid", "gallery", "masonry", "album"],
+    icon: IconLayoutGrid,
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: "photoGrid", attrs: { images: [], title: "" } })
+        .run(),
+  },
+  {
+    title: "Photo Album",
+    description: "Create an album with one active image, thumbnail rail and metadata.",
+    searchTerms: ["photo", "album", "gallery", "slideshow", "images"],
+    icon: IconPhoto,
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: "photoAlbum", attrs: { images: [], title: "" } })
         .run(),
   },
   {
