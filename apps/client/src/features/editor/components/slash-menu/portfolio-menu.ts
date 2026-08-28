@@ -90,9 +90,8 @@ function mediaPickerCommand(kind: "video" | "audio"): SlashMenuItemType["command
 
 /**
  * Keep the v8 first-class media/playlist commands visible before the generic
- * Docmost command list. The canonical AURA capability document is now seeded
- * automatically from the hydrated Studio editor; there is deliberately no
- * manual rebuild command in the authoring surface.
+ * Docmost command list. Project content is created only through the normal
+ * authoring surface; mounting the editor never seeds or rewrites a document.
  */
 const PORTFOLIO_ONLY_SLASH_ITEMS: SlashMenuItemType[] = [
   {
