@@ -29,6 +29,9 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   const [lastTop, setLastTop] = useState(0);
   const [isDocumentEmpty, setIsDocumentEmpty] = useState(editor.isEmpty);
   const [isEditingLastBlock, setIsEditingLastBlock] = useState(false);
+  const [editingBlockPosition, setEditingBlockPosition] = useState<
+    number | null
+  >(null);
   const [hasTrailingEmptyTextBlock, setHasTrailingEmptyTextBlock] =
     useState(false);
   const [sections, setSections] = useState<SectionChoice[]>([]);
@@ -119,6 +122,11 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       setSections(nextSections);
       setLastTop(finalTop);
       setIsDocumentEmpty(empty);
+      setEditingBlockPosition(
+        editor.isFocused && selectionBlockPosition >= 0
+          ? selectionBlockPosition
+          : null,
+      );
       setIsEditingLastBlock(
         editor.isFocused &&
           Boolean(lastNode?.isTextblock) &&
@@ -278,7 +286,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       {!isDocumentEmpty &&
         blocks.map((block) => (
           <React.Fragment key={`${block.position}-${Math.round(block.top)}`}>
-            {!block.isEmptyTextBlock ? (
+            {!block.isEmptyTextBlock &&
+            block.position !== editingBlockPosition ? (
               <button
                 type="button"
                 className="ramzy-boundary-insert-control"
@@ -349,7 +358,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             display: "flex",
             alignItems: "flex-start",
             gap: 10,
-            pointerEvents: "auto",
+            pointerEvents: "none",
           }}
         >
           <button
@@ -377,6 +386,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
                 padding: "5px 0",
                 cursor: "text",
                 opacity: 0,
+                pointerEvents: "auto",
               }}
             >
               Type / to insert content
