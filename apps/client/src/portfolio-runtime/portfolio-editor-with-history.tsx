@@ -194,7 +194,9 @@ export function RamzyStudioPortfolioEditor(
     const syncCommands = () => setCommandRevision((value) => value + 1);
     syncCommands();
     editor.on("transaction", syncCommands);
-    return () => editor.off("transaction", syncCommands);
+    return () => {
+      editor.off("transaction", syncCommands);
+    };
   }, [editor]);
 
   const headerActions = useMemo<RamzyStudioPortfolioHeaderActions | null>(() => {

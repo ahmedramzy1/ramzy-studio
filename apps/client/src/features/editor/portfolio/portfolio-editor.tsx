@@ -174,7 +174,7 @@ function DirectPortfolioEditor({
         }
 
         const refreshedSession = await onSessionExpiredRef.current?.();
-        if (!refreshedSession?.accessToken) throw error;
+        if (!refreshedSession || !refreshedSession.accessToken) throw error;
 
         await savePortfolioDraft({
           apiUrl: refreshedSession.apiUrl,
