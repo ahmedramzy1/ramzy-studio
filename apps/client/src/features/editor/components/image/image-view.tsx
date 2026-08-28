@@ -5,6 +5,7 @@ import { getFileUrl } from "@/lib/config.ts";
 import clsx from "clsx";
 import classes from "./image-view.module.css";
 import { useTranslation } from "react-i18next";
+import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 
 export default function ImageView(props: NodeViewProps) {
   const { t } = useTranslation();
@@ -28,7 +29,8 @@ export default function ImageView(props: NodeViewProps) {
   }, [placeholder, editor]);
 
   return (
-    <NodeViewWrapper data-drag-handle>
+    <NodeViewWrapper style={{ position: "relative" }}>
+      {editor.isEditable && <BlockDragHandle label="Drag image block" />}
       <div
         className={clsx(
           selected && "ProseMirror-selectednode",
