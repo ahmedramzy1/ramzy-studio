@@ -29,6 +29,7 @@ import ColumnsMenu from "@/features/editor/components/columns/columns-menu";
 import SearchAndReplaceDialog from "@/features/editor/components/search-and-replace/search-and-replace-dialog";
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
+import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
@@ -312,6 +313,10 @@ function DirectPortfolioEditor({
           onEditorChange?.(nextEditor);
         }}
       />
+
+      {editor && (editable ?? true) && (
+        <PortfolioInsertionControls editor={editor} />
+      )}
 
       {editor && (
         <SearchAndReplaceDialog editor={editor} editable={editable ?? true} />
