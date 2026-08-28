@@ -51,7 +51,7 @@ jobs:
         run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts src/features/editor/portfolio/capability-showcase.test.ts
 
       - name: Test media authoring contract
-        run: pnpm --filter ./apps/client exec vitest run src/features/editor/components/media/media-authoring-actions.test.ts src/features/editor/components/media/media-session.test.ts src/features/editor/components/video/video-layout.test.ts
+        run: pnpm --filter ./apps/client exec vitest run src/features/editor/components/media/media-authoring-actions.test.ts src/features/editor/components/media/media-session.test.ts src/features/editor/components/video/video-layout.test.ts src/features/editor/components/media-playlist/playlist-state.test.ts
 
       - name: Build client
         run: pnpm --filter ./apps/client run build

@@ -232,7 +232,7 @@ export default function RamzyPlaylist({
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    if (window.confirm(`Remove ${item.title} from this playlist?`)) onRemove?.(item.key);
+                    onRemove?.(item.key);
                   }}
                   style={{ width: 34, height: 34, border: 0, borderRadius: 6, background: "transparent", color: c.textTertiary, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
                 >

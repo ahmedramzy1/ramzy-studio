@@ -1,4 +1,4 @@
-import { Button, Group, Loader, Stack, Text, TextInput } from "@mantine/core";
+import { Button, Group, Loader, Modal, Stack, Text, TextInput } from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MediaPlaylistItem } from "@docmost/editor-ext";
@@ -11,6 +11,12 @@ import {
   filterMediaFiles,
   mediaAccept,
 } from "@/features/editor/components/media/media-authoring-actions.ts";
+import {
+  movePlaylistItem,
+  removePlaylistItem,
+  reorderPlaylistItems,
+  stepPlaylistKey,
+} from "./playlist-state";
 
 const BODY = '"DM Sans", system-ui, sans-serif';
 
@@ -35,6 +41,7 @@ export default function MediaPlaylistView({
   const [playNonce, setPlayNonce] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
+  const [removeCandidateKey, setRemoveCandidateKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (items.some((item) => item.key === localActiveKey)) return;
@@ -63,24 +70,14 @@ export default function MediaPlaylistView({
   };
 
   const playPrevious = () => {
-    if (!items.length) return;
-    const index = Math.max(0, items.findIndex((item) => item.key === (active?.key || localActiveKey)));
-    if (index <= 0) {
-      if (node.attrs.loop && items.length > 1) play(items[items.length - 1].key);
-      return;
-    }
-    play(items[index - 1].key);
+    const key = stepPlaylistKey(items, active?.key || localActiveKey, -1, !!node.attrs.loop);
+    if (key) play(key);
   };
 
   const playNext = (force = false) => {
-    if (!items.length) return;
     if (!force && !node.attrs.autoplay) return;
-    const index = Math.max(0, items.findIndex((item) => item.key === (active?.key || localActiveKey)));
-    if (index < items.length - 1) {
-      play(items[index + 1].key);
-      return;
-    }
-    if (node.attrs.loop && items.length > 1) play(items[0].key);
+    const key = stepPlaylistKey(items, active?.key || localActiveKey, 1, !!node.attrs.loop);
+    if (key) play(key);
   };
 
   const setItems = (next: MediaPlaylistItem[], nextActive?: string) => {
@@ -91,34 +88,17 @@ export default function MediaPlaylistView({
   };
 
   const move = (key: string, direction: -1 | 1) => {
-    const index = items.findIndex((item) => item.key === key);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= items.length) return;
-    const next = [...items];
-    [next[index], next[target]] = [next[target], next[index]];
-    setItems(next);
+    setItems(movePlaylistItem(items, key, direction));
   };
 
   const reorder = (sourceKey: string, targetKey: string) => {
-    const from = items.findIndex((item) => item.key === sourceKey);
-    const to = items.findIndex((item) => item.key === targetKey);
-    if (from < 0 || to < 0 || from === to) return;
-    const next = [...items];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    setItems(next);
+    setItems(reorderPlaylistItems(items, sourceKey, targetKey));
   };
 
   const remove = (key: string) => {
-    const index = items.findIndex((item) => item.key === key);
-    const next = items.filter((item) => item.key !== key);
-    const nextActive =
-      key === localActiveKey
-        ? next[Math.min(Math.max(index, 0), Math.max(next.length - 1, 0))]?.key ||
-          next[0]?.key ||
-          ""
-        : localActiveKey;
-    setItems(next, nextActive);
+    const result = removePlaylistItem(items, key, localActiveKey);
+    setItems(result.items, result.nextActiveKey);
+    setRemoveCandidateKey(null);
   };
 
   const uploadFiles = async (files: FileList | File[]) => {
@@ -284,7 +264,7 @@ export default function MediaPlaylistView({
           onPlay={play}
           onMove={move}
           onReorder={reorder}
-          onRemove={remove}
+          onRemove={setRemoveCandidateKey}
           maxHeight={kind === "video" ? 390 : 420}
         />
 
@@ -335,6 +315,28 @@ export default function MediaPlaylistView({
             event.currentTarget.value = "";
           }}
         />
+
+        <Modal
+          opened={!!removeCandidateKey}
+          onClose={() => setRemoveCandidateKey(null)}
+          title="Remove playlist item?"
+          centered
+          size="sm"
+        >
+          <Stack gap="md">
+            <Text size="sm" ff={BODY}>
+              Remove {items.find((item) => item.key === removeCandidateKey)?.title || "this item"} from this playlist? The uploaded media stays in your library.
+            </Text>
+            <Group justify="flex-end" gap="xs">
+              <Button variant="default" onClick={() => setRemoveCandidateKey(null)}>
+                Cancel
+              </Button>
+              <Button color="red" onClick={() => removeCandidateKey && remove(removeCandidateKey)}>
+                Remove
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
       </Stack>
     </NodeViewWrapper>
   );
