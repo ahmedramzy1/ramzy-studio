@@ -12,6 +12,7 @@ interface BlockControl {
   size: number;
   top: number;
   isSectionHeading: boolean;
+  isEmptyTextBlock: boolean;
   usesDedicatedHandle: boolean;
 }
 
@@ -26,6 +27,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   const [lastTop, setLastTop] = useState(0);
   const [isDocumentEmpty, setIsDocumentEmpty] = useState(editor.isEmpty);
   const [isEditingLastBlock, setIsEditingLastBlock] = useState(false);
+  const [hasTrailingEmptyTextBlock, setHasTrailingEmptyTextBlock] =
+    useState(false);
   const [sections, setSections] = useState<SectionChoice[]>([]);
   const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
 
@@ -61,6 +64,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             top: rect.top - overlayRect.top,
             isSectionHeading:
               node.type.name === "heading" && node.attrs.level === 1,
+            isEmptyTextBlock: node.isTextblock && node.textContent.length === 0,
             usesDedicatedHandle: [
               "video",
               "audio",
@@ -111,6 +115,9 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         editor.isFocused &&
           Boolean(lastNode?.isTextblock) &&
           selectionBlockPosition === last?.position,
+      );
+      setHasTrailingEmptyTextBlock(
+        Boolean(lastNode?.isTextblock && !lastNode.textContent),
       );
     });
   }, [editor]);
@@ -178,9 +185,12 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   function deleteBlock(control: BlockControl) {
     const node = editor.state.doc.nodeAt(control.position);
     if (!node) return;
+    const section = control.isSectionHeading
+      ? sections.find((candidate) => candidate.position === control.position)
+      : null;
     const tr = editor.state.tr.delete(
       control.position,
-      control.position + node.nodeSize,
+      section?.end ?? control.position + node.nodeSize,
     );
     if (tr.doc.childCount === 0) {
       tr.insert(0, editor.schema.nodes.paragraph.create());
@@ -258,58 +268,63 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       }}
     >
       {!isDocumentEmpty &&
-        blocks.map((block) => (
-          <div
-            key={`${block.position}-${Math.round(block.top)}`}
-            className="ramzy-inline-block-controls"
-            style={{
-              position: "absolute",
-              left: block.usesDedicatedHandle ? -76 : -54,
-              right: -34,
-              top: block.top,
-              height: 28,
-              pointerEvents: "none",
-            }}
-          >
-            <button
-              type="button"
-              style={controlButtonStyle}
-              aria-label="Insert content above"
-              title="Insert content above"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => insertAt(block.position)}
-            >
-              <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
-                +
-              </span>
-            </button>
-            <button
-              type="button"
+        blocks
+          .filter((block) => !block.isEmptyTextBlock)
+          .map((block) => (
+            <div
+              key={`${block.position}-${Math.round(block.top)}`}
+              className="ramzy-inline-block-controls"
               style={{
-                ...controlButtonStyle,
                 position: "absolute",
-                right: 0,
-                top: 0,
+                left: block.usesDedicatedHandle ? -76 : -54,
+                right: -34,
+                top: block.top,
+                height: 28,
+                pointerEvents: "none",
               }}
-              aria-label="Element actions"
-              title="Element actions"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() =>
-                setOpenMenu((current) =>
-                  current?.position === block.position
-                    ? null
-                    : { ...block, view: "root" },
-                )
-              }
             >
-              <span aria-hidden style={{ fontSize: 13, letterSpacing: -1 }}>
-                •••
-              </span>
-            </button>
-          </div>
-        ))}
+              {!block.isSectionHeading ? (
+                <button
+                  type="button"
+                  style={controlButtonStyle}
+                  aria-label="Insert content above"
+                  title="Insert content above"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertAt(block.position)}
+                >
+                  <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
+                    +
+                  </span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                style={{
+                  ...controlButtonStyle,
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                }}
+                aria-label="Element actions"
+                title="Element actions"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  setOpenMenu((current) =>
+                    current?.position === block.position
+                      ? null
+                      : { ...block, view: "root" },
+                  )
+                }
+              >
+                <span aria-hidden style={{ fontSize: 13, letterSpacing: -1 }}>
+                  •••
+                </span>
+              </button>
+            </div>
+          ))}
 
-      {isDocumentEmpty || !isEditingLastBlock ? (
+      {isDocumentEmpty ||
+      (!isEditingLastBlock && !hasTrailingEmptyTextBlock) ? (
         <div
           className="ramzy-final-insert-row"
           style={{
