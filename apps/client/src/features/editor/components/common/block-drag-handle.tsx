@@ -14,7 +14,6 @@ export function BlockDragHandle({ label = "Drag block" }: { label?: string }) {
       tabIndex={-1}
       aria-label={label}
       title={label}
-      onMouseDown={(event) => event.stopPropagation()}
       style={{
         position: "absolute",
         left: -42,
