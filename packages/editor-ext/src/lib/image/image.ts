@@ -52,7 +52,7 @@ declare module "@tiptap/core" {
         attributes: ImageAttributes & { pos: number | Range },
       ) => ReturnType;
       setImageAlign: (align: "left" | "center" | "right") => ReturnType;
-      setImageWidth: (width: number) => ReturnType;
+      setImageWidth: (width: number | string | null) => ReturnType;
       setImageSize: (width: number, height: number) => ReturnType;
     };
   }
@@ -304,12 +304,9 @@ export const TiptapImage = Image.extend<ImageOptions>({
 
           const w = updatedNode.attrs.width;
           const h = updatedNode.attrs.height;
-          if (w != null) {
-            el.style.width = `${w}px`;
-          }
-          if (h != null) {
-            el.style.height = `${h}px`;
-          }
+          el.style.width =
+            typeof w === "string" ? w : w != null ? `${w}px` : "";
+          el.style.height = h != null ? `${h}px` : "auto";
 
           // Update alignment on container
           const align = updatedNode.attrs.align || "center";

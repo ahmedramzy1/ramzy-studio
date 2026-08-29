@@ -100,7 +100,8 @@ function blockLabel(element: HTMLElement): string {
 
 function createPreview(): PreviewState {
   const element = document.createElement("div");
-  element.className = "ProseMirror ramzy-portfolio-editor ramzy-dnd-layout-preview";
+  element.className =
+    "ProseMirror ramzy-portfolio-editor ramzy-dnd-layout-preview";
   document.body.appendChild(element);
   return { element, key: null };
 }
@@ -141,12 +142,15 @@ function showPreview(
   }
 
   const clone = cloneForPortfolioDndPreview(sourceElement);
-  const sourceHeight = Math.max(sourceElement.getBoundingClientRect().height, 40);
+  clone.classList.add("ramzy-dnd-incoming-block");
+  clone.dataset.dropEdge = edge;
+  const sourceHeight = Math.max(
+    sourceElement.getBoundingClientRect().height,
+    40,
+  );
   const gap = 16;
   const y =
-    edge === "top"
-      ? rowRect.top - sourceHeight - gap
-      : rowRect.bottom + gap;
+    edge === "top" ? rowRect.top - sourceHeight - gap : rowRect.bottom + gap;
   preview.element.style.height = `${sourceHeight}px`;
   preview.element.style.transform = `translate3d(${rowRect.left}px, ${y}px, 0)`;
   preview.element.appendChild(clone);
@@ -279,7 +283,11 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
         );
         entities.push(globalDraggable);
         const prepareGlobalDrag = (event: PointerEvent) => {
-          const hit = elementAtHandlePointer(editor, event.clientX, event.clientY);
+          const hit = elementAtHandlePointer(
+            editor,
+            event.clientX,
+            event.clientY,
+          );
           if (!hit) return;
           globalDraggable.element = hit.element;
           globalDraggable.data = {
@@ -290,7 +298,11 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
         };
         globalHandle.addEventListener("pointerdown", prepareGlobalDrag, true);
         globalHandleCleanup = () =>
-          globalHandle.removeEventListener("pointerdown", prepareGlobalDrag, true);
+          globalHandle.removeEventListener(
+            "pointerdown",
+            prepareGlobalDrag,
+            true,
+          );
       }
 
       Array.from(editorDom.children).forEach((row, rowIndex) => {
@@ -375,7 +387,11 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
     const onPointerMove = (event: PointerEvent) => {
       pointer = { x: event.clientX, y: event.clientY };
     };
-    const onDragStart = ({ operation }: { operation: DragMoveEvent["operation"] }) => {
+    const onDragStart = ({
+      operation,
+    }: {
+      operation: DragMoveEvent["operation"];
+    }) => {
       const source = dragData(operation.source);
       if (!source?.sourceElement || source.sourcePosition === null) return;
       sourceElement = source.sourceElement;

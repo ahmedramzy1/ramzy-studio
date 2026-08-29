@@ -14,7 +14,10 @@ import {
 } from "@docmost/editor-ext/portfolio";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
 import GlobalDragHandle from "@/features/editor/extensions/drag-handle";
-import { handleFileDrop, handlePaste } from "@/features/editor/components/common/editor-paste-handler";
+import {
+  handleFileDrop,
+  handlePaste,
+} from "@/features/editor/components/common/editor-paste-handler";
 import { EditorBubbleMenu } from "@/features/editor/components/bubble-menu/bubble-menu";
 import { EditorLinkMenu } from "@/features/editor/components/link/link-menu";
 import TableMenu from "@/features/editor/components/table/table-menu";
@@ -33,6 +36,7 @@ import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers
 import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
 import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
 import { PortfolioDnd } from "./portfolio-dnd";
+import { PortfolioGridControls } from "./portfolio-grid-controls";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
@@ -60,10 +64,7 @@ export interface RamzyStudioPortfolioEditorProps {
     | Promise<RamzyPortfolioSession | void>
     | RamzyPortfolioSession
     | void;
-  onSaveStateChange?: (
-    state: RamzyPortfolioSaveState,
-    error?: string,
-  ) => void;
+  onSaveStateChange?: (state: RamzyPortfolioSaveState, error?: string) => void;
 }
 
 /**
@@ -134,7 +135,9 @@ function DirectPortfolioEditor({
   const onSaveStateChangeRef = useRef(onSaveStateChange);
   const onSessionExpiredRef = useRef(onSessionExpired);
   const lastSavedJsonRef = useRef(
-    JSON.stringify(initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }),
+    JSON.stringify(
+      initialContent ?? { type: "doc", content: [{ type: "paragraph" }] },
+    ),
   );
 
   useEffect(() => {
@@ -163,7 +166,9 @@ function DirectPortfolioEditor({
 
   const extensions = useMemo(
     () => [
-      ...mainExtensions.filter((extension) => extension.name !== "globalDragHandle"),
+      ...mainExtensions.filter(
+        (extension) => extension.name !== "globalDragHandle",
+      ),
       GlobalDragHandle.configure({
         customNodes: ["transclusionSource", "transclusionReference"],
         atomNodes: ["base", "photoGrid", "photoAlbum"],
@@ -185,7 +190,10 @@ function DirectPortfolioEditor({
           content,
         });
       } catch (error) {
-        if (!(error instanceof PortfolioDraftSaveError) || !error.sessionExpired) {
+        if (
+          !(error instanceof PortfolioDraftSaveError) ||
+          !error.sessionExpired
+        ) {
           throw error;
         }
 
@@ -229,7 +237,9 @@ function DirectPortfolioEditor({
           if (mountedRef.current && version === saveVersionRef.current) {
             notifySaveState(
               "error",
-              error instanceof Error ? error.message : "Ramzy Studio autosave failed.",
+              error instanceof Error
+                ? error.message
+                : "Ramzy Studio autosave failed.",
             );
           }
         });
@@ -277,12 +287,7 @@ function DirectPortfolioEditor({
       },
       handlePaste: (_view, event) => {
         if (!editorRef.current) return false;
-        return handlePaste(
-          editorRef.current,
-          event,
-          pageId,
-          session.user.id,
-        );
+        return handlePaste(editorRef.current, event, pageId, session.user.id);
       },
       handleKeyDown: (view, event) => {
         if (event.key !== "Backspace") return false;
@@ -338,10 +343,15 @@ function DirectPortfolioEditor({
   );
 
   return (
-    <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>
+    <div
+      className="editor-container"
+      style={{ position: "relative", minHeight: 240 }}
+    >
       <RamzyPortfolioEditor
         pageId={pageId}
-        content={initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }}
+        content={
+          initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }
+        }
         extensions={extensions}
         editable={editable ?? true}
         ariaLabel="Portfolio document content"
@@ -358,6 +368,7 @@ function DirectPortfolioEditor({
       {editor && (editable ?? true) && (
         <>
           <PortfolioDnd editor={editor} />
+          <PortfolioGridControls editor={editor} />
           <PortfolioInsertionControls editor={editor} />
         </>
       )}

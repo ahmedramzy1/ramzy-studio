@@ -21,7 +21,7 @@ export interface ColumnsOptions {
   HTMLAttributes: Record<string, any>;
 }
 
-export type WidthMode = "normal" | "wide";
+export type WidthMode = "normal" | "wide" | "full";
 
 export interface ColumnsAttributes {
   layout?: ColumnsLayout;

@@ -33,14 +33,14 @@ export function portfolioDropTargetAtPoint<T>(
       }
       const leftRect = left.element.getBoundingClientRect();
       const rightRect = right.element.getBoundingClientRect();
-      return leftRect.width * leftRect.height - rightRect.width * rightRect.height;
+      return (
+        leftRect.width * leftRect.height - rightRect.width * rightRect.height
+      );
     })[0] ?? null
   );
 }
 
-export function cloneForPortfolioDndPreview(
-  element: HTMLElement,
-): HTMLElement {
+export function cloneForPortfolioDndPreview(element: HTMLElement): HTMLElement {
   const clone = element.cloneNode(true) as HTMLElement;
   clone
     .querySelectorAll<HTMLElement>(
@@ -53,7 +53,8 @@ export function cloneForPortfolioDndPreview(
   clone.removeAttribute("id");
   clone.classList.remove("ramzy-dnd-source", "ProseMirror-selectednode");
   clone.setAttribute("aria-hidden", "true");
-  clone.style.cssText += ";opacity:1;pointer-events:none;width:100%;max-width:100%";
+  clone.style.cssText +=
+    ";opacity:1;pointer-events:none;width:100%;max-width:100%";
   return clone;
 }
 
@@ -61,6 +62,16 @@ function previewColumn(content: HTMLElement): HTMLElement {
   const column = document.createElement("div");
   column.dataset.type = "column";
   column.appendChild(content);
+  return column;
+}
+
+function incomingPreviewColumn(
+  content: HTMLElement,
+  edge: "left" | "right",
+): HTMLElement {
+  const column = previewColumn(content);
+  column.classList.add("ramzy-dnd-incoming-column");
+  column.dataset.dropEdge = edge;
   return column;
 }
 
@@ -75,9 +86,10 @@ export function createPortfolioDndGridPreview(
     const row = document.createElement("div");
     row.dataset.type = "columns";
     row.dataset.layout = "two_equal";
+    row.classList.add("ramzy-dnd-preview-grid");
     const columns = [
       previewColumn(cloneForPortfolioDndPreview(rowElement)),
-      previewColumn(sourceClone),
+      incomingPreviewColumn(sourceClone, edge),
     ];
     if (edge === "left") columns.reverse();
     row.append(...columns);
@@ -85,13 +97,19 @@ export function createPortfolioDndGridPreview(
   }
 
   const row = cloneForPortfolioDndPreview(rowElement);
-  const sourceColumn = sourceElement.closest<HTMLElement>('[data-type="column"]');
+  const sourceColumn = sourceElement.closest<HTMLElement>(
+    '[data-type="column"]',
+  );
   let insertionIndex = edge === "left" ? columnIndex : columnIndex + 1;
   if (sourceColumn?.parentElement === rowElement) {
-    const sourceColumnIndex = Array.from(rowElement.children).indexOf(sourceColumn);
+    const sourceColumnIndex = Array.from(rowElement.children).indexOf(
+      sourceColumn,
+    );
     const clonedSourceColumn = row.children[sourceColumnIndex];
     if (clonedSourceColumn) {
-      const sourceBlockIndex = Array.from(sourceColumn.children).indexOf(sourceElement);
+      const sourceBlockIndex = Array.from(sourceColumn.children).indexOf(
+        sourceElement,
+      );
       clonedSourceColumn.children[sourceBlockIndex]?.remove();
       if (clonedSourceColumn.children.length === 0) {
         clonedSourceColumn.remove();
@@ -100,8 +118,9 @@ export function createPortfolioDndGridPreview(
     }
   }
 
+  row.classList.add("ramzy-dnd-preview-grid");
   row.insertBefore(
-    previewColumn(sourceClone),
+    incomingPreviewColumn(sourceClone, edge),
     row.children[Math.max(0, insertionIndex)] ?? null,
   );
   const count = row.children.length;

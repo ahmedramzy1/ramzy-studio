@@ -71,10 +71,15 @@ describe("portfolio dnd future-layout preview", () => {
 
     expect(preview.dataset.type).toBe("columns");
     expect(preview.dataset.layout).toBe("two_equal");
-    expect(Array.from(preview.children).map((item) => item.textContent)).toEqual([
-      "Video",
-      "Audio",
-    ]);
+    expect(
+      Array.from(preview.children).map((item) => item.textContent),
+    ).toEqual(["Video", "Audio"]);
+    expect(
+      preview.lastElementChild?.classList.contains("ramzy-dnd-incoming-column"),
+    ).toBe(true);
+    expect((preview.lastElementChild as HTMLElement).dataset.dropEdge).toBe(
+      "right",
+    );
   });
 
   it("shows the exact third slot inside an existing grid", () => {
@@ -89,11 +94,9 @@ describe("portfolio dnd future-layout preview", () => {
     );
 
     expect(preview.dataset.layout).toBe("three_equal");
-    expect(Array.from(preview.children).map((item) => item.textContent)).toEqual([
-      "Video",
-      "Audio",
-      "Image",
-    ]);
+    expect(
+      Array.from(preview.children).map((item) => item.textContent),
+    ).toEqual(["Video", "Audio", "Image"]);
   });
 
   it("removes the old slot while previewing a same-grid move", () => {
@@ -111,11 +114,9 @@ describe("portfolio dnd future-layout preview", () => {
     );
 
     expect(preview.children).toHaveLength(3);
-    expect(Array.from(preview.children).map((item) => item.textContent)).toEqual([
-      "Video",
-      "Image",
-      "Audio",
-    ]);
+    expect(
+      Array.from(preview.children).map((item) => item.textContent),
+    ).toEqual(["Video", "Image", "Audio"]);
   });
 
   it("uses the closest normalized edge for tall and wide blocks", () => {
@@ -128,9 +129,37 @@ describe("portfolio dnd future-layout preview", () => {
       height: 600,
     };
 
-    expect(closestPortfolioDropEdge(rect, { x: 110, y: 400 }, ["top", "bottom", "left", "right"])).toBe("left");
-    expect(closestPortfolioDropEdge(rect, { x: 490, y: 400 }, ["top", "bottom", "left", "right"])).toBe("right");
-    expect(closestPortfolioDropEdge(rect, { x: 300, y: 110 }, ["top", "bottom", "left", "right"])).toBe("top");
-    expect(closestPortfolioDropEdge(rect, { x: 300, y: 690 }, ["top", "bottom", "left", "right"])).toBe("bottom");
+    expect(
+      closestPortfolioDropEdge(rect, { x: 110, y: 400 }, [
+        "top",
+        "bottom",
+        "left",
+        "right",
+      ]),
+    ).toBe("left");
+    expect(
+      closestPortfolioDropEdge(rect, { x: 490, y: 400 }, [
+        "top",
+        "bottom",
+        "left",
+        "right",
+      ]),
+    ).toBe("right");
+    expect(
+      closestPortfolioDropEdge(rect, { x: 300, y: 110 }, [
+        "top",
+        "bottom",
+        "left",
+        "right",
+      ]),
+    ).toBe("top");
+    expect(
+      closestPortfolioDropEdge(rect, { x: 300, y: 690 }, [
+        "top",
+        "bottom",
+        "left",
+        "right",
+      ]),
+    ).toBe("bottom");
   });
 });

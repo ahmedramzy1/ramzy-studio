@@ -99,16 +99,63 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   pointer-events: none;
   box-sizing: border-box;
   border-radius: 8px;
-  outline: 2px solid #228be6;
-  outline-offset: 4px;
   background: var(--mantine-color-body, #fff);
-  box-shadow: 0 18px 48px rgb(0 0 0 / 16%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
   overflow: visible;
   opacity: 0.96;
   contain: layout paint;
   will-change: transform, width;
-  transition: transform 120ms cubic-bezier(0.2, 0, 0, 1),
+  transition:
+    transform 120ms cubic-bezier(0.2, 0, 0, 1),
     width 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ramzy-dnd-layout-preview .ramzy-dnd-incoming-column,
+.ramzy-dnd-layout-preview .ramzy-dnd-incoming-block {
+  position: relative;
+  opacity: 0.42;
+}
+
+.ramzy-dnd-layout-preview .ramzy-dnd-incoming-column::before,
+.ramzy-dnd-layout-preview .ramzy-dnd-incoming-block::before {
+  content: "";
+  position: absolute;
+  z-index: 20;
+  border-radius: 999px;
+  background: var(--mantine-color-blue-6, #228be6);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 85%);
+}
+
+.ramzy-dnd-layout-preview
+  .ramzy-dnd-incoming-column[data-drop-edge="right"]::before {
+  top: 0;
+  bottom: 0;
+  left: calc(var(--ramzy-columns-gap, 2rem) / -2 - 1px);
+  width: 3px;
+}
+
+.ramzy-dnd-layout-preview
+  .ramzy-dnd-incoming-column[data-drop-edge="left"]::before {
+  top: 0;
+  right: calc(var(--ramzy-columns-gap, 2rem) / -2 - 1px);
+  bottom: 0;
+  width: 3px;
+}
+
+.ramzy-dnd-layout-preview
+  .ramzy-dnd-incoming-block[data-drop-edge="top"]::before {
+  top: -9px;
+  right: 0;
+  left: 0;
+  height: 3px;
+}
+
+.ramzy-dnd-layout-preview
+  .ramzy-dnd-incoming-block[data-drop-edge="bottom"]::before {
+  right: 0;
+  bottom: -9px;
+  left: 0;
+  height: 3px;
 }
 
 .ramzy-dnd-layout-preview > [data-type="columns"] {
@@ -136,8 +183,7 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   --ramzy-columns-gap: 2rem;
 }
 
-.ProseMirror.ramzy-portfolio-editor
-  div[data-type="columns"][data-gap="wide"] {
+.ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-gap="wide"] {
   --ramzy-columns-gap: 3rem;
 }
 
@@ -259,10 +305,24 @@ div[data-type="columns"][data-width-mode="wide"] {
 /* The portfolio editor already occupies the canonical content canvas, so wide
  * mode means the available host width rather than compensating for Docmost's
  * old 3rem document padding. */
-.ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-width-mode="wide"] {
-  margin-left: 0;
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-width-mode="wide"] {
+  position: relative;
+  left: 50%;
+  width: min(1120px, calc(100vw - 22rem));
+  max-width: none;
   margin-right: 0;
-  width: 100%;
+  margin-left: 0;
+  transform: translateX(-50%);
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-width-mode="full"] {
+  position: relative;
+  left: 50%;
+  width: min(1440px, calc(100vw - 6rem));
+  max-width: none;
+  transform: translateX(-50%);
 }
 
 @media (max-width: $mantine-breakpoint-sm) {
@@ -272,10 +332,88 @@ div[data-type="columns"][data-width-mode="wide"] {
     width: calc(100% + 2rem);
   }
 
-  .ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-width-mode="wide"] {
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-width-mode="wide"] {
+    left: auto;
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    transform: none;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-width-mode="full"] {
+    left: auto;
+    width: 100%;
+    transform: none;
+  }
+}
+
+.ramzy-grid-resize-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+body:has(.ramzy-dnd-source) .ramzy-grid-resize-layer {
+  display: none;
+}
+
+.ramzy-grid-resize-handle {
+  position: fixed;
+  width: 18px;
+  pointer-events: auto;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ramzy-grid-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: min(72px, 45%);
+  min-height: 36px;
+  border-radius: 999px;
+  background: var(--mantine-color-blue-5, #339af0);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 80%);
+  opacity: 0.72;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 120ms ease,
+    height 120ms ease;
+}
+
+.ramzy-grid-resize-handle:hover::after,
+.ramzy-grid-resize-handle[data-resizing="true"]::after {
+  height: min(104px, 66%);
+  opacity: 1;
+}
+
+.ramzy-grid-resize-handle[data-kind="outer"]::after {
+  width: 4px;
+}
+
+.ramzy-grid-width-badge {
+  position: fixed;
+  z-index: 9999;
+  padding: 4px 8px;
+  border: 1px solid rgb(0 0 0 / 9%);
+  border-radius: 6px;
+  background: var(--mantine-color-body, #fff);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+  color: var(--mantine-color-text, #202124);
+  font:
+    600 11px/1.2 system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+
+@media print, (max-width: 680px) {
+  .ramzy-grid-resize-layer {
+    display: none !important;
   }
 }
 
