@@ -35,6 +35,7 @@ import {
   handlePortfolioGridDrop,
   updatePortfolioGridDropIndicator,
 } from "./portfolio-grid-drop";
+import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
@@ -163,7 +164,10 @@ function DirectPortfolioEditor({
     };
   }, [notifySaveState]);
 
-  const extensions = useMemo(() => [...mainExtensions, UndoRedo], []);
+  const extensions = useMemo(
+    () => [...mainExtensions, PortfolioGridNormalizer, UndoRedo],
+    [],
+  );
 
   const persistDraft = useCallback(
     async (content: JSONContent, version: number) => {
