@@ -1,6 +1,9 @@
-import { Node, mergeAttributes } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import {
+  PortfolioPhotoAlbum,
+  PortfolioPhotoGrid,
+} from "@docmost/editor-ext";
 import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { uploadFile } from "@/features/page/services/page-service.ts";
@@ -185,30 +188,13 @@ function PhotoCollectionView({ editor, node, selected, updateAttributes }: NodeV
   );
 }
 
-function photoNode(name: "photoGrid" | "photoAlbum", tag: string) {
-  return Node.create({
-    name,
-    group: "block",
-    atom: true,
-    draggable: true,
-    addAttributes() {
-      return {
-        images: { default: [] },
-        title: { default: "" },
-        description: { default: "" },
-        location: { default: "" },
-        date: { default: "" },
-        credit: { default: "" },
-        activeKey: { default: null },
-      };
-    },
-    parseHTML() { return [{ tag: `[data-type="${name}"]` }]; },
-    renderHTML({ HTMLAttributes }) {
-      return [tag, mergeAttributes(HTMLAttributes, { "data-type": name })];
-    },
-    addNodeView() { return ReactNodeViewRenderer(PhotoCollectionView); },
-  });
-}
-
-export const PhotoGrid = photoNode("photoGrid", "div");
-export const PhotoAlbum = photoNode("photoAlbum", "figure");
+export const PhotoGrid = PortfolioPhotoGrid.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(PhotoCollectionView);
+  },
+});
+export const PhotoAlbum = PortfolioPhotoAlbum.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(PhotoCollectionView);
+  },
+});

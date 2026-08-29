@@ -13,6 +13,7 @@ export * from "./lib/selection";
 export * from "./lib/attachment";
 export * from "./lib/audio";
 export * from "./lib/media-playlist";
+export * from "./lib/photo-collection";
 export * from "./lib/custom-code-block";
 export * from "./lib/drawio";
 export * from "./lib/excalidraw";
