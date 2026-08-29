@@ -1,23 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   closestPortfolioDropEdge,
-  createPortfolioDndGridPreview,
   portfolioDropTargetAtPoint,
+  portfolioPreviewColumnPlan,
 } from "./portfolio-dnd-preview";
-
-function block(label: string) {
-  const element = document.createElement("div");
-  element.className = "react-renderer";
-  element.textContent = label;
-  return element;
-}
-
-function column(label: string) {
-  const element = document.createElement("div");
-  element.dataset.type = "column";
-  element.appendChild(block(label));
-  return element;
-}
 
 describe("portfolio dnd future-layout preview", () => {
   it("prefers the exact column under the pointer over its containing row", () => {
@@ -61,62 +47,24 @@ describe("portfolio dnd future-layout preview", () => {
     expect(target?.data).toBe("row");
   });
 
-  it("renders a real two-column row in the requested order", () => {
-    const preview = createPortfolioDndGridPreview(
-      block("Audio"),
-      block("Video"),
-      null,
-      "right",
-    );
-
-    expect(preview.dataset.type).toBe("columns");
-    expect(preview.dataset.layout).toBe("two_equal");
-    expect(
-      Array.from(preview.children).map((item) => item.textContent),
-    ).toEqual(["Video", "Audio"]);
-    expect(
-      preview.lastElementChild?.classList.contains("ramzy-dnd-incoming-column"),
-    ).toBe(true);
-    expect((preview.lastElementChild as HTMLElement).dataset.dropEdge).toBe(
-      "right",
-    );
-  });
-
-  it("shows the exact third slot inside an existing grid", () => {
-    const row = document.createElement("div");
-    row.dataset.type = "columns";
-    row.append(column("Video"), column("Image"));
-    const preview = createPortfolioDndGridPreview(
-      block("Audio"),
-      row,
-      0,
-      "right",
-    );
-
-    expect(preview.dataset.layout).toBe("three_equal");
-    expect(
-      Array.from(preview.children).map((item) => item.textContent),
-    ).toEqual(["Video", "Audio", "Image"]);
+  it("reserves the exact third slot inside an existing grid", () => {
+    const plan = portfolioPreviewColumnPlan(2, 0, "right");
+    expect(plan).toEqual({
+      hiddenSourceIndex: null,
+      insertionIndex: 1,
+      futureColumnCount: 3,
+      orders: [0, 4],
+    });
   });
 
   it("removes the old slot while previewing a same-grid move", () => {
-    const row = document.createElement("div");
-    row.dataset.type = "columns";
-    const video = column("Video");
-    const audio = column("Audio");
-    const image = column("Image");
-    row.append(video, audio, image);
-    const preview = createPortfolioDndGridPreview(
-      audio.firstElementChild as HTMLElement,
-      row,
-      2,
-      "right",
-    );
-
-    expect(preview.children).toHaveLength(3);
-    expect(
-      Array.from(preview.children).map((item) => item.textContent),
-    ).toEqual(["Video", "Image", "Audio"]);
+    const plan = portfolioPreviewColumnPlan(3, 2, "right", 1, true);
+    expect(plan).toEqual({
+      hiddenSourceIndex: 1,
+      insertionIndex: 2,
+      futureColumnCount: 3,
+      orders: [0, null, 2],
+    });
   });
 
   it("uses the closest normalized edge for tall and wide blocks", () => {

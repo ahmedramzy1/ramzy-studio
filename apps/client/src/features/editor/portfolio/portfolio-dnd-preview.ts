@@ -40,93 +40,46 @@ export function portfolioDropTargetAtPoint<T>(
   );
 }
 
-export function cloneForPortfolioDndPreview(element: HTMLElement): HTMLElement {
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone
-    .querySelectorAll<HTMLElement>(
-      "[data-drag-handle], [data-ramzy-block-drag-handle], .drag-handle",
-    )
-    .forEach((handle) => handle.remove());
-  clone.querySelectorAll<HTMLElement>("[id]").forEach((node) => {
-    node.removeAttribute("id");
+export function portfolioPreviewColumnPlan(
+  columnCount: number,
+  targetColumnIndex: number,
+  edge: "left" | "right",
+  sourceColumnIndex = -1,
+  sourceColumnBecomesEmpty = false,
+) {
+  const hiddenSourceIndex =
+    sourceColumnBecomesEmpty && sourceColumnIndex >= 0
+      ? sourceColumnIndex
+      : null;
+  const visibleColumnIndexes = Array.from(
+    { length: columnCount },
+    (_, index) => index,
+  ).filter((index) => index !== hiddenSourceIndex);
+  let insertionIndex =
+    edge === "left" ? targetColumnIndex : targetColumnIndex + 1;
+  if (hiddenSourceIndex !== null && hiddenSourceIndex < insertionIndex) {
+    insertionIndex -= 1;
+  }
+  insertionIndex = Math.max(
+    0,
+    Math.min(insertionIndex, visibleColumnIndexes.length),
+  );
+
+  const orders = Array.from(
+    { length: columnCount },
+    () => null as number | null,
+  );
+  visibleColumnIndexes.forEach((columnIndex, visibleIndex) => {
+    orders[columnIndex] =
+      visibleIndex < insertionIndex ? visibleIndex * 2 : (visibleIndex + 1) * 2;
   });
-  clone.removeAttribute("id");
-  clone.classList.remove("ramzy-dnd-source", "ProseMirror-selectednode");
-  clone.setAttribute("aria-hidden", "true");
-  clone.style.cssText +=
-    ";opacity:1;pointer-events:none;width:100%;max-width:100%";
-  return clone;
-}
 
-function previewColumn(content: HTMLElement): HTMLElement {
-  const column = document.createElement("div");
-  column.dataset.type = "column";
-  column.appendChild(content);
-  return column;
-}
-
-function incomingPreviewColumn(
-  content: HTMLElement,
-  edge: "left" | "right",
-): HTMLElement {
-  const column = previewColumn(content);
-  column.classList.add("ramzy-dnd-incoming-column");
-  column.dataset.dropEdge = edge;
-  return column;
-}
-
-export function createPortfolioDndGridPreview(
-  sourceElement: HTMLElement,
-  rowElement: HTMLElement,
-  columnIndex: number | null,
-  edge: "left" | "right",
-): HTMLElement {
-  const sourceClone = cloneForPortfolioDndPreview(sourceElement);
-  if (columnIndex === null) {
-    const row = document.createElement("div");
-    row.dataset.type = "columns";
-    row.dataset.layout = "two_equal";
-    row.classList.add("ramzy-dnd-preview-grid");
-    const columns = [
-      previewColumn(cloneForPortfolioDndPreview(rowElement)),
-      incomingPreviewColumn(sourceClone, edge),
-    ];
-    if (edge === "left") columns.reverse();
-    row.append(...columns);
-    return row;
-  }
-
-  const row = cloneForPortfolioDndPreview(rowElement);
-  const sourceColumn = sourceElement.closest<HTMLElement>(
-    '[data-type="column"]',
-  );
-  let insertionIndex = edge === "left" ? columnIndex : columnIndex + 1;
-  if (sourceColumn?.parentElement === rowElement) {
-    const sourceColumnIndex = Array.from(rowElement.children).indexOf(
-      sourceColumn,
-    );
-    const clonedSourceColumn = row.children[sourceColumnIndex];
-    if (clonedSourceColumn) {
-      const sourceBlockIndex = Array.from(sourceColumn.children).indexOf(
-        sourceElement,
-      );
-      clonedSourceColumn.children[sourceBlockIndex]?.remove();
-      if (clonedSourceColumn.children.length === 0) {
-        clonedSourceColumn.remove();
-        if (sourceColumnIndex < insertionIndex) insertionIndex -= 1;
-      }
-    }
-  }
-
-  row.classList.add("ramzy-dnd-preview-grid");
-  row.insertBefore(
-    incomingPreviewColumn(sourceClone, edge),
-    row.children[Math.max(0, insertionIndex)] ?? null,
-  );
-  const count = row.children.length;
-  row.dataset.layout =
-    count === 3 ? "three_equal" : count === 4 ? "four_equal" : "two_equal";
-  return row;
+  return {
+    hiddenSourceIndex,
+    insertionIndex,
+    futureColumnCount: visibleColumnIndexes.length + 1,
+    orders,
+  };
 }
 
 export function closestPortfolioDropEdge(
