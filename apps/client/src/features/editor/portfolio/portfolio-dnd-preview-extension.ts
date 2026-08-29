@@ -1,6 +1,6 @@
 import { Extension, type Editor } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Decoration, DecorationSet } from "prosemirror-view";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 export type PortfolioDndPreviewState = {
   sourcePosition: number;
@@ -188,6 +188,16 @@ export const PortfolioDndPreview = Extension.create({
           },
         },
         props: {
+          handleDOMEvents: {
+            dragstart: (_view, event) => {
+              const target = event.target;
+              return (
+                target instanceof Element &&
+                !!target.closest("[data-ramzy-block-drag-handle]")
+              );
+            },
+            drop: (_view, event) => event.defaultPrevented,
+          },
           decorations(state) {
             return decorationsForPortfolioDndPreview(
               state,

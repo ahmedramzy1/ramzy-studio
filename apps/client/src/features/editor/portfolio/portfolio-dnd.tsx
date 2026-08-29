@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { useEffect } from "react";
 import type { Editor } from "@tiptap/core";
+import { combine } from "@atlaskit/pragmatic-drag-and-drop/combine";
 import {
-  DragDropProvider,
-  DragOverlay,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-} from "@dnd-kit/react";
+  draggable,
+  dropTargetForElements,
+  monitorForElements,
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import { pointerOutsideOfPreview } from "@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview";
+import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
+import {
+  attachClosestEdge,
+  extractClosestEdge,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
+import { autoScrollWindowForElements } from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
+import type {
+  DropTargetRecord,
+  Input,
+} from "@atlaskit/pragmatic-drag-and-drop/types";
 import {
   createPortfolioGridDropTransaction,
   createPortfolioVerticalDropTransaction,
@@ -18,7 +27,7 @@ import {
 } from "./portfolio-dnd-preview-extension";
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
-const PORTFOLIO_ZONE = "ramzy-portfolio-zone";
+const PORTFOLIO_TARGET = "ramzy-portfolio-target";
 const MAX_COLUMNS = 5;
 
 type SourceData = {
@@ -29,16 +38,10 @@ type SourceData = {
   label: string;
 };
 
-type ZoneData = {
-  kind: typeof PORTFOLIO_ZONE;
+type TargetData = {
+  kind: typeof PORTFOLIO_TARGET;
   targetPosition: number;
   columnIndex: number | null;
-  edge: "top" | "bottom" | "left" | "right";
-};
-
-type DropZone = ZoneData & {
-  id: string;
-  rect: { left: number; top: number; width: number; height: number };
 };
 
 function isSourceData(data: unknown): data is SourceData {
@@ -49,11 +52,11 @@ function isSourceData(data: unknown): data is SourceData {
   );
 }
 
-function isZoneData(data: unknown): data is ZoneData {
+function isTargetData(data: unknown): data is TargetData {
   return (
     !!data &&
     typeof data === "object" &&
-    (data as ZoneData).kind === PORTFOLIO_ZONE
+    (data as TargetData).kind === PORTFOLIO_TARGET
   );
 }
 
@@ -67,35 +70,9 @@ function selectionPositionForElement(editor: Editor, element: HTMLElement) {
       if (editor.state.doc.nodeAt(before)?.isBlock) return before;
     }
   } catch {
-    // A React node view can be replaced between pointer movement and activation.
+    // A node view can be replaced between registration and drag activation.
   }
   return null;
-}
-
-function elementAtHandlePointer(
-  editor: Editor,
-  clientX: number,
-  clientY: number,
-) {
-  const editorRect = editor.view.dom.getBoundingClientRect();
-  const hit = document.elementFromPoint(
-    Math.max(editorRect.left + 16, clientX + 56),
-    clientY,
-  );
-  if (!(hit instanceof HTMLElement) || !editor.view.dom.contains(hit)) {
-    return null;
-  }
-  const element =
-    hit.closest<HTMLElement>(".react-renderer") ??
-    hit.closest<HTMLElement>("p, h1, h2, h3, blockquote, pre, ul, ol, table");
-  if (!element) return null;
-  const position = selectionPositionForElement(editor, element);
-  return position === null ? null : { element, position };
-}
-
-function blockLabel(element: HTMLElement) {
-  const text = element.textContent?.trim().replace(/\s+/g, " ");
-  return text ? text.slice(0, 54) : "Portfolio element";
 }
 
 function topLevelPosition(editor: Editor, element: HTMLElement) {
@@ -106,6 +83,65 @@ function topLevelPosition(editor: Editor, element: HTMLElement) {
   } catch {
     return null;
   }
+}
+
+function blockLabel(element: HTMLElement) {
+  const text = element.textContent?.trim().replace(/\s+/g, " ");
+  return text ? text.slice(0, 54) : "Portfolio element";
+}
+
+function cloneForNativePreview(sourceElement: HTMLElement) {
+  const clone = sourceElement.cloneNode(true) as HTMLElement;
+  clone.removeAttribute("id");
+  clone.classList.remove("ramzy-dnd-source", "ProseMirror-selectednode");
+  clone.setAttribute("aria-hidden", "true");
+  clone.setAttribute("contenteditable", "false");
+  clone
+    .querySelectorAll<HTMLElement>(
+      "[data-ramzy-block-drag-handle], [data-drag-handle], .drag-handle",
+    )
+    .forEach((handle) => handle.remove());
+  clone.querySelectorAll<HTMLElement>("[id]").forEach((element) => {
+    element.removeAttribute("id");
+  });
+  clone
+    .querySelectorAll<HTMLElement>("[contenteditable]")
+    .forEach((element) => element.setAttribute("contenteditable", "false"));
+  clone
+    .querySelectorAll<HTMLElement>("button, a, input, textarea, select")
+    .forEach((element) => element.setAttribute("tabindex", "-1"));
+  clone.querySelectorAll<HTMLMediaElement>("video, audio").forEach((media) => {
+    media.removeAttribute("autoplay");
+    media.muted = true;
+  });
+  return clone;
+}
+
+function sourceForHandle(
+  editor: Editor,
+  handle: HTMLElement,
+): SourceData | null {
+  const internal = handle.hasAttribute("data-ramzy-block-drag-handle");
+  const parent =
+    handle.closest<HTMLElement>(".react-renderer") ?? handle.parentElement;
+  const position = internal
+    ? parent
+      ? selectionPositionForElement(editor, parent)
+      : null
+    : Number.isFinite(Number(handle.dataset.ramzyNodePosition))
+      ? Number(handle.dataset.ramzyNodePosition)
+      : null;
+  if (position === null) return null;
+  const node = editor.state.doc.nodeAt(position);
+  const dom = editor.view.nodeDOM(position);
+  if (!node?.isBlock || !(dom instanceof HTMLElement)) return null;
+  return {
+    kind: PORTFOLIO_BLOCK,
+    sourcePosition: position,
+    sourceElement: dom,
+    sourceHeight: dom.getBoundingClientRect().height,
+    label: blockLabel(dom),
+  };
 }
 
 function columnElements(row: HTMLElement) {
@@ -130,259 +166,261 @@ function sourceCanReplaceOwnColumn(source: SourceData, row: HTMLElement) {
   return meaningful.length === 1;
 }
 
-function zoneRect(rect: DOMRect, edge: ZoneData["edge"]) {
-  if (edge === "top" || edge === "bottom") {
-    const height = Math.min(48, Math.max(24, rect.height * 0.16));
-    return {
-      left: rect.left,
-      top: edge === "top" ? rect.top - height / 2 : rect.bottom - height / 2,
-      width: rect.width,
-      height,
-    };
-  }
-  const width = Math.min(180, Math.max(72, rect.width * 0.34));
+function previewFromLocation(
+  source: SourceData,
+  dropTargets: readonly DropTargetRecord[],
+): PortfolioDndPreviewState | null {
+  const record = dropTargets.find((target) => isTargetData(target.data));
+  if (!record || !isTargetData(record.data)) return null;
+  const edge = extractClosestEdge(record.data);
+  if (!edge) return null;
   return {
-    left: edge === "left" ? rect.left : rect.right - width,
-    top: rect.top,
-    width,
-    height: rect.height,
+    sourcePosition: source.sourcePosition,
+    targetPosition: record.data.targetPosition,
+    edge,
+    columnIndex: record.data.columnIndex,
+    sourceHeight: source.sourceHeight,
   };
 }
 
-function collectDropZones(editor: Editor, source: SourceData): DropZone[] {
-  const zones: DropZone[] = [];
-  Array.from(editor.view.dom.children).forEach((child, rowIndex) => {
-    if (!(child instanceof HTMLElement)) return;
-    const targetPosition = topLevelPosition(editor, child);
-    const rowRect = child.getBoundingClientRect();
-    if (targetPosition === null || rowRect.width <= 0 || rowRect.height <= 0) {
-      return;
-    }
-
-    (["top", "bottom"] as const).forEach((edge) => {
-      zones.push({
-        id: `row-${rowIndex}-${edge}`,
-        kind: PORTFOLIO_ZONE,
-        targetPosition,
-        columnIndex: null,
-        edge,
-        rect: zoneRect(rowRect, edge),
-      });
-    });
-
-    const isGrid = child.matches('[data-type="columns"]');
-    const columns = isGrid ? columnElements(child) : [child];
-    const canAdd =
-      columns.length < MAX_COLUMNS || sourceCanReplaceOwnColumn(source, child);
-    if (!canAdd) return;
-
-    columns.forEach((column, columnIndex) => {
-      const rect = column.getBoundingClientRect();
-      (["left", "right"] as const).forEach((edge) => {
-        zones.push({
-          id: `row-${rowIndex}-column-${columnIndex}-${edge}`,
-          kind: PORTFOLIO_ZONE,
-          targetPosition,
-          columnIndex: isGrid ? columnIndex : null,
-          edge,
-          rect: zoneRect(rect, edge),
-        });
-      });
-    });
-  });
-  return zones;
-}
-
-function GlobalHandleBinding({
-  editor,
-  source,
-  setSource,
-}: {
-  editor: Editor;
-  source: SourceData | null;
-  setSource: (source: SourceData | null) => void;
-}) {
-  const handle =
-    editor.view.dom.parentElement?.querySelector<HTMLElement>(
-      ":scope > .drag-handle",
-    ) ?? null;
-
-  useEffect(() => {
-    if (!handle) return;
-    const sourceFromPointer = (event: PointerEvent): SourceData | null => {
-      const match = elementAtHandlePointer(
-        editor,
-        event.clientX,
-        event.clientY,
-      );
-      return match
-        ? {
-            kind: PORTFOLIO_BLOCK,
-            sourcePosition: match.position,
-            sourceElement: match.element,
-            sourceHeight: match.element.getBoundingClientRect().height,
-            label: blockLabel(match.element),
-          }
-        : null;
-    };
-    const prepare = (event: PointerEvent) => {
-      setSource(sourceFromPointer(event));
-    };
-    const prepareSynchronously = (event: PointerEvent) => {
-      flushSync(() => {
-        setSource(sourceFromPointer(event));
-      });
-    };
-    handle.addEventListener("pointermove", prepare, { passive: true });
-    handle.addEventListener("pointerdown", prepareSynchronously, true);
-    return () => {
-      handle.removeEventListener("pointermove", prepare);
-      handle.removeEventListener("pointerdown", prepareSynchronously, true);
-    };
-  }, [editor, handle, setSource]);
-
-  useDraggable({
-    id: "ramzy-portfolio-global-handle",
-    type: PORTFOLIO_BLOCK,
-    element: handle,
-    handle,
-    data: source ?? { kind: "inactive" },
-    disabled: !handle,
-  });
-  return null;
-}
-
-function Zone({ zone }: { zone: DropZone }) {
-  const { ref, isDropTarget } = useDroppable<ZoneData>({
-    id: zone.id,
-    type: PORTFOLIO_ZONE,
-    accept: PORTFOLIO_BLOCK,
-    data: zone,
-  });
+function containsPoint(rect: DOMRect, input: Input) {
   return (
-    <div
-      ref={ref}
-      className="ramzy-dnd-drop-zone"
-      data-active={isDropTarget || undefined}
-      style={{
-        left: zone.rect.left,
-        top: zone.rect.top,
-        width: zone.rect.width,
-        height: zone.rect.height,
-      }}
-    />
+    input.clientX >= rect.left &&
+    input.clientX <= rect.right &&
+    input.clientY >= rect.top &&
+    input.clientY <= rect.bottom
   );
 }
 
-function DropZones({ zones }: { zones: DropZone[] }) {
-  if (!zones.length) return null;
-  return createPortal(
-    <div className="ramzy-dnd-drop-zone-layer" aria-hidden="true">
-      {zones.map((zone) => (
-        <Zone key={zone.id} zone={zone} />
-      ))}
-    </div>,
-    document.body,
+function topLevelElementAtInput(editor: Editor, input: Input) {
+  const root = editor.view.dom;
+  const hits =
+    typeof document.elementsFromPoint === "function"
+      ? document.elementsFromPoint(input.clientX, input.clientY)
+      : [];
+  for (const hit of hits) {
+    if (!(hit instanceof HTMLElement) || !root.contains(hit)) continue;
+    let row = hit;
+    while (row.parentElement && row.parentElement !== root) {
+      row = row.parentElement;
+    }
+    if (row.parentElement === root) return row;
+  }
+  return Array.from(root.children).find(
+    (child): child is HTMLElement =>
+      child instanceof HTMLElement &&
+      containsPoint(child.getBoundingClientRect(), input),
+  );
+}
+
+function targetDataAtInput(
+  editor: Editor,
+  source: SourceData,
+  input: Input,
+): Record<string | symbol, unknown> | null {
+  const row = topLevelElementAtInput(editor, input);
+  if (!row) return null;
+  const targetPosition = topLevelPosition(editor, row);
+  if (targetPosition === null) return null;
+
+  if (!row.matches('[data-type="columns"]')) {
+    if (source.sourcePosition === targetPosition) return null;
+    return attachClosestEdge(
+      { kind: PORTFOLIO_TARGET, targetPosition, columnIndex: null },
+      {
+        input,
+        element: row,
+        allowedEdges: ["top", "bottom", "left", "right"],
+      },
+    );
+  }
+
+  const rowRect = row.getBoundingClientRect();
+  const verticalBand = Math.min(72, Math.max(36, rowRect.height * 0.16));
+  if (
+    input.clientY <= rowRect.top + verticalBand ||
+    input.clientY >= rowRect.bottom - verticalBand
+  ) {
+    return attachClosestEdge(
+      { kind: PORTFOLIO_TARGET, targetPosition, columnIndex: null },
+      { input, element: row, allowedEdges: ["top", "bottom"] },
+    );
+  }
+
+  const columns = columnElements(row);
+  const column =
+    columns.find((candidate) =>
+      containsPoint(candidate.getBoundingClientRect(), input),
+    ) ??
+    columns.reduce<HTMLElement | null>((nearest, candidate) => {
+      if (!nearest) return candidate;
+      const candidateRect = candidate.getBoundingClientRect();
+      const nearestRect = nearest.getBoundingClientRect();
+      const candidateDistance = Math.abs(
+        input.clientX - (candidateRect.left + candidateRect.right) / 2,
+      );
+      const nearestDistance = Math.abs(
+        input.clientX - (nearestRect.left + nearestRect.right) / 2,
+      );
+      return candidateDistance < nearestDistance ? candidate : nearest;
+    }, null);
+  if (!column) return null;
+  if (source.sourceElement.closest('[data-type="column"]') === column) {
+    return null;
+  }
+  if (
+    columns.length >= MAX_COLUMNS &&
+    !sourceCanReplaceOwnColumn(source, row)
+  ) {
+    return null;
+  }
+  return attachClosestEdge(
+    {
+      kind: PORTFOLIO_TARGET,
+      targetPosition,
+      columnIndex: columns.indexOf(column),
+    },
+    { input, element: column, allowedEdges: ["left", "right"] },
   );
 }
 
 function PortfolioDndController({ editor }: { editor: Editor }) {
-  const [preparedSource, setPreparedSource] = useState<SourceData | null>(null);
-  const [activeSource, setActiveSource] = useState<SourceData | null>(null);
-  const [zones, setZones] = useState<DropZone[]>([]);
-
-  const clear = useCallback(() => {
-    setPortfolioDndPreview(editor, null);
-    setActiveSource(null);
-    setZones([]);
-  }, [editor]);
-
-  useEffect(() => () => setPortfolioDndPreview(editor, null), [editor]);
-
   useEffect(() => {
-    if (!activeSource) return;
-    let frame = 0;
-    const refresh = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (!editor.isDestroyed) {
-          setZones(collectDropZones(editor, activeSource));
-        }
+    const root = editor.view.dom;
+    const handleCleanups = new Map<HTMLElement, () => void>();
+
+    const registerHandle = (handle: HTMLElement) => {
+      if (handleCleanups.has(handle)) return;
+      const cleanup = draggable({
+        element: handle,
+        getInitialData: () =>
+          sourceForHandle(editor, handle) ?? { kind: "inactive" },
+        onGenerateDragPreview: ({ nativeSetDragImage }) => {
+          const source = sourceForHandle(editor, handle);
+          if (!source) return;
+          const width = Math.min(
+            520,
+            Math.max(240, source.sourceElement.getBoundingClientRect().width),
+          );
+          setCustomNativeDragPreview({
+            nativeSetDragImage,
+            getOffset: pointerOutsideOfPreview({ x: "16px", y: "12px" }),
+            render: ({ container }) => {
+              const preview = document.createElement("div");
+              preview.className = "ramzy-dnd-native-preview";
+              preview.style.width = `${width}px`;
+              const clone = cloneForNativePreview(source.sourceElement);
+              clone.style.width = "100%";
+              clone.style.maxWidth = "none";
+              clone.style.margin = "0";
+              preview.appendChild(clone);
+              container.appendChild(preview);
+            },
+          });
+        },
       });
+      handleCleanups.set(handle, cleanup);
     };
-    window.addEventListener("scroll", refresh, true);
-    window.addEventListener("resize", refresh);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", refresh, true);
-      window.removeEventListener("resize", refresh);
-    };
-  }, [activeSource, editor]);
 
-  const sensors = useMemo(() => [PointerSensor], []);
-
-  return (
-    <DragDropProvider
-      sensors={sensors}
-      onDragStart={({ operation }) => {
-        const source = operation.source?.data;
-        if (!isSourceData(source)) return;
-        setActiveSource(source);
-        setZones(collectDropZones(editor, source));
-      }}
-      onDragOver={({ operation }) => {
-        const source = operation.source?.data;
-        const target = operation.target?.data;
-        if (!isSourceData(source) || !isZoneData(target)) {
-          setPortfolioDndPreview(editor, null);
-          return;
+    const refreshRegistrations = () => {
+      for (const [element, cleanup] of handleCleanups) {
+        if (!element.isConnected) {
+          cleanup();
+          handleCleanups.delete(element);
         }
-        const preview: PortfolioDndPreviewState = {
-          sourcePosition: source.sourcePosition,
-          targetPosition: target.targetPosition,
-          edge: target.edge,
-          columnIndex: target.columnIndex,
-          sourceHeight: source.sourceHeight,
-        };
-        setPortfolioDndPreview(editor, preview);
-      }}
-      onDragEnd={({ operation, canceled }) => {
-        const source = operation.source?.data;
-        const target = operation.target?.data;
-        clear();
-        if (canceled || !isSourceData(source) || !isZoneData(target)) return;
+      }
+      const globalHandle = root.parentElement?.querySelector<HTMLElement>(
+        ":scope > .drag-handle",
+      );
+      if (globalHandle) registerHandle(globalHandle);
+      root
+        .querySelectorAll<HTMLElement>("[data-ramzy-block-drag-handle]")
+        .forEach(registerHandle);
+    };
 
+    refreshRegistrations();
+    const observer = new MutationObserver(refreshRegistrations);
+    const observerRoot = root.parentElement?.querySelector(
+      ":scope > .drag-handle",
+    )
+      ? root.parentElement
+      : root;
+    observer.observe(observerRoot, {
+      childList: true,
+      subtree: true,
+    });
+
+    const clearPreview = () => setPortfolioDndPreview(editor, null);
+    const targetCleanup = dropTargetForElements({
+      element: root,
+      canDrop: ({ source, input }) =>
+        isSourceData(source.data) &&
+        targetDataAtInput(editor, source.data, input) !== null,
+      getData: ({ source, input }) =>
+        isSourceData(source.data)
+          ? (targetDataAtInput(editor, source.data, input) ?? {
+              kind: "inactive",
+            })
+          : { kind: "inactive" },
+    });
+    const monitorCleanup = monitorForElements({
+      canMonitor: ({ source }) => isSourceData(source.data),
+      onDragStart: clearPreview,
+      onDropTargetChange: ({ source, location }) => {
+        if (!isSourceData(source.data)) return;
+        setPortfolioDndPreview(
+          editor,
+          previewFromLocation(source.data, location.current.dropTargets),
+        );
+      },
+      onDrag: ({ source, location }) => {
+        if (!isSourceData(source.data)) return;
+        setPortfolioDndPreview(
+          editor,
+          previewFromLocation(source.data, location.current.dropTargets),
+        );
+      },
+      onDrop: ({ source, location }) => {
+        if (!isSourceData(source.data)) return;
+        const preview = previewFromLocation(
+          source.data,
+          location.current.dropTargets,
+        );
+        clearPreview();
+        if (!preview) return;
         const transaction =
-          target.edge === "left" || target.edge === "right"
+          preview.edge === "left" || preview.edge === "right"
             ? createPortfolioGridDropTransaction(
                 editor.state,
-                target.targetPosition,
-                target.edge,
-                target.columnIndex,
-                source.sourcePosition,
+                preview.targetPosition,
+                preview.edge,
+                preview.columnIndex,
+                source.data.sourcePosition,
               )
             : createPortfolioVerticalDropTransaction(
                 editor.state,
-                target.targetPosition,
-                target.edge,
-                source.sourcePosition,
+                preview.targetPosition,
+                preview.edge,
+                source.data.sourcePosition,
               );
         if (transaction) editor.view.dispatch(transaction);
-      }}
-    >
-      <GlobalHandleBinding
-        editor={editor}
-        source={preparedSource}
-        setSource={setPreparedSource}
-      />
-      <DropZones zones={zones} />
-      <DragOverlay dropAnimation={{ duration: 180, easing: "ease-out" }}>
-        {activeSource ? (
-          <div className="ramzy-dnd-drag-overlay">{activeSource.label}</div>
-        ) : null}
-      </DragOverlay>
-    </DragDropProvider>
-  );
+      },
+    });
+
+    const cleanup = combine(
+      targetCleanup,
+      monitorCleanup,
+      autoScrollWindowForElements({ getAllowedAxis: () => "vertical" }),
+    );
+    return () => {
+      observer.disconnect();
+      cleanup();
+      handleCleanups.forEach((unbind) => unbind());
+      clearPreview();
+    };
+  }, [editor]);
+
+  return null;
 }
 
 export function PortfolioDnd({ editor }: { editor: Editor }) {

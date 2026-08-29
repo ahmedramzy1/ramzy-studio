@@ -92,22 +92,9 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   transition: opacity 140ms ease;
 }
 
-.ramzy-dnd-drop-zone-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 9997;
-  pointer-events: none;
-}
-
-.ramzy-dnd-drop-zone {
-  position: fixed;
-  pointer-events: none;
-  box-sizing: border-box;
-}
-
-.ramzy-dnd-drag-overlay {
-  max-width: 260px;
-  padding: 7px 10px;
+.ramzy-dnd-native-preview {
+  max-height: 520px;
+  padding: 6px;
   border: 1px solid color-mix(in srgb, var(--mantine-color-blue-5) 50%, white);
   border-radius: var(--mantine-radius-sm, 4px);
   background: color-mix(
@@ -116,14 +103,9 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
     transparent
   );
   box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
-  color: var(--mantine-color-text, #202124);
-  font:
-    600 12px/1.2 system-ui,
-    sans-serif;
-  opacity: 0.82;
+  opacity: 0.72;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  pointer-events: none;
 }
 
 .ramzy-dnd-column-slot,

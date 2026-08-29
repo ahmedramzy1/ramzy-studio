@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/core";
-import interact from "interactjs";
+import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import { disableNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview";
 import {
   nearestPortfolioGridWidthMode,
   portfolioGridModeLabel,
@@ -51,6 +52,8 @@ type RowResizeSession = {
 };
 
 type ResizeSession = ColumnResizeSession | RowResizeSession;
+
+const PORTFOLIO_GRID_RESIZE = "ramzy-portfolio-grid-resize";
 
 function topLevelPosition(editor: Editor, element: HTMLElement): number | null {
   try {
@@ -274,10 +277,10 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       setWidthLabel(portfolioGridModeLabel(nextMode));
     };
 
-    const move = (dx: number) => {
+    const moveTo = (delta: number) => {
       const session = sessionRef.current;
       if (!session) return;
-      session.delta += dx;
+      session.delta = delta;
       if (session.kind === "column") {
         session.latestWeights = resizedColumnWeights(
           session.startWidths,
@@ -343,16 +346,28 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       }
     };
 
-    handles.forEach((handle) => {
-      interact(handle).draggable({
-        listeners: {
-          start: () => start(handle),
-          move: (event) => move(event.dx),
-          end,
+    const cleanups = handles.map((handle) =>
+      draggable({
+        element: handle,
+        getInitialData: () => ({ kind: PORTFOLIO_GRID_RESIZE }),
+        onGenerateDragPreview: ({ nativeSetDragImage }) => {
+          disableNativeDragPreview({ nativeSetDragImage });
         },
-      });
-    });
-    return () => handles.forEach((handle) => interact(handle).unset());
+        onDragStart: () => start(handle),
+        onDrag: ({ location }) => {
+          moveTo(
+            location.current.input.clientX - location.initial.input.clientX,
+          );
+        },
+        onDrop: ({ location }) => {
+          moveTo(
+            location.current.input.clientX - location.initial.input.clientX,
+          );
+          end();
+        },
+      }),
+    );
+    return () => cleanups.forEach((cleanup) => cleanup());
   }, [active, editor, geometry?.dividers.length]);
 
   if (!active || !geometry) return null;

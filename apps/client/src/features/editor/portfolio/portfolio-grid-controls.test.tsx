@@ -1,25 +1,65 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const interactHarness = vi.hoisted(() => ({
-  listeners: new Map<
+type DragLocation = {
+  initial: { input: { clientX: number } };
+  current: { input: { clientX: number } };
+};
+
+const dragHarness = vi.hoisted(() => ({
+  registrations: new Map<
     HTMLElement,
-    Record<string, (event: { dx: number }) => void>
+    {
+      onDragStart?: () => void;
+      onDrag?: (event: { location: DragLocation }) => void;
+      onDrop?: (event: { location: DragLocation }) => void;
+    }
   >(),
 }));
 
-vi.mock("interactjs", () => ({
-  default: (element: HTMLElement) => ({
-    draggable: (options: {
-      listeners: Record<string, (event: { dx: number }) => void>;
-    }) => {
-      interactHarness.listeners.set(element, options.listeners);
-    },
-    unset: () => interactHarness.listeners.delete(element),
-  }),
+vi.mock("@atlaskit/pragmatic-drag-and-drop/element/adapter", () => ({
+  draggable: (options: {
+    element: HTMLElement;
+    onDragStart?: () => void;
+    onDrag?: (event: { location: DragLocation }) => void;
+    onDrop?: (event: { location: DragLocation }) => void;
+  }) => {
+    dragHarness.registrations.set(options.element, options);
+    return () => dragHarness.registrations.delete(options.element);
+  },
+}));
+
+vi.mock(
+  "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview",
+  () => ({ disableNativeDragPreview: vi.fn() }),
+);
+
+function location(from: number, to: number): DragLocation {
+  return {
+    initial: { input: { clientX: from } },
+    current: { input: { clientX: to } },
+  };
+}
+
+function dragBy(handle: HTMLElement, delta: number) {
+  const registration = dragHarness.registrations.get(handle)!;
+  registration.onDragStart?.();
+  registration.onDrag?.({ location: location(200, 200 + delta) });
+}
+
+function dropBy(handle: HTMLElement, delta: number) {
+  const registration = dragHarness.registrations.get(handle)!;
+  registration.onDrop?.({ location: location(200, 200 + delta) });
+}
+
+vi.mock("@atlaskit/pragmatic-drag-and-drop/combine", () => ({
+  combine:
+    (...cleanups: Array<() => void>) =>
+    () =>
+      cleanups.forEach((cleanup) => cleanup()),
 }));
 
 import { PortfolioGridControls } from "./portfolio-grid-controls";
@@ -130,7 +170,7 @@ describe("PortfolioGridControls live pointer preview", () => {
       .querySelectorAll<HTMLElement>('[data-test-editor-root="true"]')
       .forEach((element) => element.remove());
     vi.unstubAllGlobals();
-    interactHarness.listeners.clear();
+    dragHarness.registrations.clear();
   });
 
   it("changes adjacent column pixels before pointer release", async () => {
@@ -143,9 +183,7 @@ describe("PortfolioGridControls live pointer preview", () => {
       return element!;
     });
 
-    const listeners = interactHarness.listeners.get(handle)!;
-    listeners.start({ dx: 0 });
-    listeners.move({ dx: 100 });
+    act(() => dragBy(handle, 100));
 
     expect(left.style.getPropertyValue("width")).toBe("500px");
     expect(right.style.getPropertyValue("width")).toBe("300px");
@@ -164,12 +202,27 @@ describe("PortfolioGridControls live pointer preview", () => {
     });
     const rightHandle = handles[1];
 
-    const listeners = interactHarness.listeners.get(rightHandle)!;
-    listeners.start({ dx: 0 });
-    listeners.move({ dx: 64 });
+    act(() => dragBy(rightHandle, 64));
 
     expect(row.style.getPropertyValue("width")).toBe("928px");
     expect(rightHandle.dataset.resizing).toBe("true");
     await waitFor(() => expect(rightHandle.style.left).toBe("1019px"));
+  });
+
+  it("persists only after the live resize has been previewed", async () => {
+    const { left, right } = setupGrid();
+    const handle = await waitFor(() =>
+      document.querySelector<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="divider"]',
+      ),
+    );
+    expect(handle).not.toBeNull();
+
+    act(() => dragBy(handle!, -80));
+    expect(left.style.getPropertyValue("width")).toBe("320px");
+    expect(right.style.getPropertyValue("width")).toBe("480px");
+
+    act(() => dropBy(handle!, -80));
+    expect(handle!.dataset.resizing).toBeUndefined();
   });
 });

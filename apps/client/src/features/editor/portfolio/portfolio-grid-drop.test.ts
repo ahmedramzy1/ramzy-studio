@@ -1,5 +1,5 @@
 import { Schema } from "@tiptap/pm/model";
-import { EditorState, NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { EditorState, NodeSelection } from "@tiptap/pm/state";
 import { describe, expect, it } from "vitest";
 import {
   createPortfolioGridDropTransaction,
@@ -181,7 +181,7 @@ describe("portfolio grid drop", () => {
     for (const expectedCount of [3, 4, 5]) {
       const state = EditorState.create({
         doc,
-        selection: TextSelection.create(doc, 1),
+        selection: NodeSelection.create(doc, 0),
       });
       const sourcePosition = doc.firstChild!.nodeSize;
       const tr = createPortfolioGridDropTransaction(

@@ -1,6 +1,6 @@
 import { Fragment } from "@tiptap/pm/model";
 import { type EditorState, type Transaction } from "@tiptap/pm/state";
-import { gridStackColumnWeights } from "./portfolio-gridstack-layout";
+import { normalizedColumnWeights } from "./portfolio-grid-layout";
 
 type GridSide = "left" | "right";
 export type PortfolioDropEdge = GridSide | "top" | "bottom";
@@ -164,7 +164,7 @@ function replaceDocumentContent(
 function rebalanceColumnWidths(
   nodes: readonly import("@tiptap/pm/model").Node[],
 ) {
-  const weights = gridStackColumnWeights(
+  const weights = normalizedColumnWeights(
     nodes.map((node) =>
       typeof node.attrs.width === "number" && node.attrs.width > 0
         ? node.attrs.width
