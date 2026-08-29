@@ -143,6 +143,17 @@ function isHorizontalColumnIntent(
   return clientX <= rect.left + edgeBand || clientX >= rect.right - edgeBand;
 }
 
+function meaningfulColumnChildCount(column: HTMLElement | null): number {
+  if (!column) return 0;
+  return Array.from(column.children).filter(
+    (child) =>
+      !(
+        child instanceof HTMLParagraphElement &&
+        child.textContent?.trim().length === 0
+      ),
+  ).length;
+}
+
 function createPortfolioDndPreviewLayer(editor: Editor) {
   const host = editor.view.dom.parentElement ?? editor.view.dom;
   const previousHostPosition = host.style.position;
@@ -269,7 +280,8 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
             ? columns.indexOf(sourceColumn)
             : -1;
         const hideSourceColumn =
-          sourceColumnIndex >= 0 && sourceColumn?.childElementCount === 1;
+          sourceColumnIndex >= 0 &&
+          meaningfulColumnChildCount(sourceColumn) === 1;
         const plan = portfolioPreviewColumnPlan(
           columns.length,
           target.columnIndex,
@@ -374,7 +386,7 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
         ? sourceColumn.parentElement
         : null;
       if (sourceColumn && sourceRow) {
-        if (sourceColumn.childElementCount === 1) {
+        if (meaningfulColumnChildCount(sourceColumn) === 1) {
           sourceColumn.classList.add("ramzy-dnd-preview-source-column");
           restoreActions.push(() =>
             sourceColumn.classList.remove("ramzy-dnd-preview-source-column"),
@@ -615,7 +627,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
                   );
                 const sameColumn = sourceColumn === column;
                 const sourceCanSplit =
-                  (sourceColumn?.childElementCount ?? 0) > 1;
+                  meaningfulColumnChildCount(sourceColumn) > 1;
                 if (sameColumn && !sourceCanSplit) return false;
                 const sourceRow = sourceColumn?.parentElement;
                 return !(

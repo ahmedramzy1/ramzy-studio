@@ -18,16 +18,6 @@ function layoutCount(layout: unknown): number {
   return 2;
 }
 
-function columnHasContent(column: PMNode): boolean {
-  let occupied = false;
-  column.forEach((child) => {
-    if (child.type.name !== "paragraph" || child.content.size > 0) {
-      occupied = true;
-    }
-  });
-  return occupied;
-}
-
 export function normalizePortfolioGridTransaction(
   state: EditorState,
 ): Transaction | null {
@@ -45,12 +35,11 @@ export function normalizePortfolioGridTransaction(
   let changed = false;
 
   for (const row of rows.reverse()) {
-    const occupiedColumns = Array.from(
-      { length: row.node.childCount },
-      (_, index) => row.node.child(index),
-    ).filter(columnHasContent);
+    const columns = Array.from({ length: row.node.childCount }, (_, index) =>
+      row.node.child(index),
+    );
 
-    if (occupiedColumns.length === 0) {
+    if (columns.length === 0) {
       tr.replaceWith(
         row.position,
         row.position + row.node.nodeSize,
@@ -60,33 +49,27 @@ export function normalizePortfolioGridTransaction(
       continue;
     }
 
-    if (occupiedColumns.length === 1) {
+    if (columns.length === 1) {
       tr.replaceWith(
         row.position,
         row.position + row.node.nodeSize,
-        occupiedColumns[0].content,
+        columns[0].content,
       );
       changed = true;
       continue;
     }
 
-    const countChanged = occupiedColumns.length !== row.node.childCount;
-    const layoutChanged =
-      layoutCount(row.node.attrs.layout) !== occupiedColumns.length;
-    if (!countChanged && !layoutChanged) continue;
+    const layoutChanged = layoutCount(row.node.attrs.layout) !== columns.length;
+    if (!layoutChanged) continue;
 
     const replacement = columnsType.create(
       {
         ...row.node.attrs,
-        layout: layoutForCount(occupiedColumns.length),
+        layout: layoutForCount(columns.length),
       },
-      Fragment.from(occupiedColumns),
+      Fragment.from(columns),
     );
-    tr.replaceWith(
-      row.position,
-      row.position + row.node.nodeSize,
-      replacement,
-    );
+    tr.replaceWith(row.position, row.position + row.node.nodeSize, replacement);
     changed = true;
   }
 

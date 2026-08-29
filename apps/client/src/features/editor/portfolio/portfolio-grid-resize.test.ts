@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   nearestPortfolioGridWidthMode,
   portfolioGridModeLabel,
+  resizedColumnPixelWidths,
   resizedColumnWeights,
 } from "./portfolio-grid-resize";
 
@@ -16,6 +17,12 @@ describe("portfolio grid resizing", () => {
     const next = resizedColumnWeights([200, 200], 0, 500, 96);
     expect(next[0]).toBeCloseTo(1.52);
     expect(next[1]).toBeCloseTo(0.48);
+  });
+
+  it("returns exact live pixel widths while the divider is moving", () => {
+    expect(resizedColumnPixelWidths([300, 300, 300], 0, 60)).toEqual([
+      360, 240, 300,
+    ]);
   });
 
   it("snaps the outer row handles to the nearest durable width mode", () => {

@@ -11,6 +11,7 @@ const schema = new Schema({
     doc: { content: "block+" },
     text: { group: "inline" },
     paragraph: { group: "block", content: "text*" },
+    media: { group: "block", atom: true },
     columns: {
       group: "block",
       content: "column+",
@@ -21,11 +22,18 @@ const schema = new Schema({
 });
 
 function paragraph(text: string) {
-  return schema.nodes.paragraph.create(null, schema.text(text));
+  return schema.nodes.paragraph.create(
+    null,
+    text ? schema.text(text) : undefined,
+  );
 }
 
 function column(text: string) {
   return schema.nodes.column.create(null, paragraph(text));
+}
+
+function media() {
+  return schema.nodes.media.create();
 }
 
 function selectedState(children: ReturnType<typeof paragraph>[]) {
@@ -54,6 +62,27 @@ describe("portfolio grid drop", () => {
     expect(columns.childCount).toBe(2);
     expect(columns.child(0).textContent).toBe("B");
     expect(columns.child(1).textContent).toBe("A");
+  });
+
+  it("adds an editable paragraph after media placed into a column", () => {
+    const source = media();
+    const target = paragraph("B");
+    const doc = schema.nodes.doc.create(null, [source, target]);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 0),
+    });
+    const tr = createPortfolioGridDropTransaction(
+      state,
+      source.nodeSize,
+      "right",
+      null,
+    );
+
+    const mediaColumn = tr!.doc.firstChild!.child(1);
+    expect(mediaColumn.childCount).toBe(2);
+    expect(mediaColumn.child(0).type.name).toBe("media");
+    expect(mediaColumn.child(1).type.name).toBe("paragraph");
   });
 
   it("expands a two-column row to three columns", () => {
@@ -285,5 +314,27 @@ describe("portfolio vertical drop", () => {
     expect(tr!.doc.child(0).type.name).toBe("paragraph");
     expect(tr!.doc.child(0).textContent).toBe("B");
     expect(tr!.doc.child(1).textContent).toBe("A");
+  });
+
+  it("removes a media column whose only remainder is its editable placeholder", () => {
+    const mediaColumn = schema.nodes.column.create(null, [
+      media(),
+      paragraph(""),
+    ]);
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "two_equal" },
+      [mediaColumn, column("B")],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 2),
+    });
+    const tr = createPortfolioVerticalDropTransaction(state, 0, "bottom");
+
+    expect(tr).not.toBeNull();
+    expect(tr!.doc.childCount).toBe(2);
+    expect(tr!.doc.child(0).textContent).toBe("B");
+    expect(tr!.doc.child(1).type.name).toBe("media");
   });
 });

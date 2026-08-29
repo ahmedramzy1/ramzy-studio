@@ -41,31 +41,25 @@ function stateWithGrid(layout: string, columns: ReturnType<typeof column>[]) {
 }
 
 describe("portfolio grid normalizer", () => {
-  it("shrinks a three-column row to two columns after one is emptied", () => {
-    const state = stateWithGrid("three_equal", [
-      column("A"),
-      column(),
-      column("B"),
-    ]);
-    const tr = normalizePortfolioGridTransaction(state);
+  it.each([
+    ["two_equal", 2],
+    ["three_equal", 3],
+    ["four_equal", 4],
+    ["five_equal", 5],
+  ])("preserves an empty %s layout for editing", (layout, count) => {
+    const state = stateWithGrid(
+      layout,
+      Array.from({ length: count }, () => column()),
+    );
 
-    expect(tr).not.toBeNull();
-    const row = tr!.doc.firstChild!;
-    expect(row.type.name).toBe("columns");
-    expect(row.attrs.layout).toBe("two_equal");
-    expect(row.childCount).toBe(2);
-    expect(row.child(0).textContent).toBe("A");
-    expect(row.child(1).textContent).toBe("B");
+    expect(normalizePortfolioGridTransaction(state)).toBeNull();
   });
 
-  it("unwraps the last grid item into a normal full-width row", () => {
+  it("preserves a two-column row while one column is waiting for content", () => {
     const state = stateWithGrid("two_equal", [column("A"), column()]);
     const tr = normalizePortfolioGridTransaction(state);
 
-    expect(tr).not.toBeNull();
-    expect(tr!.doc.childCount).toBe(1);
-    expect(tr!.doc.firstChild!.type.name).toBe("paragraph");
-    expect(tr!.doc.firstChild!.textContent).toBe("A");
+    expect(tr).toBeNull();
   });
 
   it("preserves manual widths on columns that remain", () => {
@@ -74,11 +68,7 @@ describe("portfolio grid normalizer", () => {
       column(),
       column("B", 1.5),
     ]);
-    const tr = normalizePortfolioGridTransaction(state);
-    const row = tr!.doc.firstChild!;
-
-    expect(row.child(0).attrs.width).toBe(2);
-    expect(row.child(1).attrs.width).toBe(1.5);
+    expect(normalizePortfolioGridTransaction(state)).toBeNull();
   });
 
   it("leaves an already-correct grid unchanged", () => {

@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/core";
 import {
   nearestPortfolioGridWidthMode,
   portfolioGridModeLabel,
+  resizedColumnPixelWidths,
   resizedColumnWeights,
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
@@ -199,33 +200,51 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     const pointerId = event.pointerId;
     handle.dataset.resizing = "true";
     handle.setPointerCapture?.(pointerId);
-
+    const originalStyles = columns.map((column) => ({
+      flex: column.style.flex,
+      width: column.style.width,
+    }));
+    let liveFrame = 0;
+    let latestClientX = startX;
     let latestWeights = resizedColumnWeights(startWidths, dividerIndex, 0);
 
-    const renderLiveWidths = (weights: number[]) => {
+    const renderLiveWidths = (clientX: number) => {
+      latestWeights = resizedColumnWeights(
+        startWidths,
+        dividerIndex,
+        clientX - startX,
+      );
+      const pixelWidths = resizedColumnPixelWidths(
+        startWidths,
+        dividerIndex,
+        clientX - startX,
+      );
       columns.forEach((column, index) => {
-        column.style.setProperty("flex", `${weights[index]} 1 0%`, "important");
+        column.style.setProperty(
+          "flex",
+          `0 0 ${pixelWidths[index]}px`,
+          "important",
+        );
+        column.style.setProperty(
+          "width",
+          `${pixelWidths[index]}px`,
+          "important",
+        );
       });
     };
 
     const onMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
-      latestWeights = resizedColumnWeights(
-        startWidths,
-        dividerIndex,
-        moveEvent.clientX - startX,
-      );
-      renderLiveWidths(latestWeights);
+      moveEvent.preventDefault();
+      latestClientX = moveEvent.clientX;
+      cancelAnimationFrame(liveFrame);
+      liveFrame = requestAnimationFrame(() => renderLiveWidths(latestClientX));
     };
     const finish = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
-      latestWeights = resizedColumnWeights(
-        startWidths,
-        dividerIndex,
-        upEvent.clientX - startX,
-      );
-      renderLiveWidths(latestWeights);
-      cleanup();
+      cancelAnimationFrame(liveFrame);
+      renderLiveWidths(upEvent.clientX);
+      cleanup(false);
       setColumnWidths(editor, active.position, latestWeights);
       requestAnimationFrame(() => {
         const renderedColumns = Array.from(active.element.children).filter(
@@ -234,23 +253,35 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         );
         renderedColumns.forEach((column, index) => {
           column.style.setProperty("flex", String(latestWeights[index]));
+          column.style.removeProperty("width");
         });
       });
     };
-    const cleanup = () => {
+    const cancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId !== pointerId) return;
+      cleanup(true);
+    };
+    const cleanup = (restore = true) => {
+      cancelAnimationFrame(liveFrame);
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("pointerup", finish, true);
-      window.removeEventListener("pointercancel", finish, true);
+      window.removeEventListener("pointercancel", cancel, true);
       delete handle.dataset.resizing;
       if (handle.hasPointerCapture?.(pointerId)) {
         handle.releasePointerCapture(pointerId);
+      }
+      if (restore) {
+        columns.forEach((column, index) => {
+          column.style.flex = originalStyles[index].flex;
+          column.style.width = originalStyles[index].width;
+        });
       }
       resizeCleanupRef.current = null;
     };
     resizeCleanupRef.current = cleanup;
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("pointerup", finish, true);
-    window.addEventListener("pointercancel", finish, true);
+    window.addEventListener("pointercancel", cancel, true);
   };
 
   const beginRowResize = (
@@ -282,48 +313,51 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       marginRight: active.element.style.marginRight,
       transform: active.element.style.transform,
     };
+    let liveFrame = 0;
+    let latestClientX = startX;
     let nextMode = (active.element.dataset.widthMode ||
       "normal") as PortfolioGridWidthMode;
     setWidthLabel(portfolioGridModeLabel(nextMode));
 
-    const renderLiveMode = (mode: PortfolioGridWidthMode) => {
-      if (mode === "normal") delete active.element.dataset.widthMode;
-      else active.element.dataset.widthMode = mode;
-      active.element.style.position = "relative";
-      active.element.style.left = "50%";
-      active.element.style.width = `${widths[mode]}px`;
-      active.element.style.maxWidth = "none";
-      active.element.style.marginLeft = "0";
-      active.element.style.marginRight = "0";
-      active.element.style.transform = "translateX(-50%)";
-      setWidthLabel(portfolioGridModeLabel(mode));
+    const renderLiveWidth = (clientX: number) => {
+      const delta = clientX - startX;
+      const requested =
+        startWidth + (side === "right" ? delta * 2 : -delta * 2);
+      const minimum = Math.min(...Object.values(widths));
+      const maximum = Math.max(...Object.values(widths));
+      const desired = Math.min(maximum, Math.max(minimum, requested));
+      nextMode = nearestPortfolioGridWidthMode(desired, widths);
+      active.element.style.setProperty("position", "relative", "important");
+      active.element.style.setProperty("left", "50%", "important");
+      active.element.style.setProperty("width", `${desired}px`, "important");
+      active.element.style.setProperty("max-width", "none", "important");
+      active.element.style.setProperty("margin-left", "0", "important");
+      active.element.style.setProperty("margin-right", "0", "important");
+      active.element.style.setProperty(
+        "transform",
+        "translateX(-50%)",
+        "important",
+      );
+      setWidthLabel(portfolioGridModeLabel(nextMode));
     };
 
     const onMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
-      const delta = moveEvent.clientX - startX;
-      const desired = startWidth + (side === "right" ? delta * 2 : -delta * 2);
-      nextMode = nearestPortfolioGridWidthMode(desired, widths);
-      renderLiveMode(nextMode);
+      moveEvent.preventDefault();
+      latestClientX = moveEvent.clientX;
+      cancelAnimationFrame(liveFrame);
+      liveFrame = requestAnimationFrame(() => renderLiveWidth(latestClientX));
     };
     const finish = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
-      const delta = upEvent.clientX - startX;
-      const desired = startWidth + (side === "right" ? delta * 2 : -delta * 2);
-      nextMode = nearestPortfolioGridWidthMode(desired, widths);
-      renderLiveMode(nextMode);
-      cleanup();
+      cancelAnimationFrame(liveFrame);
+      renderLiveWidth(upEvent.clientX);
+      cleanup(false);
       setWidthLabel(null);
       setRowWidthMode(editor, active.position, nextMode);
+      requestAnimationFrame(() => restoreOriginalStyles());
     };
-    const cleanup = () => {
-      window.removeEventListener("pointermove", onMove, true);
-      window.removeEventListener("pointerup", finish, true);
-      window.removeEventListener("pointercancel", finish, true);
-      delete handle.dataset.resizing;
-      if (handle.hasPointerCapture?.(pointerId)) {
-        handle.releasePointerCapture(pointerId);
-      }
+    const restoreOriginalStyles = () => {
       active.element.style.position = originalStyles.position;
       active.element.style.left = originalStyles.left;
       active.element.style.width = originalStyles.width;
@@ -331,12 +365,28 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       active.element.style.marginLeft = originalStyles.marginLeft;
       active.element.style.marginRight = originalStyles.marginRight;
       active.element.style.transform = originalStyles.transform;
+    };
+    const cancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId !== pointerId) return;
+      cleanup(true);
+      setWidthLabel(null);
+    };
+    const cleanup = (restore = true) => {
+      cancelAnimationFrame(liveFrame);
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", finish, true);
+      window.removeEventListener("pointercancel", cancel, true);
+      delete handle.dataset.resizing;
+      if (handle.hasPointerCapture?.(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
+      if (restore) restoreOriginalStyles();
       resizeCleanupRef.current = null;
     };
     resizeCleanupRef.current = cleanup;
     window.addEventListener("pointermove", onMove, true);
     window.addEventListener("pointerup", finish, true);
-    window.addEventListener("pointercancel", finish, true);
+    window.addEventListener("pointercancel", cancel, true);
   };
 
   if (!active || !geometry) return null;

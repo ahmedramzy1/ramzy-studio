@@ -31,6 +31,17 @@ export function resizedColumnWeights(
   return next.map((width) => Number((width / average).toFixed(4)));
 }
 
+export function resizedColumnPixelWidths(
+  widths: number[],
+  dividerIndex: number,
+  delta: number,
+  minWidth = MIN_COLUMN_WIDTH,
+): number[] {
+  const weights = resizedColumnWeights(widths, dividerIndex, delta, minWidth);
+  const average = widths.reduce((sum, width) => sum + width, 0) / widths.length;
+  return weights.map((weight) => weight * average);
+}
+
 export function nearestPortfolioGridWidthMode(
   desiredWidth: number,
   modeWidths: Record<PortfolioGridWidthMode, number>,

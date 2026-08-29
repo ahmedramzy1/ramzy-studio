@@ -171,6 +171,34 @@ function blocksInColumn(column: import("@tiptap/pm/model").Node) {
   );
 }
 
+function isEmptyParagraph(node: import("@tiptap/pm/model").Node): boolean {
+  return node.type.name === "paragraph" && node.content.size === 0;
+}
+
+function editableColumnForBlock(
+  columnType: import("@tiptap/pm/model").NodeType,
+  paragraphType: import("@tiptap/pm/model").NodeType,
+  block: import("@tiptap/pm/model").Node,
+) {
+  const content = block.isTextblock
+    ? Fragment.from(block)
+    : Fragment.from([block, paragraphType.create()]);
+  return columnType.create(null, content);
+}
+
+function ensureEditableColumn(
+  column: import("@tiptap/pm/model").Node,
+  paragraphType: import("@tiptap/pm/model").NodeType,
+) {
+  const last = column.lastChild;
+  if (!last || last.isTextblock) return column;
+  return column.type.create(
+    column.attrs,
+    column.content.append(Fragment.from(paragraphType.create())),
+    column.marks,
+  );
+}
+
 function gridAfterRemovingBlock(
   columnsNode: import("@tiptap/pm/model").Node,
   sourceColumnIndex: number,
@@ -183,7 +211,7 @@ function gridAfterRemovingBlock(
   const remainingBlocks = blocksInColumn(sourceColumn).filter(
     (_, index) => index !== sourceBlockIndex,
   );
-  if (remainingBlocks.length === 0) {
+  if (remainingBlocks.every(isEmptyParagraph)) {
     columns.splice(sourceColumnIndex, 1);
   } else {
     columns[sourceColumnIndex] = sourceColumn.type.create(
@@ -284,7 +312,10 @@ export function createPortfolioGridDropTransaction(
   const draggedNode = state.selection.node;
   const columnsType = state.schema.nodes.columns;
   const columnType = state.schema.nodes.column;
-  if (!columnsType || !columnType || !draggedNode.isBlock) return null;
+  const paragraphType = state.schema.nodes.paragraph;
+  if (!columnsType || !columnType || !paragraphType || !draggedNode.isBlock) {
+    return null;
+  }
 
   const source = selectedBlockLocation(state);
   if (!source || draggedNode.type === columnsType) return null;
@@ -308,12 +339,15 @@ export function createPortfolioGridDropTransaction(
       (_, index) => index !== sourceBlockIndex,
     );
 
-    if (sourceColumnIndex === columnIndex && remainingBlocks.length === 0) {
+    if (
+      sourceColumnIndex === columnIndex &&
+      remainingBlocks.every(isEmptyParagraph)
+    ) {
       return null;
     }
 
     let adjustedTargetIndex = columnIndex;
-    if (remainingBlocks.length === 0) {
+    if (remainingBlocks.every(isEmptyParagraph)) {
       children.splice(sourceColumnIndex, 1);
       if (sourceColumnIndex < adjustedTargetIndex) adjustedTargetIndex -= 1;
     } else {
@@ -325,10 +359,16 @@ export function createPortfolioGridDropTransaction(
 
     const insertionIndex =
       side === "left" ? adjustedTargetIndex : adjustedTargetIndex + 1;
-    children.splice(insertionIndex, 0, columnType.create(null, draggedNode));
+    children.splice(
+      insertionIndex,
+      0,
+      editableColumnForBlock(columnType, paragraphType, draggedNode),
+    );
     if (children.length > MAX_PORTFOLIO_COLUMNS) return null;
 
-    const balancedChildren = rebalanceColumnWidths(children);
+    const balancedChildren = rebalanceColumnWidths(
+      children.map((column) => ensureEditableColumn(column, paragraphType)),
+    );
 
     const replacement = columnsType.create(
       {
@@ -364,9 +404,15 @@ export function createPortfolioGridDropTransaction(
       targetNode.child(index),
     );
     const insertionIndex = side === "left" ? columnIndex : columnIndex + 1;
-    children.splice(insertionIndex, 0, columnType.create(null, draggedNode));
+    children.splice(
+      insertionIndex,
+      0,
+      editableColumnForBlock(columnType, paragraphType, draggedNode),
+    );
 
-    const balancedChildren = rebalanceColumnWidths(children);
+    const balancedChildren = rebalanceColumnWidths(
+      children.map((column) => ensureEditableColumn(column, paragraphType)),
+    );
 
     const replacement = columnsType.create(
       {
@@ -377,8 +423,16 @@ export function createPortfolioGridDropTransaction(
     );
     topNodes.splice(targetIndex, 1, replacement);
   } else {
-    const draggedColumn = columnType.create(null, draggedNode);
-    const targetColumn = columnType.create(null, targetNode);
+    const draggedColumn = editableColumnForBlock(
+      columnType,
+      paragraphType,
+      draggedNode,
+    );
+    const targetColumn = editableColumnForBlock(
+      columnType,
+      paragraphType,
+      targetNode,
+    );
     const children =
       side === "left"
         ? [draggedColumn, targetColumn]
