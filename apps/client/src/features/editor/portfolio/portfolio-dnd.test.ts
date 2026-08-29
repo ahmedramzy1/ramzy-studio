@@ -1,11 +1,41 @@
 import { describe, expect, it } from "vitest";
 import {
+  cloneForPortfolioDndPreview,
   closestPortfolioDropEdge,
   portfolioDropTargetAtPoint,
   portfolioPreviewColumnPlan,
+  portfolioTwoColumnPreviewRects,
 } from "./portfolio-dnd-preview";
 
 describe("portfolio dnd future-layout preview", () => {
+  it("creates an inert design-system ghost without duplicate editor controls", () => {
+    const source = document.createElement("div");
+    source.id = "source";
+    source.className = "react-renderer ramzy-dnd-source";
+    source.innerHTML =
+      '<button id="action">Play</button><span data-ramzy-block-drag-handle>Drag</span><div contenteditable="true">Content</div>';
+
+    const clone = cloneForPortfolioDndPreview(source);
+
+    expect(clone.id).toBe("");
+    expect(clone.classList.contains("ramzy-dnd-source")).toBe(false);
+    expect(clone.querySelector("[data-ramzy-block-drag-handle]")).toBeNull();
+    expect(clone.querySelector("#action")).toBeNull();
+    expect(clone.querySelector("button")?.getAttribute("tabindex")).toBe("-1");
+    expect(
+      clone.querySelector("[contenteditable]")?.getAttribute("contenteditable"),
+    ).toBe("false");
+  });
+
+  it("uses identical half-row geometry for the live preview on both sides", () => {
+    expect(
+      portfolioTwoColumnPreviewRects({ left: 100, width: 1000 }, 32, "right"),
+    ).toEqual({ columnWidth: 484, targetLeft: 100, slotLeft: 616 });
+    expect(
+      portfolioTwoColumnPreviewRects({ left: 100, width: 1000 }, 32, "left"),
+    ).toEqual({ columnWidth: 484, targetLeft: 616, slotLeft: 100 });
+  });
+
   it("prefers the exact column under the pointer over its containing row", () => {
     const row = document.createElement("div");
     const targetColumn = document.createElement("div");
