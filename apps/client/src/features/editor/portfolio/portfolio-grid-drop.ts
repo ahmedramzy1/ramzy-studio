@@ -9,6 +9,18 @@ import type { EditorView } from "@tiptap/pm/view";
 type GridSide = "left" | "right";
 export type PortfolioDropEdge = GridSide | "top" | "bottom";
 
+const MAX_PORTFOLIO_COLUMNS = 5;
+
+type SelectedBlockLocation =
+  | { kind: "top"; topIndex: number; topPosition: number }
+  | {
+      kind: "column";
+      topIndex: number;
+      topPosition: number;
+      columnIndex: number;
+      blockIndex: number;
+    };
+
 interface GridDropTarget {
   side: GridSide;
   topLevelPosition: number;
@@ -94,7 +106,6 @@ function findGridDropTarget(
       columnElement,
     );
     if (columnIndex < 0) return null;
-
   }
 
   return {
@@ -109,16 +120,133 @@ function findGridDropTarget(
 function layoutForCount(count: number): string {
   if (count === 3) return "three_equal";
   if (count === 4) return "four_equal";
+  if (count === 5) return "five_equal";
   return "two_equal";
 }
 
-function rebalanceColumnWidths(nodes: readonly import("@tiptap/pm/model").Node[]) {
+function selectedBlockLocation(
+  state: EditorState,
+): SelectedBlockLocation | null {
+  if (!(state.selection instanceof NodeSelection)) return null;
+
+  let result: SelectedBlockLocation | null = null;
+  state.doc.forEach((topNode, topPosition, topIndex) => {
+    if (result) return;
+    if (state.selection.from === topPosition) {
+      result = { kind: "top", topIndex, topPosition };
+      return;
+    }
+    if (topNode.type.name !== "columns") return;
+
+    let columnPosition = topPosition + 1;
+    for (let columnIndex = 0; columnIndex < topNode.childCount; columnIndex++) {
+      const column = topNode.child(columnIndex);
+      let blockPosition = columnPosition + 1;
+      for (let blockIndex = 0; blockIndex < column.childCount; blockIndex++) {
+        const block = column.child(blockIndex);
+        if (
+          state.selection.from === blockPosition &&
+          state.selection.to === blockPosition + block.nodeSize
+        ) {
+          result = {
+            kind: "column",
+            topIndex,
+            topPosition,
+            columnIndex,
+            blockIndex,
+          };
+          return;
+        }
+        blockPosition += block.nodeSize;
+      }
+      columnPosition += column.nodeSize;
+    }
+  });
+  return result;
+}
+
+function blocksInColumn(column: import("@tiptap/pm/model").Node) {
+  return Array.from({ length: column.childCount }, (_, index) =>
+    column.child(index),
+  );
+}
+
+function gridAfterRemovingBlock(
+  columnsNode: import("@tiptap/pm/model").Node,
+  sourceColumnIndex: number,
+  sourceBlockIndex: number,
+): import("@tiptap/pm/model").Node[] {
+  const columns = Array.from({ length: columnsNode.childCount }, (_, index) =>
+    columnsNode.child(index),
+  );
+  const sourceColumn = columns[sourceColumnIndex];
+  const remainingBlocks = blocksInColumn(sourceColumn).filter(
+    (_, index) => index !== sourceBlockIndex,
+  );
+  if (remainingBlocks.length === 0) {
+    columns.splice(sourceColumnIndex, 1);
+  } else {
+    columns[sourceColumnIndex] = sourceColumn.type.create(
+      sourceColumn.attrs,
+      Fragment.from(remainingBlocks),
+      sourceColumn.marks,
+    );
+  }
+
+  if (columns.length === 0) return [];
+  if (columns.length === 1) return blocksInColumn(columns[0]);
+  return [
+    columnsNode.type.create(
+      { ...columnsNode.attrs, layout: layoutForCount(columns.length) },
+      Fragment.from(rebalanceColumnWidths(columns)),
+      columnsNode.marks,
+    ),
+  ];
+}
+
+function topLevelNodesWithoutSelection(
+  state: EditorState,
+  source: SelectedBlockLocation,
+) {
+  const topNodes = Array.from({ length: state.doc.childCount }, (_, index) =>
+    state.doc.child(index),
+  );
+  if (source.kind === "top") {
+    topNodes.splice(source.topIndex, 1);
+    return topNodes;
+  }
+
+  const sourceRow = state.doc.child(source.topIndex);
+  topNodes.splice(
+    source.topIndex,
+    1,
+    ...gridAfterRemovingBlock(sourceRow, source.columnIndex, source.blockIndex),
+  );
+  return topNodes;
+}
+
+function replaceDocumentContent(
+  state: EditorState,
+  nodes: readonly import("@tiptap/pm/model").Node[],
+) {
+  return state.tr
+    .replaceWith(0, state.doc.content.size, Fragment.from(nodes))
+    .scrollIntoView();
+}
+
+function rebalanceColumnWidths(
+  nodes: readonly import("@tiptap/pm/model").Node[],
+) {
   const hasManualWidths = nodes.some(
     (node) => typeof node.attrs.width === "number" && node.attrs.width > 0,
   );
   if (!hasManualWidths) {
     return nodes.map((node) =>
-      node.type.create({ ...node.attrs, width: null }, node.content, node.marks),
+      node.type.create(
+        { ...node.attrs, width: null },
+        node.content,
+        node.marks,
+      ),
     );
   }
 
@@ -158,48 +286,31 @@ export function createPortfolioGridDropTransaction(
   const columnType = state.schema.nodes.column;
   if (!columnsType || !columnType || !draggedNode.isBlock) return null;
 
+  const source = selectedBlockLocation(state);
+  if (!source || draggedNode.type === columnsType) return null;
+
   const originalTargetNode = state.doc.nodeAt(targetPosition);
   const selectionInsideTargetColumns =
-    originalTargetNode?.type === columnsType &&
-    state.selection.from > targetPosition &&
-    state.selection.to < targetPosition + originalTargetNode.nodeSize;
+    source.kind === "column" && source.topPosition === targetPosition;
 
   if (selectionInsideTargetColumns && originalTargetNode) {
     if (columnIndex === null) return null;
 
-    let sourceColumnIndex = -1;
-    let sourceBlockIndex = -1;
-    let columnPosition = targetPosition + 1;
-    for (let columnIndexCursor = 0; columnIndexCursor < originalTargetNode.childCount; columnIndexCursor++) {
-      const currentColumn = originalTargetNode.child(columnIndexCursor);
-      let blockPosition = columnPosition + 1;
-      for (let blockIndex = 0; blockIndex < currentColumn.childCount; blockIndex++) {
-        const block = currentColumn.child(blockIndex);
-        if (
-          state.selection.from === blockPosition &&
-          state.selection.to === blockPosition + block.nodeSize
-        ) {
-          sourceColumnIndex = columnIndexCursor;
-          sourceBlockIndex = blockIndex;
-          break;
-        }
-        blockPosition += block.nodeSize;
-      }
-      if (sourceColumnIndex >= 0) break;
-      columnPosition += currentColumn.nodeSize;
-    }
-
-    if (sourceColumnIndex < 0 || sourceColumnIndex === columnIndex) return null;
+    const sourceColumnIndex = source.columnIndex;
+    const sourceBlockIndex = source.blockIndex;
 
     const children = Array.from(
       { length: originalTargetNode.childCount },
       (_, index) => originalTargetNode.child(index),
     );
     const sourceColumn = children[sourceColumnIndex];
-    const remainingBlocks = Array.from(
-      { length: sourceColumn.childCount },
-      (_, index) => sourceColumn.child(index),
-    ).filter((_, index) => index !== sourceBlockIndex);
+    const remainingBlocks = blocksInColumn(sourceColumn).filter(
+      (_, index) => index !== sourceBlockIndex,
+    );
+
+    if (sourceColumnIndex === columnIndex && remainingBlocks.length === 0) {
+      return null;
+    }
 
     let adjustedTargetIndex = columnIndex;
     if (remainingBlocks.length === 0) {
@@ -215,7 +326,7 @@ export function createPortfolioGridDropTransaction(
     const insertionIndex =
       side === "left" ? adjustedTargetIndex : adjustedTargetIndex + 1;
     children.splice(insertionIndex, 0, columnType.create(null, draggedNode));
-    if (children.length > 4) return null;
+    if (children.length > MAX_PORTFOLIO_COLUMNS) return null;
 
     const balancedChildren = rebalanceColumnWidths(children);
 
@@ -235,13 +346,19 @@ export function createPortfolioGridDropTransaction(
       .scrollIntoView();
   }
 
-  const tr = state.tr.delete(state.selection.from, state.selection.to);
-  const mappedTargetPosition = tr.mapping.map(targetPosition);
-  const targetNode = tr.doc.nodeAt(mappedTargetPosition);
+  const targetNode = originalTargetNode;
   if (!targetNode) return null;
+  const topNodes = topLevelNodesWithoutSelection(state, source);
+  const targetIndex = topNodes.indexOf(targetNode);
+  if (targetIndex < 0) return null;
 
   if (targetNode.type === columnsType) {
-    if (columnIndex === null || targetNode.childCount >= 4) return null;
+    if (
+      columnIndex === null ||
+      targetNode.childCount >= MAX_PORTFOLIO_COLUMNS
+    ) {
+      return null;
+    }
 
     const children = Array.from({ length: targetNode.childCount }, (_, index) =>
       targetNode.child(index),
@@ -258,11 +375,7 @@ export function createPortfolioGridDropTransaction(
       },
       Fragment.from(balancedChildren),
     );
-    tr.replaceWith(
-      mappedTargetPosition,
-      mappedTargetPosition + targetNode.nodeSize,
-      replacement,
-    );
+    topNodes.splice(targetIndex, 1, replacement);
   } else {
     const draggedColumn = columnType.create(null, draggedNode);
     const targetColumn = columnType.create(null, targetNode);
@@ -274,14 +387,10 @@ export function createPortfolioGridDropTransaction(
       { layout: "two_equal" },
       Fragment.from(children),
     );
-    tr.replaceWith(
-      mappedTargetPosition,
-      mappedTargetPosition + targetNode.nodeSize,
-      replacement,
-    );
+    topNodes.splice(targetIndex, 1, replacement);
   }
 
-  return tr.scrollIntoView();
+  return replaceDocumentContent(state, topNodes);
 }
 
 export function createPortfolioVerticalDropTransaction(
@@ -295,6 +404,9 @@ export function createPortfolioVerticalDropTransaction(
   const targetNode = state.doc.nodeAt(targetPosition);
   if (!draggedNode.isBlock || !targetNode) return null;
 
+  const source = selectedBlockLocation(state);
+  if (!source || draggedNode.type.name === "columns") return null;
+
   if (
     state.selection.from === targetPosition &&
     state.selection.to === targetPosition + targetNode.nodeSize
@@ -302,22 +414,37 @@ export function createPortfolioVerticalDropTransaction(
     return null;
   }
 
-  const tr = state.tr.delete(state.selection.from, state.selection.to);
-  const mappedTarget = tr.mapping.map(targetPosition);
-  const mappedTargetNode = tr.doc.nodeAt(mappedTarget);
-  if (!mappedTargetNode) return null;
+  if (source.kind === "column" && source.topPosition === targetPosition) {
+    const topNodes = Array.from({ length: state.doc.childCount }, (_, index) =>
+      state.doc.child(index),
+    );
+    const remaining = gridAfterRemovingBlock(
+      targetNode,
+      source.columnIndex,
+      source.blockIndex,
+    );
+    const replacement =
+      edge === "top"
+        ? [draggedNode, ...remaining]
+        : [...remaining, draggedNode];
+    topNodes.splice(source.topIndex, 1, ...replacement);
+    return replaceDocumentContent(state, topNodes);
+  }
 
-  const insertionPosition =
-    edge === "top" ? mappedTarget : mappedTarget + mappedTargetNode.nodeSize;
-  return tr.insert(insertionPosition, draggedNode).scrollIntoView();
+  const topNodes = topLevelNodesWithoutSelection(state, source);
+  const targetIndex = topNodes.indexOf(targetNode);
+  if (targetIndex < 0) return null;
+  topNodes.splice(
+    edge === "top" ? targetIndex : targetIndex + 1,
+    0,
+    draggedNode,
+  );
+  return replaceDocumentContent(state, topNodes);
 }
 
 export function clearPortfolioGridDropIndicator(view: EditorView) {
   const active = activeIndicators.get(view);
-  active?.classList.remove(
-    "ramzy-grid-drop-left",
-    "ramzy-grid-drop-right",
-  );
+  active?.classList.remove("ramzy-grid-drop-left", "ramzy-grid-drop-right");
   activeIndicators.delete(view);
 }
 

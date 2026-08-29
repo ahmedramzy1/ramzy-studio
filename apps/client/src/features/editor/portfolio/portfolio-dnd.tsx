@@ -28,6 +28,7 @@ import {
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
 const PORTFOLIO_TARGET = "ramzy-portfolio-target";
+const MAX_PORTFOLIO_COLUMNS = 5;
 
 type DragData = {
   type: typeof PORTFOLIO_BLOCK;
@@ -133,6 +134,15 @@ function getDrop(
   return null;
 }
 
+function isHorizontalColumnIntent(
+  element: HTMLElement,
+  clientX: number,
+): boolean {
+  const rect = element.getBoundingClientRect();
+  const edgeBand = Math.min(160, Math.max(48, rect.width * 0.32));
+  return clientX <= rect.left + edgeBand || clientX >= rect.right - edgeBand;
+}
+
 function createPortfolioDndPreviewLayer(editor: Editor) {
   const host = editor.view.dom.parentElement ?? editor.view.dom;
   const previousHostPosition = host.style.position;
@@ -197,6 +207,13 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
       if (target.columnIndex === null) {
         const gap = 32;
         const geometry = portfolioTwoColumnPreviewRects(rowRect, gap, edge);
+        const previousStyles = {
+          width: row.style.width,
+          marginLeft: row.style.marginLeft,
+          marginRight: row.style.marginRight,
+          position: row.style.position,
+          left: row.style.left,
+        };
         row.style.setProperty(
           "--ramzy-dnd-preview-column-width",
           `${geometry.columnWidth}px`,
@@ -209,6 +226,11 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
           "ramzy-dnd-single-target",
           `ramzy-dnd-single-target-${edge}`,
         );
+        row.style.width = `${geometry.columnWidth}px`;
+        row.style.marginLeft = "0";
+        row.style.marginRight = "0";
+        row.style.position = "relative";
+        row.style.left = `${geometry.targetLeft - rowRect.left}px`;
         restoreActions.push(() => {
           row.classList.remove(
             "ramzy-dnd-single-target",
@@ -216,6 +238,11 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
           );
           row.style.removeProperty("--ramzy-dnd-preview-column-width");
           row.style.removeProperty("--ramzy-dnd-preview-column-offset");
+          row.style.width = previousStyles.width;
+          row.style.marginLeft = previousStyles.marginLeft;
+          row.style.marginRight = previousStyles.marginRight;
+          row.style.position = previousStyles.position;
+          row.style.left = previousStyles.left;
         });
         const resizedRect = row.getBoundingClientRect();
         positionSlot(
@@ -338,6 +365,27 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
         sourceElement.getBoundingClientRect().height,
         40,
       );
+      const sourceColumn = sourceElement.closest<HTMLElement>(
+        '[data-type="column"]',
+      );
+      const sourceRow = sourceColumn?.parentElement?.matches(
+        '[data-type="columns"]',
+      )
+        ? sourceColumn.parentElement
+        : null;
+      if (sourceColumn && sourceRow) {
+        if (sourceColumn.childElementCount === 1) {
+          sourceColumn.classList.add("ramzy-dnd-preview-source-column");
+          restoreActions.push(() =>
+            sourceColumn.classList.remove("ramzy-dnd-preview-source-column"),
+          );
+        } else {
+          sourceElement.classList.add("ramzy-dnd-preview-source-block");
+          restoreActions.push(() =>
+            sourceElement.classList.remove("ramzy-dnd-preview-source-block"),
+          );
+        }
+      }
       const gap = 16;
       const space = sourceHeight + gap;
       row.style.setProperty("--ramzy-dnd-preview-space", `${space}px`);
@@ -450,13 +498,10 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
               return false;
             }
             if (data.columnIndex !== null) {
-              const sourceColumn =
-                source.data.sourceElement.closest<HTMLElement>(
-                  '[data-type="column"]',
-                );
-              if (sourceColumn === data.rowElement.children[data.columnIndex]) {
-                return false;
-              }
+              const targetColumn = data.rowElement.children[
+                data.columnIndex
+              ] as HTMLElement | undefined;
+              if (!targetColumn) return false;
             }
             return true;
           },
@@ -467,7 +512,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
             );
             const rowIsFull =
               data.columnIndex !== null &&
-              data.rowElement.childElementCount >= 4 &&
+              data.rowElement.childElementCount >= MAX_PORTFOLIO_COLUMNS &&
               sourceRow !== data.rowElement;
             const availableEdges: Edge[] = rowIsFull
               ? ["top", "bottom"]
@@ -556,12 +601,46 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
         if (!row.matches('[data-type="columns"]')) return;
         Array.from(row.children).forEach((column, columnIndex) => {
           if (!(column instanceof HTMLElement)) return;
-          addDropTarget(column, { ...data, columnIndex }, [
-            "top",
-            "bottom",
-            "left",
-            "right",
-          ]);
+          cleanups.push(
+            dropTargetForElements({
+              element: column,
+              canDrop: ({ source, input }) => {
+                if (!isDragData(source.data)) return false;
+                if (!isHorizontalColumnIntent(column, input.clientX)) {
+                  return false;
+                }
+                const sourceColumn =
+                  source.data.sourceElement.closest<HTMLElement>(
+                    '[data-type="column"]',
+                  );
+                const sameColumn = sourceColumn === column;
+                const sourceCanSplit =
+                  (sourceColumn?.childElementCount ?? 0) > 1;
+                if (sameColumn && !sourceCanSplit) return false;
+                const sourceRow = sourceColumn?.parentElement;
+                return !(
+                  row.childElementCount >= MAX_PORTFOLIO_COLUMNS &&
+                  sourceRow !== row
+                );
+              },
+              getData: ({ input }) => {
+                const edge = closestPortfolioDropEdge(
+                  column.getBoundingClientRect(),
+                  { x: input.clientX, y: input.clientY },
+                  ["left", "right"],
+                );
+                return attachClosestEdge(
+                  { ...data, columnIndex },
+                  {
+                    input,
+                    element: column,
+                    allowedEdges: [edge],
+                  },
+                );
+              },
+              getIsSticky: () => false,
+            }),
+          );
         });
       });
     };

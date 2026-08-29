@@ -97,6 +97,26 @@ describe("portfolio dnd future-layout preview", () => {
     });
   });
 
+  it("previews a fifth column using the same dynamic insertion plan", () => {
+    const plan = portfolioPreviewColumnPlan(4, 2, "right");
+    expect(plan).toEqual({
+      hiddenSourceIndex: null,
+      insertionIndex: 3,
+      futureColumnCount: 5,
+      orders: [0, 2, 4, 8],
+    });
+  });
+
+  it("previews a mirrored same-row swap without adding a column", () => {
+    const plan = portfolioPreviewColumnPlan(2, 0, "left", 1, true);
+    expect(plan).toEqual({
+      hiddenSourceIndex: 1,
+      insertionIndex: 0,
+      futureColumnCount: 2,
+      orders: [2, null],
+    });
+  });
+
   it("uses the closest normalized edge for tall and wide blocks", () => {
     const rect = {
       left: 100,

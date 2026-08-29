@@ -111,7 +111,7 @@ describe("portfolio grid drop", () => {
     expect(columns.child(2).attrs.width).toBe(0.75);
   });
 
-  it("caps drag-created rows at four columns", () => {
+  it("expands a four-column row to the supported five-column layout", () => {
     const existingColumns = schema.nodes.columns.create(
       { layout: "four_equal" },
       [column("A"), column("B"), column("C"), column("D")],
@@ -123,13 +123,34 @@ describe("portfolio grid drop", () => {
       selection: NodeSelection.create(doc, 0),
     });
 
+    const tr = createPortfolioGridDropTransaction(
+      state,
+      source.nodeSize,
+      "right",
+      3,
+    );
+
+    expect(tr).not.toBeNull();
+    const columns = tr!.doc.firstChild!;
+    expect(columns.attrs.layout).toBe("five_equal");
+    expect(columns.childCount).toBe(5);
+    expect(columns.child(4).textContent).toBe("E");
+  });
+
+  it("caps drag-created rows at five columns", () => {
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "five_equal" },
+      [column("A"), column("B"), column("C"), column("D"), column("E")],
+    );
+    const source = paragraph("F");
+    const doc = schema.nodes.doc.create(null, [source, existingColumns]);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 0),
+    });
+
     expect(
-      createPortfolioGridDropTransaction(
-        state,
-        source.nodeSize,
-        "right",
-        3,
-      ),
+      createPortfolioGridDropTransaction(state, source.nodeSize, "right", 4),
     ).toBeNull();
   });
 
@@ -143,18 +164,56 @@ describe("portfolio grid drop", () => {
       doc,
       selection: NodeSelection.create(doc, 2),
     });
-    const tr = createPortfolioGridDropTransaction(
-      state,
-      0,
-      "right",
-      1,
-    );
+    const tr = createPortfolioGridDropTransaction(state, 0, "right", 1);
 
     expect(tr).not.toBeNull();
     const columns = tr!.doc.firstChild!;
     expect(columns.childCount).toBe(2);
     expect(columns.child(0).textContent).toBe("B");
     expect(columns.child(1).textContent).toBe("A");
+  });
+
+  it("swaps the right element to the left in the same grid", () => {
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "two_equal" },
+      [column("A"), column("B")],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 7),
+    });
+    const tr = createPortfolioGridDropTransaction(state, 0, "left", 0);
+
+    expect(tr).not.toBeNull();
+    const columns = tr!.doc.firstChild!;
+    expect(columns.child(0).textContent).toBe("B");
+    expect(columns.child(1).textContent).toBe("A");
+  });
+
+  it("splits a block from a populated column into a new adjacent column", () => {
+    const firstColumn = schema.nodes.column.create(null, [
+      paragraph("A"),
+      paragraph("B"),
+    ]);
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "two_equal" },
+      [firstColumn, column("C")],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 5),
+    });
+    const tr = createPortfolioGridDropTransaction(state, 0, "right", 0);
+
+    expect(tr).not.toBeNull();
+    const columns = tr!.doc.firstChild!;
+    expect(columns.attrs.layout).toBe("three_equal");
+    expect(columns.childCount).toBe(3);
+    expect(columns.child(0).textContent).toBe("A");
+    expect(columns.child(1).textContent).toBe("B");
+    expect(columns.child(2).textContent).toBe("C");
   });
 });
 
@@ -184,6 +243,46 @@ describe("portfolio vertical drop", () => {
     const tr = createPortfolioVerticalDropTransaction(state, 0, "top");
 
     expect(tr).not.toBeNull();
+    expect(tr!.doc.child(0).textContent).toBe("B");
+    expect(tr!.doc.child(1).textContent).toBe("A");
+  });
+
+  it("extracts a column block into a full-width row and rebalances 3 to 2", () => {
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "three_equal" },
+      [column("A"), column("B"), column("C")],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 7),
+    });
+    const tr = createPortfolioVerticalDropTransaction(state, 0, "bottom");
+
+    expect(tr).not.toBeNull();
+    expect(tr!.doc.childCount).toBe(2);
+    expect(tr!.doc.child(0).type.name).toBe("columns");
+    expect(tr!.doc.child(0).attrs.layout).toBe("two_equal");
+    expect(tr!.doc.child(0).child(0).textContent).toBe("A");
+    expect(tr!.doc.child(0).child(1).textContent).toBe("C");
+    expect(tr!.doc.child(1).textContent).toBe("B");
+  });
+
+  it("unwraps the remaining element when extracting from a two-column row", () => {
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "two_equal" },
+      [column("A"), column("B")],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 2),
+    });
+    const tr = createPortfolioVerticalDropTransaction(state, 0, "bottom");
+
+    expect(tr).not.toBeNull();
+    expect(tr!.doc.childCount).toBe(2);
+    expect(tr!.doc.child(0).type.name).toBe("paragraph");
     expect(tr!.doc.child(0).textContent).toBe("B");
     expect(tr!.doc.child(1).textContent).toBe("A");
   });
