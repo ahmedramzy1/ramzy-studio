@@ -174,7 +174,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       plugins: (defaults) =>
         defaults.map((plugin) =>
           plugin === Feedback
-            ? Feedback.configure({ feedback: "clone", dropAnimation: null })
+            ? Feedback.configure({ feedback: "none", dropAnimation: null })
             : plugin,
         ),
     });
@@ -185,6 +185,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
     let reconcileFrame = 0;
     let reconcileTimer = 0;
     let dropIsSuspended = false;
+    let dropWatchdog = 0;
     let globalHandleCleanup: (() => void) | null = null;
 
     const destroyEntities = () => {
@@ -410,26 +411,39 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       );
       const suspension = event.suspend();
       dropIsSuspended = true;
+      let resumed = false;
+      const finishDrop = () => {
+        if (resumed) return;
+        resumed = true;
+        window.clearTimeout(dropWatchdog);
+        dropIsSuspended = false;
+        suspension.resume();
+        scheduleReconcile();
+      };
+      // A failed ProseMirror transaction must never leave dnd-kit suspended.
+      // The watchdog also covers a browser frame being abandoned during
+      // navigation, hot reload, or an unexpected rendering error.
+      dropWatchdog = window.setTimeout(finishDrop, 1_000);
       requestAnimationFrame(() => {
-        const transaction =
-          edge === "left" || edge === "right"
-            ? createPortfolioGridDropTransaction(
-                editor.state,
-                target.targetPosition,
-                edge,
-                target.columnIndex,
-              )
-            : createPortfolioVerticalDropTransaction(
-                editor.state,
-                target.targetPosition,
-                edge,
-              );
-        if (transaction) editor.view.dispatch(transaction);
-        requestAnimationFrame(() => {
-          dropIsSuspended = false;
-          suspension.resume();
-          scheduleReconcile();
-        });
+        try {
+          if (editor.isDestroyed) return;
+          const transaction =
+            edge === "left" || edge === "right"
+              ? createPortfolioGridDropTransaction(
+                  editor.state,
+                  target.targetPosition,
+                  edge,
+                  target.columnIndex,
+                )
+              : createPortfolioVerticalDropTransaction(
+                  editor.state,
+                  target.targetPosition,
+                  edge,
+                );
+          if (transaction) editor.view.dispatch(transaction);
+        } finally {
+          requestAnimationFrame(finishDrop);
+        }
       });
     };
 
@@ -450,6 +464,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       cleanups.forEach((cleanup) => cleanup());
       cancelAnimationFrame(reconcileFrame);
       window.clearTimeout(reconcileTimer);
+      window.clearTimeout(dropWatchdog);
       destroyEntities();
       manager.destroy();
       sourceElement?.classList.remove("ramzy-dnd-source");
