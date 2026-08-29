@@ -342,6 +342,30 @@ describe("portfolio vertical drop", () => {
     expect(tr!.doc.child(1).textContent).toBe("B");
   });
 
+  it("automatically rebalances 4 to 3 when a grid item moves to its own row", () => {
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "four_equal" },
+      [column("A"), column("B"), column("C"), column("D")],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 7),
+    });
+
+    const tr = createPortfolioVerticalDropTransaction(state, 0, "bottom");
+
+    expect(tr).not.toBeNull();
+    const row = tr!.doc.firstChild!;
+    expect(row.type.name).toBe("columns");
+    expect(row.attrs.layout).toBe("three_equal");
+    expect(row.childCount).toBe(3);
+    expect(
+      Array.from({ length: 3 }, (_, index) => row.child(index).attrs.width),
+    ).toEqual([1, 1, 1]);
+    expect(tr!.doc.child(1).textContent).toBe("B");
+  });
+
   it("unwraps the remaining element when extracting from a two-column row", () => {
     const existingColumns = schema.nodes.columns.create(
       { layout: "two_equal" },

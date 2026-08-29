@@ -271,6 +271,33 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
     },
   );
 
+  it.each([
+    { edge: "left", x: 350 },
+    { edge: "right", x: 650 },
+  ] as const)(
+    "uses the broad middle of a single block for the first $edge column snap",
+    ({ edge, x }) => {
+      editor = createEditor();
+      render(<PortfolioDnd editor={editor} />);
+
+      const target = editor.view.dom.children[0] as HTMLElement;
+      const source = editor.view.dom.children[1] as HTMLElement;
+      const handle = source.querySelector<HTMLElement>(
+        "[data-ramzy-block-drag-handle]",
+      )!;
+      setRect(target, 100, 100, 800, 300);
+      setRect(source, 100, 440, 800, 180);
+
+      handle.dispatchEvent(dragEvent("dragstart", 130, 470));
+      target.dispatchEvent(dragEvent("dragover", x, 250));
+
+      expect(target.dataset.ramzyDropEdge).toBe(edge);
+      expect(target.classList.contains("ramzy-dnd-preview-single-row")).toBe(
+        true,
+      );
+    },
+  );
+
   it("keeps dragging after every drop while growing from two to five columns", async () => {
     editor = createEditor(["B", "C", "D", "E"]);
     render(<PortfolioDnd editor={editor} />);

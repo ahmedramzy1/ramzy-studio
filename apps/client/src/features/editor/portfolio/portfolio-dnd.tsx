@@ -192,6 +192,10 @@ function containsPoint(rect: DOMRect, input: Input) {
   );
 }
 
+function verticalDropBand(rect: DOMRect) {
+  return Math.min(72, Math.max(24, rect.height * 0.16), rect.height * 0.35);
+}
+
 function topLevelElementAtInput(editor: Editor, input: Input) {
   const root = editor.view.dom;
   const hits =
@@ -225,18 +229,25 @@ function targetDataAtInput(
 
   if (!row.matches('[data-type="columns"]')) {
     if (source.sourcePosition === targetPosition) return null;
+    const rowRect = row.getBoundingClientRect();
+    const verticalBand = verticalDropBand(rowRect);
+    const allowedEdges: Array<"top" | "bottom" | "left" | "right"> =
+      input.clientY <= rowRect.top + verticalBand ||
+      input.clientY >= rowRect.bottom - verticalBand
+        ? ["top", "bottom"]
+        : ["left", "right"];
     return attachClosestEdge(
       { kind: PORTFOLIO_TARGET, targetPosition, columnIndex: null },
       {
         input,
         element: row,
-        allowedEdges: ["top", "bottom", "left", "right"],
+        allowedEdges,
       },
     );
   }
 
   const rowRect = row.getBoundingClientRect();
-  const verticalBand = Math.min(72, Math.max(36, rowRect.height * 0.16));
+  const verticalBand = verticalDropBand(rowRect);
   if (
     input.clientY <= rowRect.top + verticalBand ||
     input.clientY >= rowRect.bottom - verticalBand
