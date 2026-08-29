@@ -97,10 +97,6 @@ function renderDragPreview(container: HTMLElement, label: string) {
 
 type LayoutPreview = {
   element: HTMLElement;
-  hiddenRow: HTMLElement | null;
-  originalHeight: string;
-  originalMarginTop: string;
-  originalMarginBottom: string;
   activeKey: string | null;
 };
 
@@ -110,27 +106,14 @@ function createLayoutPreview(): LayoutPreview {
   document.body.appendChild(preview);
   return {
     element: preview,
-    hiddenRow: null,
-    originalHeight: "",
-    originalMarginTop: "",
-    originalMarginBottom: "",
     activeKey: null,
   };
 }
 
-function restorePreviewRow(preview: LayoutPreview) {
-  if (!preview.hiddenRow) return;
-  preview.hiddenRow.style.visibility = "";
-  preview.hiddenRow.style.height = preview.originalHeight;
-  preview.hiddenRow.style.marginTop = preview.originalMarginTop;
-  preview.hiddenRow.style.marginBottom = preview.originalMarginBottom;
-  preview.hiddenRow = null;
-}
-
 function hideLayoutPreview(preview: LayoutPreview) {
-  restorePreviewRow(preview);
   preview.element.replaceChildren();
   preview.element.style.display = "none";
+  preview.element.style.height = "";
   preview.activeKey = null;
 }
 
@@ -234,10 +217,6 @@ function showLayoutPreview(
 
   const rowRect = target.rowElement.getBoundingClientRect();
   const sourceRect = sourceElement.getBoundingClientRect();
-  preview.hiddenRow = target.rowElement;
-  preview.originalHeight = target.rowElement.style.height;
-  preview.originalMarginTop = target.rowElement.style.marginTop;
-  preview.originalMarginBottom = target.rowElement.style.marginBottom;
   preview.element.style.display = "block";
   preview.element.style.left = `${rowRect.left}px`;
   preview.element.style.width = `${rowRect.width}px`;
@@ -252,12 +231,6 @@ function showLayoutPreview(
     grid.style.margin = "0";
     preview.element.style.top = `${rowRect.top}px`;
     preview.element.appendChild(grid);
-    target.rowElement.style.visibility = "hidden";
-    requestAnimationFrame(() => {
-      if (preview.activeKey !== key) return;
-      const height = Math.max(grid.scrollHeight, 40);
-      target.rowElement.style.height = `${height}px`;
-    });
     return;
   }
 
@@ -265,22 +238,10 @@ function showLayoutPreview(
   const gap = 16;
   const height = Math.max(sourceRect.height, 40);
   preview.element.style.top = `${
-    edge === "top" ? rowRect.top : rowRect.bottom + gap
+    edge === "top" ? rowRect.top - height - gap : rowRect.bottom + gap
   }px`;
+  preview.element.style.height = `${height}px`;
   preview.element.appendChild(clone);
-  if (edge === "top") {
-    target.rowElement.style.marginTop = `${
-      Number.parseFloat(getComputedStyle(target.rowElement).marginTop) +
-      height +
-      gap
-    }px`;
-  } else {
-    target.rowElement.style.marginBottom = `${
-      Number.parseFloat(getComputedStyle(target.rowElement).marginBottom) +
-      height +
-      gap
-    }px`;
-  }
 }
 
 function targetData(value: Record<string, unknown>): TargetData | null {
