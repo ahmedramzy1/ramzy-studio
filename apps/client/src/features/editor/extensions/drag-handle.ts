@@ -36,6 +36,12 @@ export interface GlobalDragHandleOptions {
   customNodes: string[];
 
   atomNodes: string[];
+
+  /**
+   * Keeps the hover handle positioning while allowing a specialised surface
+   * to own the actual drag lifecycle (for example Pragmatic Drag and Drop).
+   */
+  nativeDrag: boolean;
 }
 function absoluteRect(node: Element) {
   const data = node.getBoundingClientRect();
@@ -334,7 +340,7 @@ export function DragHandlePlugin(
         ? document.querySelector<HTMLElement>(options.dragHandleSelector)
         : null;
       dragHandleElement = handleBySelector ?? document.createElement("div");
-      dragHandleElement.draggable = true;
+      dragHandleElement.draggable = options.nativeDrag;
       dragHandleElement.dataset.dragHandle = "";
       dragHandleElement.classList.add("drag-handle");
 
@@ -342,7 +348,9 @@ export function DragHandlePlugin(
         handleDragStart(e, view);
       }
 
-      dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
+      if (options.nativeDrag) {
+        dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
+      }
 
       function onDragHandleDrag(e: DragEvent) {
         hideDragHandle();
@@ -354,7 +362,9 @@ export function DragHandlePlugin(
         }
       }
 
-      dragHandleElement.addEventListener("drag", onDragHandleDrag);
+      if (options.nativeDrag) {
+        dragHandleElement.addEventListener("drag", onDragHandleDrag);
+      }
 
       hideDragHandle();
 
@@ -371,11 +381,13 @@ export function DragHandlePlugin(
           if (!handleBySelector) {
             dragHandleElement?.remove?.();
           }
-          dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
-          dragHandleElement?.removeEventListener(
-            "dragstart",
-            onDragHandleDragStart,
-          );
+          if (options.nativeDrag) {
+            dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
+            dragHandleElement?.removeEventListener(
+              "dragstart",
+              onDragHandleDragStart,
+            );
+          }
           dragHandleElement = null;
           view?.dom?.parentElement?.removeEventListener(
             "mouseout",
@@ -535,6 +547,7 @@ const GlobalDragHandle = Extension.create({
       excludedTags: [],
       customNodes: [],
       atomNodes: [],
+      nativeDrag: true,
     };
   },
 
@@ -548,6 +561,7 @@ const GlobalDragHandle = Extension.create({
         excludedTags: this.options.excludedTags,
         customNodes: this.options.customNodes,
         atomNodes: this.options.atomNodes,
+        nativeDrag: this.options.nativeDrag,
       }),
     ];
   },

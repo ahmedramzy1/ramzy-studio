@@ -7,6 +7,7 @@ import {
 import type { EditorView } from "@tiptap/pm/view";
 
 type GridSide = "left" | "right";
+export type PortfolioDropEdge = GridSide | "top" | "bottom";
 
 interface GridDropTarget {
   side: GridSide;
@@ -245,6 +246,34 @@ export function createPortfolioGridDropTransaction(
   }
 
   return tr.scrollIntoView();
+}
+
+export function createPortfolioVerticalDropTransaction(
+  state: EditorState,
+  targetPosition: number,
+  edge: "top" | "bottom",
+): Transaction | null {
+  if (!(state.selection instanceof NodeSelection)) return null;
+
+  const draggedNode = state.selection.node;
+  const targetNode = state.doc.nodeAt(targetPosition);
+  if (!draggedNode.isBlock || !targetNode) return null;
+
+  if (
+    state.selection.from === targetPosition &&
+    state.selection.to === targetPosition + targetNode.nodeSize
+  ) {
+    return null;
+  }
+
+  const tr = state.tr.delete(state.selection.from, state.selection.to);
+  const mappedTarget = tr.mapping.map(targetPosition);
+  const mappedTargetNode = tr.doc.nodeAt(mappedTarget);
+  if (!mappedTargetNode) return null;
+
+  const insertionPosition =
+    edge === "top" ? mappedTarget : mappedTarget + mappedTargetNode.nodeSize;
+  return tr.insert(insertionPosition, draggedNode).scrollIntoView();
 }
 
 export function clearPortfolioGridDropIndicator(view: EditorView) {

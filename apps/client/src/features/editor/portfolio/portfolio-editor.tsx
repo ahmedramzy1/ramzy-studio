@@ -13,6 +13,7 @@ import {
   type RamzyPortfolioSession,
 } from "@docmost/editor-ext/portfolio";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
+import GlobalDragHandle from "@/features/editor/extensions/drag-handle";
 import { handleFileDrop, handlePaste } from "@/features/editor/components/common/editor-paste-handler";
 import { EditorBubbleMenu } from "@/features/editor/components/bubble-menu/bubble-menu";
 import { EditorLinkMenu } from "@/features/editor/components/link/link-menu";
@@ -30,12 +31,8 @@ import SearchAndReplaceDialog from "@/features/editor/components/search-and-repl
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
-import {
-  clearPortfolioGridDropIndicator,
-  handlePortfolioGridDrop,
-  updatePortfolioGridDropIndicator,
-} from "./portfolio-grid-drop";
 import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
+import { PortfolioPragmaticDnd } from "./portfolio-pragmatic-dnd";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
@@ -165,7 +162,16 @@ function DirectPortfolioEditor({
   }, [notifySaveState]);
 
   const extensions = useMemo(
-    () => [...mainExtensions, PortfolioGridNormalizer, UndoRedo],
+    () => [
+      ...mainExtensions.filter((extension) => extension.name !== "globalDragHandle"),
+      GlobalDragHandle.configure({
+        customNodes: ["transclusionSource", "transclusionReference"],
+        atomNodes: ["base", "photoGrid", "photoAlbum"],
+        nativeDrag: false,
+      }),
+      PortfolioGridNormalizer,
+      UndoRedo,
+    ],
     [],
   );
 
@@ -269,21 +275,6 @@ function DirectPortfolioEditor({
       attributes: {
         class: "ramzy-portfolio-editor",
       },
-      handleDOMEvents: {
-        dragover: (view, event) =>
-          updatePortfolioGridDropIndicator(view, event),
-        dragleave: (view, event) => {
-          const nextTarget = event.relatedTarget;
-          if (!(nextTarget instanceof Node) || !view.dom.contains(nextTarget)) {
-            clearPortfolioGridDropIndicator(view);
-          }
-          return false;
-        },
-        dragend: (view) => {
-          clearPortfolioGridDropIndicator(view);
-          return false;
-        },
-      },
       handlePaste: (_view, event) => {
         if (!editorRef.current) return false;
         return handlePaste(
@@ -315,7 +306,6 @@ function DirectPortfolioEditor({
         return true;
       },
       handleDrop: (view, event, _slice, moved) => {
-        if (handlePortfolioGridDrop(view, event)) return true;
         if (!editorRef.current) return false;
         return handleFileDrop(editorRef.current, event, moved, pageId);
       },
@@ -366,7 +356,10 @@ function DirectPortfolioEditor({
       />
 
       {editor && (editable ?? true) && (
-        <PortfolioInsertionControls editor={editor} />
+        <>
+          <PortfolioPragmaticDnd editor={editor} />
+          <PortfolioInsertionControls editor={editor} />
+        </>
       )}
 
       {editor && (

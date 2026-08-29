@@ -1,7 +1,10 @@
 import { Schema } from "@tiptap/pm/model";
 import { EditorState, NodeSelection } from "@tiptap/pm/state";
 import { describe, expect, it } from "vitest";
-import { createPortfolioGridDropTransaction } from "./portfolio-grid-drop";
+import {
+  createPortfolioGridDropTransaction,
+  createPortfolioVerticalDropTransaction,
+} from "./portfolio-grid-drop";
 
 const schema = new Schema({
   nodes: {
@@ -124,5 +127,36 @@ describe("portfolio grid drop", () => {
     expect(columns.childCount).toBe(2);
     expect(columns.child(0).textContent).toBe("B");
     expect(columns.child(1).textContent).toBe("A");
+  });
+});
+
+describe("portfolio vertical drop", () => {
+  it("moves a block onto a separate row below another block", () => {
+    const state = selectedState([paragraph("A"), paragraph("B")]);
+    const targetPosition = state.doc.child(0).nodeSize;
+    const tr = createPortfolioVerticalDropTransaction(
+      state,
+      targetPosition,
+      "bottom",
+    );
+
+    expect(tr).not.toBeNull();
+    expect(tr!.doc.childCount).toBe(2);
+    expect(tr!.doc.child(0).textContent).toBe("B");
+    expect(tr!.doc.child(1).textContent).toBe("A");
+  });
+
+  it("moves a block onto a separate row above another block", () => {
+    const doc = schema.nodes.doc.create(null, [paragraph("A"), paragraph("B")]);
+    const secondPosition = doc.child(0).nodeSize;
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, secondPosition),
+    });
+    const tr = createPortfolioVerticalDropTransaction(state, 0, "top");
+
+    expect(tr).not.toBeNull();
+    expect(tr!.doc.child(0).textContent).toBe("B");
+    expect(tr!.doc.child(1).textContent).toBe("A");
   });
 });

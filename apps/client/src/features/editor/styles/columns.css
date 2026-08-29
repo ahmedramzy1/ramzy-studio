@@ -86,22 +86,73 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   padding: 0;
 }
 
-/* Horizontal drag targets use the same durable columns nodes as the slash
- * command. The inset edge makes the pending left/right column placement clear
- * without shifting the document while the pointer moves. */
-.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-left,
-.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-right {
-  position: relative;
-  border-radius: 8px;
-  background: color-mix(in srgb, #70cff8 9%, transparent);
+.ProseMirror.ramzy-portfolio-editor .ramzy-pragmatic-dragging {
+  opacity: 0.4;
 }
 
-.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-left {
-  box-shadow: inset 4px 0 #70cff8;
+.ramzy-pragmatic-drag-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(260px, 70vw);
+  padding: 0.75rem 1rem;
+  border: 1px solid #70cff8;
+  border-radius: 10px;
+  background: var(--mantine-color-body, #fff);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+  color: var(--mantine-color-text, #1a1b1e);
+  font: 500 14px/1.35 var(--mantine-font-family, sans-serif);
 }
 
-.ProseMirror.ramzy-portfolio-editor .ramzy-grid-drop-right {
-  box-shadow: inset -4px 0 #70cff8;
+.ramzy-pragmatic-drag-preview span {
+  color: #228be6;
+  font-size: 20px;
+}
+
+.ramzy-pragmatic-drag-preview strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ramzy-pragmatic-snap-preview {
+  position: fixed;
+  z-index: 10000;
+  display: none;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 2px dashed #228be6;
+  border-radius: 10px;
+  background: color-mix(in srgb, #70cff8 18%, transparent);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 80%);
+  transition: left 90ms ease, top 90ms ease, width 90ms ease,
+    height 90ms ease;
+}
+
+.ramzy-pragmatic-snap-preview > span {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #228be6;
+  color: white;
+  font: 600 11px/1.2 var(--mantine-font-family, sans-serif);
+  white-space: nowrap;
+}
+
+.ramzy-pragmatic-snap-preview.ramzy-snap-top,
+.ramzy-pragmatic-snap-preview.ramzy-snap-bottom {
+  border-style: solid;
+  border-width: 3px 0 0;
+  border-radius: 0;
+  background: color-mix(in srgb, #70cff8 24%, transparent);
+}
+
+.ramzy-pragmatic-snap-preview.ramzy-snap-top > span,
+.ramzy-pragmatic-snap-preview.ramzy-snap-bottom > span {
+  top: -12px;
 }
 
 .ProseMirror.ramzy-portfolio-editor
