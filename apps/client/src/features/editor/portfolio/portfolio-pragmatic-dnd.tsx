@@ -295,6 +295,7 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
     const registrations = new Map<HTMLElement, () => void>();
     let sourceElement: HTMLElement | null = null;
     let scanFrame = 0;
+    let scanPending = false;
 
     const registerDraggable = (
       element: HTMLElement,
@@ -302,7 +303,8 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
       getPosition: (input: { clientX: number; clientY: number }) => number | null,
     ) => {
       if (registrations.has(handle)) return;
-      const cleanup = draggable({
+      handle.dataset.ramzyPragmaticReady = "";
+      const draggableCleanup = draggable({
         element,
         dragHandle: handle === element ? undefined : handle,
         getInitialData: ({ input }) => {
@@ -346,9 +348,13 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
           sourceElement?.classList.remove("ramzy-pragmatic-dragging");
           sourceElement = null;
           hideLayoutPreview(layoutPreview);
+          if (scanPending) scheduleScan();
         },
       });
-      registrations.set(handle, cleanup);
+      registrations.set(handle, () => {
+        delete handle.dataset.ramzyPragmaticReady;
+        draggableCleanup();
+      });
     };
 
     const registerTarget = (
@@ -440,6 +446,11 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
     };
 
     const scheduleScan = () => {
+      if (sourceElement) {
+        scanPending = true;
+        return;
+      }
+      scanPending = false;
       cancelAnimationFrame(scanFrame);
       scanFrame = requestAnimationFrame(scan);
     };
@@ -449,6 +460,46 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
     // registrations dozens of times per second. Selection-only transactions
     // (including drag start) must not tear down an active draggable either.
     editor.on("update", scheduleScan);
+
+    const structuralSelector =
+      "[data-ramzy-block-drag-handle], .react-renderer, [data-type='columns'], [data-type='column']";
+    const structuralObserver = new MutationObserver((mutations) => {
+      const changed = mutations.some((mutation) =>
+        [...mutation.addedNodes, ...mutation.removedNodes].some(
+          (node) =>
+            node instanceof HTMLElement &&
+            (node.matches(structuralSelector) ||
+              node.querySelector(structuralSelector) !== null),
+        ),
+      );
+      if (changed) scheduleScan();
+    });
+    structuralObserver.observe(editor.view.dom, {
+      childList: true,
+      subtree: true,
+    });
+
+    const blockUnregisteredNativeDrag = (event: DragEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const handle = target.closest<HTMLElement>(
+        "[data-ramzy-block-drag-handle]",
+      );
+      if (!handle || "ramzyPragmaticReady" in handle.dataset) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      scheduleScan();
+    };
+    editor.view.dom.addEventListener(
+      "dragstart",
+      blockUnregisteredNativeDrag,
+      true,
+    );
+
+    // React node views can finish mounting just after the editor instance is
+    // reported. These two cheap structural scans close that initial window.
+    requestAnimationFrame(scheduleScan);
+    const settledScan = window.setTimeout(scheduleScan, 120);
 
     const monitorCleanup = combine(
       monitorForElements({
@@ -501,6 +552,13 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
 
     return () => {
       editor.off("update", scheduleScan);
+      structuralObserver.disconnect();
+      window.clearTimeout(settledScan);
+      editor.view.dom.removeEventListener(
+        "dragstart",
+        blockUnregisteredNativeDrag,
+        true,
+      );
       cancelAnimationFrame(scanFrame);
       monitorCleanup();
       for (const cleanup of registrations.values()) cleanup();
