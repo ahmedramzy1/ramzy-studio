@@ -6,6 +6,55 @@ export type PortfolioDropTargetCandidate<T> = {
   priority: number;
 };
 
+type HorizontalRect = Pick<DOMRect, "left" | "width">;
+
+export function portfolioTwoColumnPreviewRects(
+  rowRect: HorizontalRect,
+  gap: number,
+  edge: "left" | "right",
+) {
+  const columnWidth = Math.max(40, (rowRect.width - gap) / 2);
+  const rightColumnLeft = rowRect.left + columnWidth + gap;
+
+  return {
+    columnWidth,
+    targetLeft: edge === "left" ? rightColumnLeft : rowRect.left,
+    slotLeft: edge === "left" ? rowRect.left : rightColumnLeft,
+  };
+}
+
+export function cloneForPortfolioDndPreview(
+  sourceElement: HTMLElement,
+): HTMLElement {
+  const clone = sourceElement.cloneNode(true) as HTMLElement;
+
+  clone.removeAttribute("id");
+  clone.classList.remove("ramzy-dnd-source", "ProseMirror-selectednode");
+  clone.setAttribute("aria-hidden", "true");
+  clone.setAttribute("contenteditable", "false");
+
+  clone
+    .querySelectorAll<HTMLElement>(
+      "[data-ramzy-block-drag-handle], [data-drag-handle], .drag-handle",
+    )
+    .forEach((handle) => handle.remove());
+  clone.querySelectorAll<HTMLElement>("[id]").forEach((element) => {
+    element.removeAttribute("id");
+  });
+  clone
+    .querySelectorAll<HTMLElement>("[contenteditable]")
+    .forEach((element) => element.setAttribute("contenteditable", "false"));
+  clone
+    .querySelectorAll<HTMLElement>("button, a, input, textarea, select")
+    .forEach((element) => element.setAttribute("tabindex", "-1"));
+  clone.querySelectorAll<HTMLMediaElement>("video, audio").forEach((media) => {
+    media.removeAttribute("autoplay");
+    media.muted = true;
+  });
+
+  return clone;
+}
+
 export function portfolioDropTargetAtPoint<T>(
   candidates: PortfolioDropTargetCandidate<T>[],
   pointer: { x: number; y: number },
