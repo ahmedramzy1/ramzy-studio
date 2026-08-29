@@ -100,9 +100,12 @@ jobs:
 
   publish-runtime:
     if: >-
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/ramzy/phase1-integration' ||
-       github.ref == 'refs/heads/ramzy/aura-capability-rebuild')
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/ramzy/phase1-integration' ||
+        github.ref == 'refs/heads/ramzy/aura-capability-rebuild')) ||
+      (github.event_name == 'pull_request' &&
+       github.head_ref == 'ramzy/aura-capability-rebuild' &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     needs: [editor-client, server]
     runs-on: ubuntu-latest
     timeout-minutes: 20
