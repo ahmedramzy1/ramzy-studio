@@ -97,6 +97,8 @@ function renderDragPreview(container: HTMLElement, label: string) {
 
 type LayoutPreview = {
   element: HTMLElement;
+  transparentRow: HTMLElement | null;
+  originalOpacity: string;
   activeKey: string | null;
 };
 
@@ -106,11 +108,18 @@ function createLayoutPreview(): LayoutPreview {
   document.body.appendChild(preview);
   return {
     element: preview,
+    transparentRow: null,
+    originalOpacity: "",
     activeKey: null,
   };
 }
 
 function hideLayoutPreview(preview: LayoutPreview) {
+  if (preview.transparentRow) {
+    preview.transparentRow.style.opacity = preview.originalOpacity;
+    preview.transparentRow = null;
+    preview.originalOpacity = "";
+  }
   preview.element.replaceChildren();
   preview.element.style.display = "none";
   preview.element.style.height = "";
@@ -231,6 +240,13 @@ function showLayoutPreview(
     grid.style.margin = "0";
     preview.element.style.top = `${rowRect.top}px`;
     preview.element.appendChild(grid);
+    // Keep the registered drop target in exactly the same place so pointer
+    // hit-testing remains stable. Opacity (unlike visibility/display) keeps
+    // the target hittable while allowing the cloned future layout to be the
+    // only pixels shown beneath the pointer.
+    preview.transparentRow = target.rowElement;
+    preview.originalOpacity = target.rowElement.style.opacity;
+    target.rowElement.style.opacity = "0";
     return;
   }
 
@@ -257,6 +273,20 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
     let sourceElement: HTMLElement | null = null;
     let scanFrame = 0;
     let scanPending = false;
+    const postDropTimers = new Set<number>();
+
+    const schedulePostDropRebind = () => {
+      // TipTap node views do not all commit in the same frame as the document
+      // transaction. Re-scan across the short settling window so handles
+      // created by the drop remain draggable for the next operation.
+      [0, 80, 220].forEach((delay) => {
+        const timer = window.setTimeout(() => {
+          postDropTimers.delete(timer);
+          scheduleScan();
+        }, delay);
+        postDropTimers.add(timer);
+      });
+    };
 
     const registerDraggable = (
       element: HTMLElement,
@@ -310,6 +340,7 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
           sourceElement = null;
           hideLayoutPreview(layoutPreview);
           if (scanPending) scheduleScan();
+          schedulePostDropRebind();
         },
       });
       registrations.set(handle, () => {
@@ -500,7 +531,12 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
                 );
           if (!tr) return;
           editor.view.dispatch(tr);
-          triggerPostMoveFlash(data.rowElement);
+          const movedPosition = editor.state.selection.from;
+          const movedDom = editor.view.nodeDOM(movedPosition);
+          if (movedDom instanceof HTMLElement && movedDom.isConnected) {
+            triggerPostMoveFlash(movedDom);
+          }
+          schedulePostDropRebind();
           liveRegion.announce(
             edge === "left" || edge === "right"
               ? `Moved element ${edge}`
@@ -515,6 +551,8 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
       editor.off("update", scheduleScan);
       structuralObserver.disconnect();
       window.clearTimeout(settledScan);
+      for (const timer of postDropTimers) window.clearTimeout(timer);
+      postDropTimers.clear();
       editor.view.dom.removeEventListener(
         "dragstart",
         blockUnregisteredNativeDrag,
