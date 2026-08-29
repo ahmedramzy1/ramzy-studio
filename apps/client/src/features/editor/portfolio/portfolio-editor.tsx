@@ -32,7 +32,7 @@ import { TransclusionLookupProvider } from "@/features/editor/components/transcl
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
 import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
-import { PortfolioPragmaticDnd } from "./portfolio-pragmatic-dnd";
+import { PortfolioDnd } from "./portfolio-dnd";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
@@ -357,7 +357,7 @@ function DirectPortfolioEditor({
 
       {editor && (editable ?? true) && (
         <>
-          <PortfolioPragmaticDnd editor={editor} />
+          <PortfolioDnd editor={editor} />
           <PortfolioInsertionControls editor={editor} />
         </>
       )}
