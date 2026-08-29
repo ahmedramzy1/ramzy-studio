@@ -19,7 +19,10 @@ import {
   createPortfolioGridDropTransaction,
   createPortfolioVerticalDropTransaction,
 } from "./portfolio-grid-drop";
-import { portfolioPreviewColumnPlan } from "./portfolio-dnd-preview";
+import {
+  closestPortfolioDropEdge,
+  portfolioPreviewColumnPlan,
+} from "./portfolio-dnd-preview";
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
 const PORTFOLIO_TARGET = "ramzy-portfolio-target";
@@ -42,6 +45,8 @@ type ActivePreview = {
   key: string;
   restore: () => void;
 };
+
+type PreviewSlotRect = Pick<DOMRect, "left" | "top" | "width" | "height">;
 
 function isDragData(data: Record<string | symbol, unknown>): data is DragData {
   return (
@@ -139,16 +144,29 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
   const clear = () => {
     active?.restore();
     element.className = "ramzy-dnd-drop-slot";
+    delete element.dataset.dropLabel;
     element.style.display = "none";
     active = null;
   };
 
-  const positionSlot = (rect: DOMRect, hostRect: DOMRect, edge: Edge) => {
+  const positionSlot = (
+    rect: PreviewSlotRect,
+    hostRect: DOMRect,
+    edge: Edge,
+  ) => {
     element.style.display = "block";
     element.style.top = `${rect.top - hostRect.top}px`;
     element.style.left = `${rect.left - hostRect.left}px`;
     element.style.width = `${rect.width}px`;
     element.style.height = `${Math.max(rect.height, 40)}px`;
+    element.dataset.dropLabel =
+      edge === "left"
+        ? "Place left"
+        : edge === "right"
+          ? "Place right"
+          : edge === "top"
+            ? "Place above"
+            : "Place below";
     element.classList.add(`ramzy-dnd-drop-slot-${edge}`);
   };
 
@@ -179,11 +197,11 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
           edge === "left" ? rowRect.left : rowRect.right - resizedRect.width;
         positionSlot(
           {
-            ...resizedRect,
             left: slotLeft,
-            right: slotLeft + resizedRect.width,
-            x: slotLeft,
-          } as DOMRect,
+            top: resizedRect.top,
+            width: resizedRect.width,
+            height: resizedRect.height,
+          },
           hostRect,
           edge,
         );
@@ -281,12 +299,11 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
           nextRect.left + precedingWidth + plan.insertionIndex * gap;
         positionSlot(
           {
-            ...nextRect,
             left: slotLeft,
-            right: slotLeft + slotWidth,
+            top: nextRect.top,
             width: slotWidth,
-            x: slotLeft,
-          } as DOMRect,
+            height: nextRect.height,
+          },
           hostRect,
           edge,
         );
@@ -316,12 +333,11 @@ function createPortfolioDndPreviewLayer(editor: Editor) {
         edge === "top" ? shiftedRect.top - space : shiftedRect.bottom + gap;
       positionSlot(
         {
-          ...rowRect,
+          left: rowRect.left,
           top: slotTop,
-          bottom: slotTop + sourceHeight,
+          width: rowRect.width,
           height: sourceHeight,
-          y: slotTop,
-        } as DOMRect,
+        },
         hostRect,
         edge,
       );
@@ -424,10 +440,18 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
               data.columnIndex !== null &&
               data.rowElement.childElementCount >= 4 &&
               sourceRow !== data.rowElement;
+            const availableEdges: Edge[] = rowIsFull
+              ? ["top", "bottom"]
+              : allowedEdges;
+            const preferredEdge = closestPortfolioDropEdge(
+              targetElement.getBoundingClientRect(),
+              { x: input.clientX, y: input.clientY },
+              availableEdges,
+            );
             return attachClosestEdge(data, {
               input,
               element: targetElement,
-              allowedEdges: rowIsFull ? ["top", "bottom"] : allowedEdges,
+              allowedEdges: [preferredEdge],
             });
           },
           getIsSticky: () => true,
