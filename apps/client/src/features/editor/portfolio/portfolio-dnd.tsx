@@ -17,7 +17,9 @@ import {
   cloneForPortfolioDndPreview,
   closestPortfolioDropEdge,
   createPortfolioDndGridPreview,
+  portfolioDropTargetAtPoint,
   type DropEdge,
+  type PortfolioDropTargetCandidate,
 } from "./portfolio-dnd-preview";
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
@@ -158,14 +160,6 @@ function dragData(
     : null;
 }
 
-function dropData(
-  droppable: { type?: unknown; data: Record<string, unknown> } | null,
-): DropData | null {
-  return droppable?.type === PORTFOLIO_BLOCK
-    ? (droppable.data as DropData)
-    : null;
-}
-
 export function PortfolioDnd({ editor }: { editor: Editor }) {
   useEffect(() => {
     if (editor.isDestroyed || !editor.isEditable) return;
@@ -180,6 +174,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
     });
     const preview = createPreview();
     let entities: Array<Draggable | Droppable> = [];
+    let dropTargets: PortfolioDropTargetCandidate<DropData>[] = [];
     let sourceElement: HTMLElement | null = null;
     let pointer = { x: 0, y: 0 };
     let reconcileFrame = 0;
@@ -193,6 +188,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       globalHandleCleanup = null;
       entities.forEach((entity) => entity.destroy());
       entities = [];
+      dropTargets = [];
     };
 
     const addDraggable = (
@@ -225,6 +221,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       data: DropData,
       collisionPriority: number,
     ) => {
+      dropTargets.push({ element, data, priority: collisionPriority });
       entities.push(
         new Droppable<DropData>(
           {
@@ -354,13 +351,21 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
 
     const renderCurrentPreview = (event: DragMoveEvent) => {
       const source = dragData(event.operation.source);
-      const target = dropData(event.operation.target);
-      if (!source?.sourceElement || !target) {
+      const registeredTarget = portfolioDropTargetAtPoint(dropTargets, pointer);
+      const target = registeredTarget?.data;
+      if (
+        !source?.sourceElement ||
+        source.sourcePosition === null ||
+        !registeredTarget ||
+        !target ||
+        (target.columnIndex === null &&
+          source.sourcePosition === target.targetPosition)
+      ) {
         hidePreview(preview);
         return;
       }
       const edge = closestPortfolioDropEdge(
-        (event.operation.target!.element as Element).getBoundingClientRect(),
+        registeredTarget.element.getBoundingClientRect(),
         pointer,
         target.allowedEdges,
       );
@@ -391,21 +396,23 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       sourceElement = null;
       hidePreview(preview);
       const source = dragData(event.operation.source);
-      const target = dropData(event.operation.target);
+      const registeredTarget = portfolioDropTargetAtPoint(dropTargets, pointer);
+      const target = registeredTarget?.data;
       if (
         event.canceled ||
         source?.sourcePosition === null ||
+        !registeredTarget ||
         !target ||
+        (target.columnIndex === null &&
+          source.sourcePosition === target.targetPosition) ||
         !(editor.state.selection instanceof NodeSelection)
       ) {
         scheduleReconcile();
         return;
       }
 
-      const targetElement = event.operation.target?.element;
-      if (!(targetElement instanceof Element)) return;
       const edge = closestPortfolioDropEdge(
-        targetElement.getBoundingClientRect(),
+        registeredTarget.element.getBoundingClientRect(),
         pointer,
         target.allowedEdges,
       );

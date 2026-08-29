@@ -88,6 +88,7 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 
 .ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source {
   opacity: 0.28;
+  pointer-events: none;
 }
 
 .ramzy-dnd-layout-preview {

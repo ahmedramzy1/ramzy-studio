@@ -1,5 +1,43 @@
 export type DropEdge = "top" | "bottom" | "left" | "right";
 
+export type PortfolioDropTargetCandidate<T> = {
+  element: HTMLElement;
+  data: T;
+  priority: number;
+};
+
+export function portfolioDropTargetAtPoint<T>(
+  candidates: PortfolioDropTargetCandidate<T>[],
+  pointer: { x: number; y: number },
+  hitElements = document.elementsFromPoint(pointer.x, pointer.y),
+): PortfolioDropTargetCandidate<T> | null {
+  const direct = candidates.filter(({ element }) =>
+    hitElements.some((hit) => hit === element || element.contains(hit)),
+  );
+  const containing = direct.length
+    ? direct
+    : candidates.filter(({ element }) => {
+        const rect = element.getBoundingClientRect();
+        return (
+          pointer.x >= rect.left &&
+          pointer.x <= rect.right &&
+          pointer.y >= rect.top &&
+          pointer.y <= rect.bottom
+        );
+      });
+
+  return (
+    containing.sort((left, right) => {
+      if (left.priority !== right.priority) {
+        return right.priority - left.priority;
+      }
+      const leftRect = left.element.getBoundingClientRect();
+      const rightRect = right.element.getBoundingClientRect();
+      return leftRect.width * leftRect.height - rightRect.width * rightRect.height;
+    })[0] ?? null
+  );
+}
+
 export function cloneForPortfolioDndPreview(
   element: HTMLElement,
 ): HTMLElement {
