@@ -204,8 +204,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       flex: column.style.flex,
       width: column.style.width,
     }));
-    let liveFrame = 0;
-    let latestClientX = startX;
     let latestWeights = resizedColumnWeights(startWidths, dividerIndex, 0);
 
     const renderLiveWidths = (clientX: number) => {
@@ -236,13 +234,12 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     const onMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
       moveEvent.preventDefault();
-      latestClientX = moveEvent.clientX;
-      cancelAnimationFrame(liveFrame);
-      liveFrame = requestAnimationFrame(() => renderLiveWidths(latestClientX));
+      // Apply the preview in the pointer event itself. Queueing and cancelling an
+      // animation frame made fast drags appear frozen until pointer release.
+      renderLiveWidths(moveEvent.clientX);
     };
     const finish = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
-      cancelAnimationFrame(liveFrame);
       renderLiveWidths(upEvent.clientX);
       cleanup(false);
       setColumnWidths(editor, active.position, latestWeights);
@@ -262,7 +259,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       cleanup(true);
     };
     const cleanup = (restore = true) => {
-      cancelAnimationFrame(liveFrame);
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("pointerup", finish, true);
       window.removeEventListener("pointercancel", cancel, true);
@@ -313,8 +309,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       marginRight: active.element.style.marginRight,
       transform: active.element.style.transform,
     };
-    let liveFrame = 0;
-    let latestClientX = startX;
     let nextMode = (active.element.dataset.widthMode ||
       "normal") as PortfolioGridWidthMode;
     setWidthLabel(portfolioGridModeLabel(nextMode));
@@ -344,13 +338,10 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     const onMove = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== pointerId) return;
       moveEvent.preventDefault();
-      latestClientX = moveEvent.clientX;
-      cancelAnimationFrame(liveFrame);
-      liveFrame = requestAnimationFrame(() => renderLiveWidth(latestClientX));
+      renderLiveWidth(moveEvent.clientX);
     };
     const finish = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
-      cancelAnimationFrame(liveFrame);
       renderLiveWidth(upEvent.clientX);
       cleanup(false);
       setWidthLabel(null);
@@ -372,7 +363,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       setWidthLabel(null);
     };
     const cleanup = (restore = true) => {
-      cancelAnimationFrame(liveFrame);
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("pointerup", finish, true);
       window.removeEventListener("pointercancel", cancel, true);

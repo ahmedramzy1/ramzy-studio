@@ -22,6 +22,7 @@ import {
 import {
   cloneForPortfolioDndPreview,
   closestPortfolioDropEdge,
+  portfolioDropTargetAtPoint,
   portfolioPreviewColumnPlan,
   portfolioTwoColumnPreviewRects,
 } from "./portfolio-dnd-preview";
@@ -126,12 +127,36 @@ function blockLabel(element: HTMLElement): string {
 function getDrop(
   location: ElementEventPayloadMap["onDrag"]["location"],
 ): { data: DropData; edge: Edge } | null {
+  const candidates: Array<{
+    element: HTMLElement;
+    data: { data: DropData; edge: Edge };
+    priority: number;
+  }> = [];
   for (const record of location.current.dropTargets) {
     if (!isDropData(record.data)) continue;
     const edge = extractClosestEdge(record.data);
-    if (edge) return { data: record.data, edge };
+    if (!edge || !(record.element instanceof HTMLElement)) continue;
+    candidates.push({
+      element: record.element,
+      data: { data: record.data, edge },
+      // A column is nested inside its row. Pragmatic DnD can return both targets,
+      // so the more precise column target must win for 3–5 column insertion.
+      priority: record.data.columnIndex === null ? 1 : 2,
+    });
   }
-  return null;
+  return (
+    portfolioDropTargetAtPoint(
+      candidates,
+      {
+        x: location.current.input.clientX,
+        y: location.current.input.clientY,
+      },
+      document.elementsFromPoint(
+        location.current.input.clientX,
+        location.current.input.clientY,
+      ),
+    )?.data ?? null
+  );
 }
 
 function isHorizontalColumnIntent(
