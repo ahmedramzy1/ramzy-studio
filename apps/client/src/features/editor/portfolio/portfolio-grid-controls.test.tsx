@@ -3,6 +3,25 @@
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const interactHarness = vi.hoisted(() => ({
+  listeners: new Map<
+    HTMLElement,
+    Record<string, (event: { dx: number }) => void>
+  >(),
+}));
+
+vi.mock("interactjs", () => ({
+  default: (element: HTMLElement) => ({
+    draggable: (options: {
+      listeners: Record<string, (event: { dx: number }) => void>;
+    }) => {
+      interactHarness.listeners.set(element, options.listeners);
+    },
+    unset: () => interactHarness.listeners.delete(element),
+  }),
+}));
+
 import { PortfolioGridControls } from "./portfolio-grid-controls";
 
 function rect(left: number, width: number, height = 300): DOMRect {
@@ -17,16 +36,6 @@ function rect(left: number, width: number, height = 300): DOMRect {
     y: 100,
     toJSON: () => ({}),
   };
-}
-
-function pointerEvent(type: string, clientX: number, pointerId = 7) {
-  const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperties(event, {
-    clientX: { value: clientX },
-    clientY: { value: 150 },
-    pointerId: { value: pointerId },
-  });
-  return event;
 }
 
 function setupGrid() {
@@ -52,7 +61,11 @@ function setupGrid() {
     value: () => rect(100, Number.parseFloat(left.style.width) || 400),
   });
   Object.defineProperty(right, "getBoundingClientRect", {
-    value: () => rect(500, Number.parseFloat(right.style.width) || 400),
+    value: () =>
+      rect(
+        100 + (Number.parseFloat(left.style.width) || 400),
+        Number.parseFloat(right.style.width) || 400,
+      ),
   });
 
   const columnNode = { attrs: {}, nodeSize: 2 };
@@ -117,6 +130,7 @@ describe("PortfolioGridControls live pointer preview", () => {
       .querySelectorAll<HTMLElement>('[data-test-editor-root="true"]')
       .forEach((element) => element.remove());
     vi.unstubAllGlobals();
+    interactHarness.listeners.clear();
   });
 
   it("changes adjacent column pixels before pointer release", async () => {
@@ -129,12 +143,14 @@ describe("PortfolioGridControls live pointer preview", () => {
       return element!;
     });
 
-    fireEvent(handle, pointerEvent("pointerdown", 500));
-    fireEvent(window, pointerEvent("pointermove", 600));
+    const listeners = interactHarness.listeners.get(handle)!;
+    listeners.start({ dx: 0 });
+    listeners.move({ dx: 100 });
 
     expect(left.style.getPropertyValue("width")).toBe("500px");
     expect(right.style.getPropertyValue("width")).toBe("300px");
     expect(handle.dataset.resizing).toBe("true");
+    await waitFor(() => expect(handle.style.left).toBe("591px"));
   });
 
   it("changes the full row width before pointer release", async () => {
@@ -148,10 +164,12 @@ describe("PortfolioGridControls live pointer preview", () => {
     });
     const rightHandle = handles[1];
 
-    fireEvent(rightHandle, pointerEvent("pointerdown", 900));
-    fireEvent(window, pointerEvent("pointermove", 964));
+    const listeners = interactHarness.listeners.get(rightHandle)!;
+    listeners.start({ dx: 0 });
+    listeners.move({ dx: 64 });
 
     expect(row.style.getPropertyValue("width")).toBe("928px");
     expect(rightHandle.dataset.resizing).toBe("true");
+    await waitFor(() => expect(rightHandle.style.left).toBe("1019px"));
   });
 });

@@ -1,10 +1,6 @@
 import { Fragment } from "@tiptap/pm/model";
-import {
-  type EditorState,
-  NodeSelection,
-  type Transaction,
-} from "@tiptap/pm/state";
-import type { EditorView } from "@tiptap/pm/view";
+import { type EditorState, type Transaction } from "@tiptap/pm/state";
+import { gridStackColumnWeights } from "./portfolio-gridstack-layout";
 
 type GridSide = "left" | "right";
 export type PortfolioDropEdge = GridSide | "top" | "bottom";
@@ -20,102 +16,6 @@ type SelectedBlockLocation =
       columnIndex: number;
       blockIndex: number;
     };
-
-interface GridDropTarget {
-  side: GridSide;
-  topLevelPosition: number;
-  topLevelElement: HTMLElement;
-  indicatorElement: HTMLElement;
-  columnIndex: number | null;
-}
-
-const activeIndicators = new WeakMap<EditorView, HTMLElement>();
-
-function topLevelElementAtPoint(
-  view: EditorView,
-  event: DragEvent,
-): HTMLElement | null {
-  const hit = document.elementFromPoint(event.clientX, event.clientY);
-  if (!(hit instanceof HTMLElement) || !view.dom.contains(hit)) {
-    return null;
-  }
-  let element: HTMLElement = hit;
-
-  while (element.parentElement && element.parentElement !== view.dom) {
-    element = element.parentElement as HTMLElement;
-  }
-
-  return element.parentElement === view.dom ? element : null;
-}
-
-function sideFromPoint(element: HTMLElement, clientX: number): GridSide | null {
-  const rect = element.getBoundingClientRect();
-  const edgeWidth = Math.min(160, Math.max(64, rect.width * 0.28));
-  if (clientX <= rect.left + edgeWidth) return "left";
-  if (clientX >= rect.right - edgeWidth) return "right";
-  return null;
-}
-
-function findGridDropTarget(
-  view: EditorView,
-  event: DragEvent,
-): GridDropTarget | null {
-  if (!view.dragging || event.dataTransfer?.files.length) return null;
-  if (!(view.state.selection instanceof NodeSelection)) return null;
-
-  const topLevelElement = topLevelElementAtPoint(view, event);
-  if (!topLevelElement) return null;
-
-  let topLevelPosition: number;
-  try {
-    topLevelPosition = view.posAtDOM(topLevelElement, 0);
-  } catch {
-    return null;
-  }
-
-  const topLevelNode = view.state.doc.nodeAt(topLevelPosition);
-  if (!topLevelNode) return null;
-
-  const hit = document.elementFromPoint(event.clientX, event.clientY);
-  const columnElement =
-    hit instanceof HTMLElement
-      ? (hit.closest('[data-type="column"]') as HTMLElement | null)
-      : null;
-  const insideTargetColumns =
-    topLevelNode.type.name === "columns" &&
-    columnElement?.parentElement?.matches('[data-type="columns"]');
-  const indicatorElement = insideTargetColumns
-    ? columnElement
-    : topLevelElement;
-  if (!indicatorElement) return null;
-
-  const side = sideFromPoint(indicatorElement, event.clientX);
-  if (!side) return null;
-
-  const selection = view.state.selection;
-  if (
-    selection.from === topLevelPosition &&
-    selection.to === topLevelPosition + topLevelNode.nodeSize
-  ) {
-    return null;
-  }
-
-  let columnIndex: number | null = null;
-  if (insideTargetColumns && columnElement?.parentElement) {
-    columnIndex = Array.from(columnElement.parentElement.children).indexOf(
-      columnElement,
-    );
-    if (columnIndex < 0) return null;
-  }
-
-  return {
-    side,
-    topLevelPosition,
-    topLevelElement,
-    indicatorElement,
-    columnIndex,
-  };
-}
 
 function layoutForCount(count: number): string {
   if (count === 3) return "three_equal";
@@ -264,36 +164,16 @@ function replaceDocumentContent(
 function rebalanceColumnWidths(
   nodes: readonly import("@tiptap/pm/model").Node[],
 ) {
-  const hasManualWidths = nodes.some(
-    (node) => typeof node.attrs.width === "number" && node.attrs.width > 0,
-  );
-  if (!hasManualWidths) {
-    return nodes.map((node) =>
-      node.type.create(
-        { ...node.attrs, width: null },
-        node.content,
-        node.marks,
-      ),
-    );
-  }
-
-  const fallback = 1;
-  const total = nodes.reduce(
-    (sum, node) =>
-      sum +
-      (typeof node.attrs.width === "number" && node.attrs.width > 0
-        ? node.attrs.width
-        : fallback),
-    0,
-  );
-  const average = total / nodes.length;
-  return nodes.map((node) => {
-    const width =
+  const weights = gridStackColumnWeights(
+    nodes.map((node) =>
       typeof node.attrs.width === "number" && node.attrs.width > 0
         ? node.attrs.width
-        : fallback;
+        : 1,
+    ),
+  );
+  return nodes.map((node, index) => {
     return node.type.create(
-      { ...node.attrs, width: Number((width / average).toFixed(4)) },
+      { ...node.attrs, width: weights[index] },
       node.content,
       node.marks,
     );
@@ -488,50 +368,4 @@ export function createPortfolioVerticalDropTransaction(
     draggedNode,
   );
   return replaceDocumentContent(state, topNodes);
-}
-
-export function clearPortfolioGridDropIndicator(view: EditorView) {
-  const active = activeIndicators.get(view);
-  active?.classList.remove("ramzy-grid-drop-left", "ramzy-grid-drop-right");
-  activeIndicators.delete(view);
-}
-
-export function updatePortfolioGridDropIndicator(
-  view: EditorView,
-  event: DragEvent,
-): boolean {
-  clearPortfolioGridDropIndicator(view);
-  const target = findGridDropTarget(view, event);
-  if (!target) return false;
-
-  target.indicatorElement.classList.add(`ramzy-grid-drop-${target.side}`);
-  activeIndicators.set(view, target.indicatorElement);
-  event.preventDefault();
-  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-  return true;
-}
-
-export function handlePortfolioGridDrop(
-  view: EditorView,
-  event: DragEvent,
-): boolean {
-  const target = findGridDropTarget(view, event);
-  clearPortfolioGridDropIndicator(view);
-  if (!target || !(view.state.selection instanceof NodeSelection)) {
-    return false;
-  }
-
-  const tr = createPortfolioGridDropTransaction(
-    view.state,
-    target.topLevelPosition,
-    target.side,
-    target.columnIndex,
-  );
-  if (!tr) return false;
-
-  event.preventDefault();
-  event.stopPropagation();
-  view.dispatch(tr);
-  view.dragging = null;
-  return true;
 }

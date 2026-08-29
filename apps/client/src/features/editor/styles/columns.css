@@ -89,118 +89,120 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 .ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source {
   opacity: 0.34;
   pointer-events: none;
-  transition: opacity 100ms ease;
+  transition: opacity 140ms ease;
 }
 
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-target-muted {
-  opacity: 0.16;
-  transition: opacity 100ms ease;
+.ramzy-dnd-drop-zone-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
 }
 
-.ramzy-dnd-layout-overlay {
-  position: absolute;
-  z-index: 20;
-  display: none;
+.ramzy-dnd-drop-zone {
+  position: fixed;
   pointer-events: none;
   box-sizing: border-box;
-  filter: drop-shadow(0 8px 18px rgb(0 0 0 / 8%));
-  contain: layout paint style;
 }
 
-.ramzy-dnd-layout-overlay::after {
-  content: attr(data-drop-label);
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  padding: 4px 8px;
+.ramzy-dnd-drag-overlay {
+  max-width: 260px;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--mantine-color-blue-5) 50%, white);
   border-radius: var(--mantine-radius-sm, 4px);
   background: color-mix(
     in srgb,
     var(--mantine-color-body, #fff) 88%,
     transparent
   );
-  color: var(--mantine-color-blue-6, #228be6);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
+  color: var(--mantine-color-text, #202124);
   font:
-    600 11px/1 system-ui,
+    600 12px/1.2 system-ui,
     sans-serif;
-  letter-spacing: 0.01em;
+  opacity: 0.82;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  transform: translate(-50%, -50%);
 }
 
-.ramzy-dnd-future-grid {
-  display: grid;
-  align-items: start;
-  width: 100%;
-  gap: var(--ramzy-columns-gap, 2rem);
-}
-
-.ramzy-dnd-future-grid > [data-type="column"] {
-  min-width: 0;
-  width: auto !important;
-  margin: 0 !important;
-  opacity: 0.94;
-}
-
-.ramzy-dnd-incoming-column {
+.ramzy-dnd-column-slot,
+.ramzy-dnd-row-slot,
+.ramzy-dnd-preview-single-row::before {
+  box-sizing: border-box;
   position: relative;
+  display: block;
+  border: 2px dashed var(--mantine-color-blue-5, #339af0);
+  border-radius: var(--mantine-radius-sm, 4px);
+  background: color-mix(
+    in srgb,
+    var(--mantine-color-blue-0, #e7f5ff) 22%,
+    transparent
+  );
+  animation: ramzy-dnd-slot-in 140ms ease-out;
+}
+
+.ramzy-dnd-column-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: max(64px, min(var(--ramzy-dnd-source-height), 520px));
+}
+
+.ramzy-dnd-row-slot {
+  width: 100%;
+  height: max(56px, min(var(--ramzy-dnd-source-height), 520px));
+  margin: 1rem 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source-column-vacated {
+  display: none;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-single-row {
+  position: relative;
+  width: calc(50% - var(--ramzy-columns-gap, 2rem) / 2) !important;
+  max-width: none !important;
+  overflow: visible !important;
+  transition:
+    width 150ms ease,
+    margin 150ms ease;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  .ramzy-dnd-preview-single-row[data-ramzy-drop-edge="left"] {
+  margin-left: auto !important;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  .ramzy-dnd-preview-single-row[data-ramzy-drop-edge="right"] {
+  margin-right: auto !important;
+}
+
+.ramzy-dnd-preview-single-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 100%;
   min-height: 64px;
-  border: 2px dashed var(--mantine-color-blue-5, #339af0);
-  border-radius: var(--mantine-radius-sm, 4px);
-  background: color-mix(
-    in srgb,
-    var(--mantine-color-blue-0, #e7f5ff) 22%,
-    transparent
-  );
-  opacity: 0.46 !important;
-  overflow: hidden;
 }
 
-.ramzy-dnd-incoming-column > * {
-  width: 100% !important;
-  max-width: 100%;
-  margin: 0 !important;
+.ramzy-dnd-preview-single-row[data-ramzy-drop-edge="left"]::before {
+  right: calc(100% + var(--ramzy-columns-gap, 2rem));
 }
 
-.ramzy-dnd-incoming-column img,
-.ramzy-dnd-incoming-column video,
-.ramzy-dnd-incoming-column iframe,
-.ramzy-dnd-incoming-column table,
-.ramzy-dnd-incoming-column canvas,
-.ramzy-dnd-incoming-column svg {
-  max-width: 100%;
+.ramzy-dnd-preview-single-row[data-ramzy-drop-edge="right"]::before {
+  left: calc(100% + var(--ramzy-columns-gap, 2rem));
 }
 
-.ramzy-dnd-future-stack {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 1rem;
-}
-
-.ramzy-dnd-future-stack > * {
-  width: 100%;
-  max-width: 100%;
-  margin: 0 !important;
-}
-
-.ramzy-dnd-vertical-ghost {
-  min-height: 44px;
-  border: 2px dashed var(--mantine-color-blue-5, #339af0);
-  border-radius: var(--mantine-radius-sm, 4px);
-  background: color-mix(
-    in srgb,
-    var(--mantine-color-blue-0, #e7f5ff) 22%,
-    transparent
-  );
-  opacity: 0.46;
-  overflow: hidden;
-}
-
-.ramzy-dnd-native-preview {
-  width: 1px;
-  height: 1px;
-  opacity: 0;
+@keyframes ramzy-dnd-slot-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .ProseMirror.ramzy-portfolio-editor

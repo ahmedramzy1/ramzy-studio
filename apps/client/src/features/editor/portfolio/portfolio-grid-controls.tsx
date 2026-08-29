@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/core";
+import interact from "interactjs";
 import {
   nearestPortfolioGridWidthMode,
   portfolioGridModeLabel,
@@ -9,22 +10,47 @@ import {
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
 
-type ActiveGrid = {
-  element: HTMLElement;
-  position: number;
-};
-
-type HandleGeometry = {
-  left: number;
-  top: number;
-  height: number;
-};
-
+type ActiveGrid = { element: HTMLElement; position: number };
+type HandleGeometry = { left: number; top: number; height: number };
 type GridGeometry = {
   outer: [HandleGeometry, HandleGeometry];
   dividers: HandleGeometry[];
   badge: { left: number; top: number };
 };
+
+type ColumnResizeSession = {
+  kind: "column";
+  active: ActiveGrid;
+  handle: HTMLElement;
+  columns: HTMLElement[];
+  startWidths: number[];
+  originalStyles: Array<{ flex: string; width: string }>;
+  dividerIndex: number;
+  delta: number;
+  latestWeights: number[];
+};
+
+type RowResizeSession = {
+  kind: "row";
+  active: ActiveGrid;
+  handle: HTMLElement;
+  side: "left" | "right";
+  startWidth: number;
+  delta: number;
+  widths: Record<PortfolioGridWidthMode, number>;
+  nextMode: PortfolioGridWidthMode;
+  originalStyles: {
+    position: string;
+    left: string;
+    width: string;
+    maxWidth: string;
+    marginLeft: string;
+    marginRight: string;
+    transform: string;
+  };
+};
+
+type ResizeSession = ColumnResizeSession | RowResizeSession;
 
 function topLevelPosition(editor: Editor, element: HTMLElement): number | null {
   try {
@@ -37,20 +63,24 @@ function topLevelPosition(editor: Editor, element: HTMLElement): number | null {
         return before;
       }
     }
-    return null;
   } catch {
-    return null;
+    // The hovered node view can be replaced during an editor update.
   }
+  return null;
+}
+
+function columnsIn(element: HTMLElement) {
+  return Array.from(element.children).filter(
+    (child): child is HTMLElement =>
+      child instanceof HTMLElement && child.dataset.type === "column",
+  );
 }
 
 function measureGrid(element: HTMLElement): GridGeometry | null {
   if (!element.isConnected) return null;
   const rect = element.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return null;
-  const columns = Array.from(element.children).filter(
-    (child): child is HTMLElement =>
-      child instanceof HTMLElement && child.dataset.type === "column",
-  );
+  const columns = columnsIn(element);
   const dividers = columns.slice(0, -1).map((column, index) => {
     const leftRect = column.getBoundingClientRect();
     const rightRect = columns[index + 1].getBoundingClientRect();
@@ -76,13 +106,8 @@ function setColumnWidths(
   weights: number[],
 ) {
   const row = editor.state.doc.nodeAt(rowPosition);
-  if (
-    !row ||
-    row.type.name !== "columns" ||
-    row.childCount !== weights.length
-  ) {
+  if (!row || row.type.name !== "columns" || row.childCount !== weights.length)
     return;
-  }
   const tr = editor.state.tr;
   let columnPosition = rowPosition + 1;
   row.forEach((column, _offset, index) => {
@@ -110,21 +135,28 @@ function setRowWidthMode(
   );
 }
 
+function restoreRowStyles(session: RowResizeSession) {
+  const { element } = session.active;
+  element.style.position = session.originalStyles.position;
+  element.style.left = session.originalStyles.left;
+  element.style.width = session.originalStyles.width;
+  element.style.maxWidth = session.originalStyles.maxWidth;
+  element.style.marginLeft = session.originalStyles.marginLeft;
+  element.style.marginRight = session.originalStyles.marginRight;
+  element.style.transform = session.originalStyles.transform;
+}
+
 export function PortfolioGridControls({ editor }: { editor: Editor }) {
   const [active, setActive] = useState<ActiveGrid | null>(null);
   const [geometry, setGeometry] = useState<GridGeometry | null>(null);
   const [widthLabel, setWidthLabel] = useState<string | null>(null);
-  const resizeCleanupRef = useRef<(() => void) | null>(null);
+  const sessionRef = useRef<ResizeSession | null>(null);
 
   useEffect(() => {
     if (editor.isDestroyed || !editor.isEditable) return;
     const editorDom = editor.view.dom;
-
     const activateFromTarget = (target: EventTarget | null) => {
-      if (!(target instanceof HTMLElement)) {
-        setActive(null);
-        return;
-      }
+      if (sessionRef.current || !(target instanceof HTMLElement)) return;
       const element = target.closest<HTMLElement>('[data-type="columns"]');
       if (!element || !editorDom.contains(element)) {
         setActive(null);
@@ -138,10 +170,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           : { element, position },
       );
     };
-
-    const onPointerMove = (event: PointerEvent) => {
-      if (!resizeCleanupRef.current) activateFromTarget(event.target);
-    };
+    const onPointerMove = (event: PointerEvent) =>
+      activateFromTarget(event.target);
     const onFocus = () => {
       const selection = window.getSelection();
       activateFromTarget(selection?.anchorNode?.parentElement ?? null);
@@ -151,7 +181,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     return () => {
       editorDom.removeEventListener("pointermove", onPointerMove, true);
       editorDom.removeEventListener("focusin", onFocus, true);
-      resizeCleanupRef.current?.();
     };
   }, [editor]);
 
@@ -181,206 +210,152 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     };
   }, [active, editor]);
 
-  const beginColumnResize = (
-    event: React.PointerEvent,
-    dividerIndex: number,
-  ) => {
-    if (!active) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const columns = Array.from(active.element.children).filter(
-      (child): child is HTMLElement =>
-        child instanceof HTMLElement && child.dataset.type === "column",
+  useEffect(() => {
+    if (!active || !geometry) return;
+    const handles = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".ramzy-grid-resize-layer .ramzy-grid-resize-handle",
+      ),
     );
-    const startWidths = columns.map(
-      (column) => column.getBoundingClientRect().width,
-    );
-    const startX = event.clientX;
-    const handle = event.currentTarget as HTMLElement;
-    const pointerId = event.pointerId;
-    handle.dataset.resizing = "true";
-    handle.setPointerCapture?.(pointerId);
-    const originalStyles = columns.map((column) => ({
-      flex: column.style.flex,
-      width: column.style.width,
-    }));
-    let latestWeights = resizedColumnWeights(startWidths, dividerIndex, 0);
 
-    const renderLiveWidths = (clientX: number) => {
-      latestWeights = resizedColumnWeights(
-        startWidths,
-        dividerIndex,
-        clientX - startX,
-      );
-      const pixelWidths = resizedColumnPixelWidths(
-        startWidths,
-        dividerIndex,
-        clientX - startX,
-      );
-      columns.forEach((column, index) => {
-        column.style.setProperty(
-          "flex",
-          `0 0 ${pixelWidths[index]}px`,
-          "important",
+    const start = (handle: HTMLElement) => {
+      handle.dataset.resizing = "true";
+      if (handle.dataset.kind === "divider") {
+        const dividerIndex = Number(handle.dataset.index);
+        const columns = columnsIn(active.element);
+        const startWidths = columns.map(
+          (column) => column.getBoundingClientRect().width,
         );
-        column.style.setProperty(
-          "width",
-          `${pixelWidths[index]}px`,
-          "important",
-        );
-      });
-    };
-
-    const onMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) return;
-      moveEvent.preventDefault();
-      // Apply the preview in the pointer event itself. Queueing and cancelling an
-      // animation frame made fast drags appear frozen until pointer release.
-      renderLiveWidths(moveEvent.clientX);
-    };
-    const finish = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) return;
-      renderLiveWidths(upEvent.clientX);
-      cleanup(false);
-      setColumnWidths(editor, active.position, latestWeights);
-      requestAnimationFrame(() => {
-        const renderedColumns = Array.from(active.element.children).filter(
-          (child): child is HTMLElement =>
-            child instanceof HTMLElement && child.dataset.type === "column",
-        );
-        renderedColumns.forEach((column, index) => {
-          column.style.setProperty("flex", String(latestWeights[index]));
-          column.style.removeProperty("width");
-        });
-      });
-    };
-    const cancel = (cancelEvent: PointerEvent) => {
-      if (cancelEvent.pointerId !== pointerId) return;
-      cleanup(true);
-    };
-    const cleanup = (restore = true) => {
-      window.removeEventListener("pointermove", onMove, true);
-      window.removeEventListener("pointerup", finish, true);
-      window.removeEventListener("pointercancel", cancel, true);
-      delete handle.dataset.resizing;
-      if (handle.hasPointerCapture?.(pointerId)) {
-        handle.releasePointerCapture(pointerId);
+        sessionRef.current = {
+          kind: "column",
+          active,
+          handle,
+          columns,
+          startWidths,
+          originalStyles: columns.map((column) => ({
+            flex: column.style.flex,
+            width: column.style.width,
+          })),
+          dividerIndex,
+          delta: 0,
+          latestWeights: resizedColumnWeights(startWidths, dividerIndex, 0),
+        };
+        return;
       }
-      if (restore) {
-        columns.forEach((column, index) => {
-          column.style.flex = originalStyles[index].flex;
-          column.style.width = originalStyles[index].width;
-        });
-      }
-      resizeCleanupRef.current = null;
-    };
-    resizeCleanupRef.current = cleanup;
-    window.addEventListener("pointermove", onMove, true);
-    window.addEventListener("pointerup", finish, true);
-    window.addEventListener("pointercancel", cancel, true);
-  };
 
-  const beginRowResize = (
-    event: React.PointerEvent,
-    side: "left" | "right",
-  ) => {
-    if (!active) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const startX = event.clientX;
-    const startWidth = active.element.getBoundingClientRect().width;
-    const editorWidth = editor.view.dom.getBoundingClientRect().width;
-    const available = Math.max(editorWidth, window.innerWidth - 96);
-    const widths: Record<PortfolioGridWidthMode, number> = {
-      normal: editorWidth,
-      wide: Math.min(1120, Math.max(editorWidth, window.innerWidth - 352)),
-      full: Math.min(1440, available),
-    };
-    const handle = event.currentTarget as HTMLElement;
-    const pointerId = event.pointerId;
-    handle.dataset.resizing = "true";
-    handle.setPointerCapture?.(pointerId);
-    const originalStyles = {
-      position: active.element.style.position,
-      left: active.element.style.left,
-      width: active.element.style.width,
-      maxWidth: active.element.style.maxWidth,
-      marginLeft: active.element.style.marginLeft,
-      marginRight: active.element.style.marginRight,
-      transform: active.element.style.transform,
-    };
-    let nextMode = (active.element.dataset.widthMode ||
-      "normal") as PortfolioGridWidthMode;
-    setWidthLabel(portfolioGridModeLabel(nextMode));
-
-    const renderLiveWidth = (clientX: number) => {
-      const delta = clientX - startX;
-      const requested =
-        startWidth + (side === "right" ? delta * 2 : -delta * 2);
-      const minimum = Math.min(...Object.values(widths));
-      const maximum = Math.max(...Object.values(widths));
-      const desired = Math.min(maximum, Math.max(minimum, requested));
-      nextMode = nearestPortfolioGridWidthMode(desired, widths);
-      active.element.style.setProperty("position", "relative", "important");
-      active.element.style.setProperty("left", "50%", "important");
-      active.element.style.setProperty("width", `${desired}px`, "important");
-      active.element.style.setProperty("max-width", "none", "important");
-      active.element.style.setProperty("margin-left", "0", "important");
-      active.element.style.setProperty("margin-right", "0", "important");
-      active.element.style.setProperty(
-        "transform",
-        "translateX(-50%)",
-        "important",
-      );
+      const startWidth = active.element.getBoundingClientRect().width;
+      const editorWidth = editor.view.dom.getBoundingClientRect().width;
+      const available = Math.max(editorWidth, window.innerWidth - 96);
+      const nextMode = (active.element.dataset.widthMode ||
+        "normal") as PortfolioGridWidthMode;
+      sessionRef.current = {
+        kind: "row",
+        active,
+        handle,
+        side: handle.dataset.side === "left" ? "left" : "right",
+        startWidth,
+        delta: 0,
+        widths: {
+          normal: editorWidth,
+          wide: Math.min(1120, Math.max(editorWidth, window.innerWidth - 352)),
+          full: Math.min(1440, available),
+        },
+        nextMode,
+        originalStyles: {
+          position: active.element.style.position,
+          left: active.element.style.left,
+          width: active.element.style.width,
+          maxWidth: active.element.style.maxWidth,
+          marginLeft: active.element.style.marginLeft,
+          marginRight: active.element.style.marginRight,
+          transform: active.element.style.transform,
+        },
+      };
       setWidthLabel(portfolioGridModeLabel(nextMode));
     };
 
-    const onMove = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) return;
-      moveEvent.preventDefault();
-      renderLiveWidth(moveEvent.clientX);
-    };
-    const finish = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) return;
-      renderLiveWidth(upEvent.clientX);
-      cleanup(false);
-      setWidthLabel(null);
-      setRowWidthMode(editor, active.position, nextMode);
-      requestAnimationFrame(() => restoreOriginalStyles());
-    };
-    const restoreOriginalStyles = () => {
-      active.element.style.position = originalStyles.position;
-      active.element.style.left = originalStyles.left;
-      active.element.style.width = originalStyles.width;
-      active.element.style.maxWidth = originalStyles.maxWidth;
-      active.element.style.marginLeft = originalStyles.marginLeft;
-      active.element.style.marginRight = originalStyles.marginRight;
-      active.element.style.transform = originalStyles.transform;
-    };
-    const cancel = (cancelEvent: PointerEvent) => {
-      if (cancelEvent.pointerId !== pointerId) return;
-      cleanup(true);
-      setWidthLabel(null);
-    };
-    const cleanup = (restore = true) => {
-      window.removeEventListener("pointermove", onMove, true);
-      window.removeEventListener("pointerup", finish, true);
-      window.removeEventListener("pointercancel", cancel, true);
-      delete handle.dataset.resizing;
-      if (handle.hasPointerCapture?.(pointerId)) {
-        handle.releasePointerCapture(pointerId);
+    const move = (dx: number) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      session.delta += dx;
+      if (session.kind === "column") {
+        session.latestWeights = resizedColumnWeights(
+          session.startWidths,
+          session.dividerIndex,
+          session.delta,
+        );
+        const pixels = resizedColumnPixelWidths(
+          session.startWidths,
+          session.dividerIndex,
+          session.delta,
+        );
+        session.columns.forEach((column, index) => {
+          column.style.setProperty(
+            "flex",
+            `0 0 ${pixels[index]}px`,
+            "important",
+          );
+          column.style.setProperty("width", `${pixels[index]}px`, "important");
+        });
+        setGeometry(measureGrid(session.active.element));
+        return;
       }
-      if (restore) restoreOriginalStyles();
-      resizeCleanupRef.current = null;
+
+      const requested =
+        session.startWidth +
+        (session.side === "right" ? session.delta * 2 : -session.delta * 2);
+      const minimum = Math.min(...Object.values(session.widths));
+      const maximum = Math.max(...Object.values(session.widths));
+      const desired = Math.min(maximum, Math.max(minimum, requested));
+      session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
+      const { element } = session.active;
+      element.style.setProperty("position", "relative", "important");
+      element.style.setProperty("left", "50%", "important");
+      element.style.setProperty("width", `${desired}px`, "important");
+      element.style.setProperty("max-width", "none", "important");
+      element.style.setProperty("margin-left", "0", "important");
+      element.style.setProperty("margin-right", "0", "important");
+      element.style.setProperty("transform", "translateX(-50%)", "important");
+      setWidthLabel(portfolioGridModeLabel(session.nextMode));
+      setGeometry(measureGrid(element));
     };
-    resizeCleanupRef.current = cleanup;
-    window.addEventListener("pointermove", onMove, true);
-    window.addEventListener("pointerup", finish, true);
-    window.addEventListener("pointercancel", cancel, true);
-  };
+
+    const end = () => {
+      const session = sessionRef.current;
+      if (!session) return;
+      delete session.handle.dataset.resizing;
+      sessionRef.current = null;
+      if (session.kind === "column") {
+        setColumnWidths(editor, session.active.position, session.latestWeights);
+        requestAnimationFrame(() => {
+          columnsIn(session.active.element).forEach((column, index) => {
+            column.style.setProperty(
+              "flex",
+              String(session.latestWeights[index]),
+            );
+            column.style.removeProperty("width");
+          });
+        });
+      } else {
+        setWidthLabel(null);
+        setRowWidthMode(editor, session.active.position, session.nextMode);
+        requestAnimationFrame(() => restoreRowStyles(session));
+      }
+    };
+
+    handles.forEach((handle) => {
+      interact(handle).draggable({
+        listeners: {
+          start: () => start(handle),
+          move: (event) => move(event.dx),
+          end,
+        },
+      });
+    });
+    return () => handles.forEach((handle) => interact(handle).unset());
+  }, [active, editor, geometry?.dividers.length]);
 
   if (!active || !geometry) return null;
-
   return createPortal(
     <div className="ramzy-grid-resize-layer" aria-hidden="true">
       {geometry.outer.map((handle, index) => (
@@ -388,11 +363,9 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           key={index === 0 ? "outer-left" : "outer-right"}
           className="ramzy-grid-resize-handle"
           data-kind="outer"
+          data-side={index === 0 ? "left" : "right"}
           title="Drag to change row width"
           style={{ left: handle.left, top: handle.top, height: handle.height }}
-          onPointerDown={(event) =>
-            beginRowResize(event, index === 0 ? "left" : "right")
-          }
         />
       ))}
       {geometry.dividers.map((handle, index) => (
@@ -400,9 +373,9 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           key={`divider-${index}`}
           className="ramzy-grid-resize-handle"
           data-kind="divider"
+          data-index={index}
           title="Drag to resize columns"
           style={{ left: handle.left, top: handle.top, height: handle.height }}
-          onPointerDown={(event) => beginColumnResize(event, index)}
         />
       ))}
       {widthLabel && (

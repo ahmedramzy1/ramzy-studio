@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { portfolioColumnInsertionPoints } from "./portfolio-column-insertion";
 
 interface SectionChoice {
   position: number;
@@ -18,6 +19,14 @@ interface BlockControl {
   usesDedicatedHandle: boolean;
 }
 
+interface ColumnControl {
+  key: string;
+  insertionPosition: number;
+  emptyParagraphPosition: number | null;
+  left: number;
+  top: number;
+}
+
 interface OpenMenu extends BlockControl {
   view: "root" | "sections";
 }
@@ -26,6 +35,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
   const [blocks, setBlocks] = useState<BlockControl[]>([]);
+  const [columns, setColumns] = useState<ColumnControl[]>([]);
   const [lastTop, setLastTop] = useState(0);
   const [isDocumentEmpty, setIsDocumentEmpty] = useState(editor.isEmpty);
   const [isEditingLastBlock, setIsEditingLastBlock] = useState(false);
@@ -45,6 +55,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       if (!overlay || editor.isDestroyed) return;
       const overlayRect = overlay.getBoundingClientRect();
       const nextBlocks: BlockControl[] = [];
+      const nextColumns: ColumnControl[] = [];
       const nextSections: SectionChoice[] = [];
       const docNodes: Array<{
         position: number;
@@ -85,6 +96,31 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
               "photoAlbum",
             ].includes(node.type.name),
           });
+
+          if (node.type.name === "columns") {
+            const columnElements = Array.from(dom.children).filter(
+              (child): child is HTMLElement =>
+                child instanceof HTMLElement && child.dataset.type === "column",
+            );
+            portfolioColumnInsertionPoints(node, offset).forEach((point) => {
+              const columnIndex = point.columnIndex;
+              const columnElement = columnElements[columnIndex];
+              if (columnElement) {
+                const columnRect = columnElement.getBoundingClientRect();
+                nextColumns.push({
+                  key: `${offset}-${columnIndex}`,
+                  insertionPosition: point.insertionPosition,
+                  emptyParagraphPosition: point.emptyParagraphPosition,
+                  left:
+                    columnRect.left -
+                    overlayRect.left +
+                    columnRect.width / 2 -
+                    14,
+                  top: columnRect.bottom - overlayRect.top + 6,
+                });
+              }
+            });
+          }
         }
       });
 
@@ -119,6 +155,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             : 8;
 
       setBlocks(nextBlocks);
+      setColumns(nextColumns);
       setSections(nextSections);
       setLastTop(finalTop);
       setIsDocumentEmpty(empty);
@@ -196,6 +233,20 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       return;
     }
     insertAt(editor.state.doc.content.size);
+  }
+
+  function insertInColumn(control: ColumnControl) {
+    if (editor.isDestroyed || !editor.isEditable) return;
+    if (control.emptyParagraphPosition !== null) {
+      editor
+        .chain()
+        .focus()
+        .insertContentAt(control.emptyParagraphPosition + 1, "/")
+        .setTextSelection(control.emptyParagraphPosition + 2)
+        .run();
+      return;
+    }
+    insertAt(control.insertionPosition);
   }
 
   function deleteBlock(control: BlockControl) {
@@ -343,6 +394,29 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
               </button>
             </div>
           </React.Fragment>
+        ))}
+
+      {!isDocumentEmpty &&
+        columns.map((column) => (
+          <button
+            key={column.key}
+            type="button"
+            className="ramzy-column-insert-control"
+            style={{
+              ...controlButtonStyle,
+              position: "absolute",
+              left: column.left,
+              top: column.top,
+            }}
+            aria-label="Add content to column"
+            title="Add content to column"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => insertInColumn(column)}
+          >
+            <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
+              +
+            </span>
+          </button>
         ))}
 
       {isDocumentEmpty ||
