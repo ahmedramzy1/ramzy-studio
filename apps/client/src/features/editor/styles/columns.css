@@ -87,34 +87,27 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 }
 
 .ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source {
-  opacity: 0.42;
+  opacity: 0.34;
   pointer-events: none;
   transition: opacity 100ms ease;
 }
 
-.ramzy-dnd-drop-slot {
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-target-muted {
+  opacity: 0.16;
+  transition: opacity 100ms ease;
+}
+
+.ramzy-dnd-layout-overlay {
   position: absolute;
-  z-index: 12;
+  z-index: 20;
   display: none;
   pointer-events: none;
   box-sizing: border-box;
-  border: 2px dashed var(--mantine-color-blue-5, #339af0);
-  overflow: hidden;
-  border-radius: var(--mantine-radius-sm, 4px);
-  background: color-mix(
-    in srgb,
-    var(--mantine-color-blue-0, #e7f5ff) 24%,
-    transparent
-  );
-  will-change: top, left, width, height;
-  transition:
-    top 100ms cubic-bezier(0.2, 0, 0, 1),
-    left 100ms cubic-bezier(0.2, 0, 0, 1),
-    width 120ms cubic-bezier(0.2, 0, 0, 1),
-    height 120ms cubic-bezier(0.2, 0, 0, 1);
+  filter: drop-shadow(0 8px 18px rgb(0 0 0 / 8%));
+  contain: layout paint style;
 }
 
-.ramzy-dnd-drop-slot::after {
+.ramzy-dnd-layout-overlay::after {
   content: attr(data-drop-label);
   position: absolute;
   top: 50%;
@@ -135,85 +128,73 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   transform: translate(-50%, -50%);
 }
 
-.ramzy-dnd-drop-slot-left {
-  border-right-style: solid;
+.ramzy-dnd-future-grid {
+  display: grid;
+  align-items: start;
+  width: 100%;
+  gap: var(--ramzy-columns-gap, 2rem);
 }
 
-.ramzy-dnd-drop-slot-right {
-  border-left-style: solid;
-}
-
-.ramzy-dnd-drop-slot-top {
-  border-bottom: 3px solid var(--mantine-color-blue-6, #228be6);
-}
-
-.ramzy-dnd-drop-slot-bottom {
-  border-top: 3px solid var(--mantine-color-blue-6, #228be6);
-}
-
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-single-target {
-  width: var(--ramzy-dnd-preview-column-width);
-  transition:
-    width 120ms cubic-bezier(0.2, 0, 0, 1),
-    margin 120ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-single-target-left {
-  margin-left: var(--ramzy-dnd-preview-column-offset);
-}
-
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-single-target-right {
-  margin-right: calc(50% + var(--ramzy-columns-gap, 2rem) / 2);
-}
-
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-grid-target::before {
-  content: "";
-  order: var(--ramzy-dnd-preview-order);
-  align-self: stretch;
+.ramzy-dnd-future-grid > [data-type="column"] {
   min-width: 0;
-  min-height: 44px;
-  flex: 1;
+  width: auto !important;
+  margin: 0 !important;
+  opacity: 0.94;
 }
 
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-grid-target-left::before {
-  border-right: 3px solid var(--mantine-color-blue-6, #228be6);
+.ramzy-dnd-incoming-column {
+  position: relative;
+  min-height: 64px;
+  border: 2px dashed var(--mantine-color-blue-5, #339af0);
+  border-radius: var(--mantine-radius-sm, 4px);
+  background: color-mix(
+    in srgb,
+    var(--mantine-color-blue-0, #e7f5ff) 22%,
+    transparent
+  );
+  opacity: 0.46 !important;
+  overflow: hidden;
 }
 
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-grid-target-right::before {
-  border-left: 3px solid var(--mantine-color-blue-6, #228be6);
+.ramzy-dnd-incoming-column > * {
+  width: 100% !important;
+  max-width: 100%;
+  margin: 0 !important;
 }
 
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-source-column,
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-source-block {
-  display: none !important;
+.ramzy-dnd-incoming-column img,
+.ramzy-dnd-incoming-column video,
+.ramzy-dnd-incoming-column iframe,
+.ramzy-dnd-incoming-column table,
+.ramzy-dnd-incoming-column canvas,
+.ramzy-dnd-incoming-column svg {
+  max-width: 100%;
 }
 
-.ramzy-dnd-landing-ghost {
+.ramzy-dnd-future-stack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 1rem;
+}
+
+.ramzy-dnd-future-stack > * {
   width: 100%;
   max-width: 100%;
   margin: 0 !important;
-  opacity: 0.42;
-  pointer-events: none;
-  user-select: none;
 }
 
-.ramzy-dnd-landing-ghost img,
-.ramzy-dnd-landing-ghost video,
-.ramzy-dnd-landing-ghost iframe,
-.ramzy-dnd-landing-ghost table,
-.ramzy-dnd-landing-ghost canvas,
-.ramzy-dnd-landing-ghost svg {
-  max-width: 100%;
-}
-
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-space-top {
-  margin-top: var(--ramzy-dnd-preview-space);
-  transition: margin 100ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-space-bottom {
-  margin-bottom: var(--ramzy-dnd-preview-space);
-  transition: margin 100ms cubic-bezier(0.2, 0, 0, 1);
+.ramzy-dnd-vertical-ghost {
+  min-height: 44px;
+  border: 2px dashed var(--mantine-color-blue-5, #339af0);
+  border-radius: var(--mantine-radius-sm, 4px);
+  background: color-mix(
+    in srgb,
+    var(--mantine-color-blue-0, #e7f5ff) 22%,
+    transparent
+  );
+  opacity: 0.46;
+  overflow: hidden;
 }
 
 .ramzy-dnd-native-preview {

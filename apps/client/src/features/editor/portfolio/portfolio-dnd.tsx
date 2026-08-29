@@ -1,35 +1,25 @@
 import { useEffect } from "react";
 import type { Editor } from "@tiptap/core";
-import { NodeSelection } from "@tiptap/pm/state";
 import {
   draggable,
   dropTargetForElements,
   monitorForElements,
-  type ElementEventPayloadMap,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
 import { pointerOutsideOfPreview } from "@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview";
 import { autoScrollWindowForElements } from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
 import {
-  attachClosestEdge,
-  extractClosestEdge,
-  type Edge,
-} from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
-import {
   createPortfolioGridDropTransaction,
   createPortfolioVerticalDropTransaction,
 } from "./portfolio-grid-drop";
 import {
-  cloneForPortfolioDndPreview,
-  closestPortfolioDropEdge,
-  portfolioDropTargetAtPoint,
-  portfolioPreviewColumnPlan,
-  portfolioTwoColumnPreviewRects,
-} from "./portfolio-dnd-preview";
+  resolvePortfolioDropIntent,
+  type PortfolioDomDropIntent,
+} from "./portfolio-dnd-intent";
+import { cloneForPortfolioDndPreview } from "./portfolio-dnd-preview";
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
-const PORTFOLIO_TARGET = "ramzy-portfolio-target";
-const MAX_PORTFOLIO_COLUMNS = 5;
+const PORTFOLIO_SURFACE = "ramzy-portfolio-surface";
 
 type DragData = {
   type: typeof PORTFOLIO_BLOCK;
@@ -38,33 +28,15 @@ type DragData = {
   label: string;
 };
 
-type DropData = {
-  type: typeof PORTFOLIO_TARGET;
+type DropIntent = PortfolioDomDropIntent & {
   targetPosition: number;
-  columnIndex: number | null;
-  rowElement: HTMLElement;
 };
-
-type ActivePreview = {
-  key: string;
-  restore: () => void;
-};
-
-type PreviewSlotRect = Pick<DOMRect, "left" | "top" | "width" | "height">;
 
 function isDragData(data: Record<string | symbol, unknown>): data is DragData {
   return (
     data.type === PORTFOLIO_BLOCK &&
     typeof data.sourcePosition === "number" &&
     data.sourceElement instanceof HTMLElement
-  );
-}
-
-function isDropData(data: Record<string | symbol, unknown>): data is DropData {
-  return (
-    data.type === PORTFOLIO_TARGET &&
-    typeof data.targetPosition === "number" &&
-    data.rowElement instanceof HTMLElement
   );
 }
 
@@ -124,48 +96,11 @@ function blockLabel(element: HTMLElement): string {
   return text ? text.slice(0, 54) : "Portfolio element";
 }
 
-function getDrop(
-  location: ElementEventPayloadMap["onDrag"]["location"],
-): { data: DropData; edge: Edge } | null {
-  const candidates: Array<{
-    element: HTMLElement;
-    data: { data: DropData; edge: Edge };
-    priority: number;
-  }> = [];
-  for (const record of location.current.dropTargets) {
-    if (!isDropData(record.data)) continue;
-    const edge = extractClosestEdge(record.data);
-    if (!edge || !(record.element instanceof HTMLElement)) continue;
-    candidates.push({
-      element: record.element,
-      data: { data: record.data, edge },
-      // A column is nested inside its row. Pragmatic DnD can return both targets,
-      // so the more precise column target must win for 3–5 column insertion.
-      priority: record.data.columnIndex === null ? 1 : 2,
-    });
-  }
-  return (
-    portfolioDropTargetAtPoint(
-      candidates,
-      {
-        x: location.current.input.clientX,
-        y: location.current.input.clientY,
-      },
-      document.elementsFromPoint(
-        location.current.input.clientX,
-        location.current.input.clientY,
-      ),
-    )?.data ?? null
+function columnElements(row: HTMLElement): HTMLElement[] {
+  return Array.from(row.children).filter(
+    (child): child is HTMLElement =>
+      child instanceof HTMLElement && child.dataset.type === "column",
   );
-}
-
-function isHorizontalColumnIntent(
-  element: HTMLElement,
-  clientX: number,
-): boolean {
-  const rect = element.getBoundingClientRect();
-  const edgeBand = Math.min(160, Math.max(48, rect.width * 0.32));
-  return clientX <= rect.left + edgeBand || clientX >= rect.right - edgeBand;
 }
 
 function meaningfulColumnChildCount(column: HTMLElement | null): number {
@@ -179,313 +114,236 @@ function meaningfulColumnChildCount(column: HTMLElement | null): number {
   ).length;
 }
 
-function createPortfolioDndPreviewLayer(editor: Editor) {
+function cloneColumnWithoutSource(
+  column: HTMLElement,
+  sourceElement: HTMLElement,
+): HTMLElement {
+  const clone = cloneForPortfolioDndPreview(column);
+  if (!column.contains(sourceElement)) return clone;
+
+  const directSource = Array.from(column.children).find(
+    (child) => child === sourceElement || child.contains(sourceElement),
+  );
+  if (!directSource) return clone;
+  const sourceIndex = Array.from(column.children).indexOf(directSource);
+  clone.children.item(sourceIndex)?.remove();
+  return clone;
+}
+
+function previewColumn(sourceElement: HTMLElement): HTMLElement {
+  const column = document.createElement("div");
+  column.dataset.type = "column";
+  column.className = "ramzy-dnd-incoming-column";
+  column.append(cloneForPortfolioDndPreview(sourceElement));
+  return column;
+}
+
+function dropLabel(edge: PortfolioDomDropIntent["edge"]): string {
+  if (edge === "left") return "Place on left";
+  if (edge === "right") return "Place on right";
+  if (edge === "top") return "Place above";
+  return "Place below";
+}
+
+function createPortfolioPreview(editor: Editor) {
   const host = editor.view.dom.parentElement ?? editor.view.dom;
   const previousHostPosition = host.style.position;
   if (getComputedStyle(host).position === "static") {
     host.style.position = "relative";
   }
-  const element = document.createElement("div");
-  element.className = "ramzy-dnd-drop-slot";
-  element.setAttribute("contenteditable", "false");
-  element.setAttribute("aria-hidden", "true");
-  host.appendChild(element);
 
-  let active: ActivePreview | null = null;
+  const overlay = document.createElement("div");
+  overlay.className = "ramzy-dnd-layout-overlay";
+  overlay.setAttribute("contenteditable", "false");
+  overlay.setAttribute("aria-hidden", "true");
+  host.appendChild(overlay);
+
+  let mutedTarget: HTMLElement | null = null;
+  let activeKey = "";
 
   const clear = () => {
-    active?.restore();
-    element.className = "ramzy-dnd-drop-slot";
-    delete element.dataset.dropLabel;
-    element.replaceChildren();
-    element.style.display = "none";
-    element.style.removeProperty("min-height");
-    active = null;
+    mutedTarget?.classList.remove("ramzy-dnd-preview-target-muted");
+    mutedTarget = null;
+    activeKey = "";
+    overlay.className = "ramzy-dnd-layout-overlay";
+    overlay.replaceChildren();
+    overlay.style.display = "none";
+    overlay.style.removeProperty("top");
+    overlay.style.removeProperty("left");
+    overlay.style.removeProperty("width");
+    overlay.style.removeProperty("height");
+    overlay.style.removeProperty("min-height");
+    delete overlay.dataset.dropLabel;
   };
 
-  const positionSlot = (
-    rect: PreviewSlotRect,
-    hostRect: DOMRect,
-    edge: Edge,
-    sourceElement: HTMLElement,
+  const positionOverlay = (
+    left: number,
+    top: number,
+    width: number,
+    minHeight: number,
   ) => {
-    const ghost = cloneForPortfolioDndPreview(sourceElement);
-    ghost.classList.add("ramzy-dnd-landing-ghost");
-    element.replaceChildren(ghost);
-    element.style.display = "block";
-    element.style.top = `${rect.top - hostRect.top + host.scrollTop}px`;
-    element.style.left = `${rect.left - hostRect.left + host.scrollLeft}px`;
-    element.style.width = `${rect.width}px`;
-    element.style.height = "auto";
-    element.style.minHeight = `${Math.max(rect.height, 40)}px`;
-    element.dataset.dropLabel =
-      edge === "left"
-        ? "Place on left"
-        : edge === "right"
-          ? "Place on right"
-          : edge === "top"
-            ? "Place above"
-            : "Place below";
-    element.classList.add(`ramzy-dnd-drop-slot-${edge}`);
+    const hostRect = host.getBoundingClientRect();
+    overlay.style.display = "block";
+    overlay.style.left = `${left - hostRect.left + host.scrollLeft}px`;
+    overlay.style.top = `${top - hostRect.top + host.scrollTop}px`;
+    overlay.style.width = `${width}px`;
+    overlay.style.height = "auto";
+    overlay.style.minHeight = `${Math.max(40, minHeight)}px`;
   };
 
-  const render = (sourceElement: HTMLElement, target: DropData, edge: Edge) => {
-    const key = `${target.targetPosition}:${target.columnIndex}:${edge}`;
-    if (active?.key === key) return;
-    clear();
-
-    const hostRect = host.getBoundingClientRect();
-    const row = target.rowElement;
+  const renderHorizontal = (sourceElement: HTMLElement, intent: DropIntent) => {
+    const row = intent.rowElement;
     const rowRect = row.getBoundingClientRect();
-    const restoreActions: Array<() => void> = [];
+    const grid = document.createElement("div");
+    grid.className = "ramzy-dnd-future-grid";
 
-    if (edge === "left" || edge === "right") {
-      if (target.columnIndex === null) {
-        const gap = 32;
-        const geometry = portfolioTwoColumnPreviewRects(rowRect, gap, edge);
-        const previousStyles = {
-          width: row.style.width,
-          marginLeft: row.style.marginLeft,
-          marginRight: row.style.marginRight,
-          position: row.style.position,
-          left: row.style.left,
-        };
-        row.style.setProperty(
-          "--ramzy-dnd-preview-column-width",
-          `${geometry.columnWidth}px`,
-        );
-        row.style.setProperty(
-          "--ramzy-dnd-preview-column-offset",
-          `${geometry.targetLeft - rowRect.left}px`,
-        );
-        row.classList.add(
-          "ramzy-dnd-single-target",
-          `ramzy-dnd-single-target-${edge}`,
-        );
-        row.style.width = `${geometry.columnWidth}px`;
-        row.style.marginLeft = "0";
-        row.style.marginRight = "0";
-        row.style.position = "relative";
-        row.style.left = `${geometry.targetLeft - rowRect.left}px`;
-        restoreActions.push(() => {
-          row.classList.remove(
-            "ramzy-dnd-single-target",
-            `ramzy-dnd-single-target-${edge}`,
-          );
-          row.style.removeProperty("--ramzy-dnd-preview-column-width");
-          row.style.removeProperty("--ramzy-dnd-preview-column-offset");
-          row.style.width = previousStyles.width;
-          row.style.marginLeft = previousStyles.marginLeft;
-          row.style.marginRight = previousStyles.marginRight;
-          row.style.position = previousStyles.position;
-          row.style.left = previousStyles.left;
-        });
-        const resizedRect = row.getBoundingClientRect();
-        positionSlot(
-          {
-            left: geometry.slotLeft,
-            top: resizedRect.top,
-            width: geometry.columnWidth,
-            height: resizedRect.height,
-          },
-          hostRect,
-          edge,
-          sourceElement,
-        );
-      } else {
-        const columns = Array.from(row.children).filter(
-          (child): child is HTMLElement =>
-            child instanceof HTMLElement && child.dataset.type === "column",
-        );
-        const sourceColumn = sourceElement.closest<HTMLElement>(
-          '[data-type="column"]',
-        );
-        const sourceColumnIndex =
-          sourceColumn?.parentElement === row
-            ? columns.indexOf(sourceColumn)
-            : -1;
-        const hideSourceColumn =
-          sourceColumnIndex >= 0 &&
-          meaningfulColumnChildCount(sourceColumn) === 1;
-        const plan = portfolioPreviewColumnPlan(
-          columns.length,
-          target.columnIndex,
-          edge,
-          sourceColumnIndex,
-          hideSourceColumn,
-        );
-
-        if (sourceColumnIndex >= 0 && sourceColumn) {
-          if (hideSourceColumn) {
-            sourceColumn.classList.add("ramzy-dnd-preview-source-column");
-            restoreActions.push(() =>
-              sourceColumn.classList.remove("ramzy-dnd-preview-source-column"),
-            );
-          } else {
-            sourceElement.classList.add("ramzy-dnd-preview-source-block");
-            restoreActions.push(() =>
-              sourceElement.classList.remove("ramzy-dnd-preview-source-block"),
-            );
-          }
-        }
-
-        row.classList.add(
-          "ramzy-dnd-grid-target",
-          `ramzy-dnd-grid-target-${edge}`,
-        );
-        row.style.setProperty(
-          "--ramzy-dnd-preview-order",
-          String(plan.insertionIndex * 2),
-        );
-        restoreActions.push(() => {
-          row.classList.remove(
-            "ramzy-dnd-grid-target",
-            `ramzy-dnd-grid-target-${edge}`,
-          );
-          row.style.removeProperty("--ramzy-dnd-preview-order");
-        });
-
-        columns.forEach((column, index) => {
-          const order = plan.orders[index];
-          if (order === null) return;
-          const previousOrder = column.style.order;
-          column.style.order = String(order);
-          restoreActions.push(() => {
-            column.style.order = previousOrder;
-          });
-        });
-
-        const nextRect = row.getBoundingClientRect();
-        const futureCount = plan.futureColumnCount;
-        const gap = Number.parseFloat(getComputedStyle(row).gap) || 32;
-        const orderedVisibleColumns = columns
-          .map((column, index) => ({
-            column,
-            order: plan.orders[index],
-          }))
-          .filter(
-            (item): item is { column: HTMLElement; order: number } =>
-              item.order !== null,
-          )
-          .sort((left, right) => left.order - right.order);
-        const columnWeights = orderedVisibleColumns.map(({ column }) => {
-          const weight = Number.parseFloat(getComputedStyle(column).flexGrow);
-          return Number.isFinite(weight) && weight > 0 ? weight : 1;
-        });
-        const availableWidth =
-          nextRect.width - gap * Math.max(0, futureCount - 1);
-        const totalWeight =
-          columnWeights.reduce((sum, weight) => sum + weight, 0) + 1;
-        const slotWidth = Math.max(40, availableWidth / totalWeight);
-        const precedingWidth = columnWeights
-          .slice(0, plan.insertionIndex)
-          .reduce(
-            (sum, weight) => sum + (availableWidth * weight) / totalWeight,
-            0,
-          );
-        const slotLeft =
-          nextRect.left + precedingWidth + plan.insertionIndex * gap;
-        positionSlot(
-          {
-            left: slotLeft,
-            top: nextRect.top,
-            width: slotWidth,
-            height: nextRect.height,
-          },
-          hostRect,
-          edge,
-          sourceElement,
-        );
-      }
-    } else {
-      const sourceHeight = Math.max(
-        sourceElement.getBoundingClientRect().height,
-        40,
-      );
+    if (row.matches('[data-type="columns"]')) {
+      const columns = columnElements(row);
       const sourceColumn = sourceElement.closest<HTMLElement>(
         '[data-type="column"]',
       );
-      const sourceRow = sourceColumn?.parentElement?.matches(
-        '[data-type="columns"]',
-      )
-        ? sourceColumn.parentElement
-        : null;
-      if (sourceColumn && sourceRow) {
-        if (meaningfulColumnChildCount(sourceColumn) === 1) {
-          sourceColumn.classList.add("ramzy-dnd-preview-source-column");
-          restoreActions.push(() =>
-            sourceColumn.classList.remove("ramzy-dnd-preview-source-column"),
-          );
-        } else {
-          sourceElement.classList.add("ramzy-dnd-preview-source-block");
-          restoreActions.push(() =>
-            sourceElement.classList.remove("ramzy-dnd-preview-source-block"),
-          );
-        }
-      }
-      const gap = 16;
-      const space = sourceHeight + gap;
-      row.style.setProperty("--ramzy-dnd-preview-space", `${space}px`);
-      row.classList.add(
-        edge === "top"
-          ? "ramzy-dnd-preview-space-top"
-          : "ramzy-dnd-preview-space-bottom",
-      );
-      restoreActions.push(() => {
-        row.classList.remove(
-          "ramzy-dnd-preview-space-top",
-          "ramzy-dnd-preview-space-bottom",
+      const sourceColumnIndex =
+        sourceColumn?.parentElement === row
+          ? columns.indexOf(sourceColumn)
+          : -1;
+      const removeSourceColumn =
+        sourceColumnIndex >= 0 &&
+        meaningfulColumnChildCount(sourceColumn) === 1;
+      const visibleColumns = columns
+        .map((column, index) => ({ column, index }))
+        .filter(
+          ({ index }) => !removeSourceColumn || index !== sourceColumnIndex,
         );
-        row.style.removeProperty("--ramzy-dnd-preview-space");
-      });
-      const shiftedRect = row.getBoundingClientRect();
-      const slotTop =
-        edge === "top" ? shiftedRect.top - space : shiftedRect.bottom + gap;
-      positionSlot(
-        {
-          left: rowRect.left,
-          top: slotTop,
-          width: rowRect.width,
-          height: sourceHeight,
-        },
-        hostRect,
-        edge,
-        sourceElement,
+      let insertionIndex =
+        intent.edge === "left"
+          ? (intent.columnIndex ?? 0)
+          : (intent.columnIndex ?? columns.length - 1) + 1;
+      if (removeSourceColumn && sourceColumnIndex < insertionIndex) {
+        insertionIndex -= 1;
+      }
+      insertionIndex = Math.max(
+        0,
+        Math.min(insertionIndex, visibleColumns.length),
       );
+
+      const futureColumns = visibleColumns.map(({ column }) =>
+        cloneColumnWithoutSource(column, sourceElement),
+      );
+      futureColumns.splice(insertionIndex, 0, previewColumn(sourceElement));
+      grid.style.gridTemplateColumns = `repeat(${futureColumns.length}, minmax(0, 1fr))`;
+      futureColumns.forEach((column) => grid.append(column));
+    } else {
+      const targetColumn = document.createElement("div");
+      targetColumn.dataset.type = "column";
+      targetColumn.append(cloneForPortfolioDndPreview(row));
+      const incoming = previewColumn(sourceElement);
+      grid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+      if (intent.edge === "left") grid.append(incoming, targetColumn);
+      else grid.append(targetColumn, incoming);
     }
 
-    active = {
-      key,
-      restore: () => restoreActions.reverse().forEach((restore) => restore()),
-    };
+    overlay.classList.add("ramzy-dnd-layout-overlay-horizontal");
+    overlay.append(grid);
+    positionOverlay(rowRect.left, rowRect.top, rowRect.width, rowRect.height);
+  };
+
+  const renderVertical = (sourceElement: HTMLElement, intent: DropIntent) => {
+    const rowRect = intent.rowElement.getBoundingClientRect();
+    const sourceRect = sourceElement.getBoundingClientRect();
+    const stack = document.createElement("div");
+    stack.className = "ramzy-dnd-future-stack";
+    const targetClone = cloneForPortfolioDndPreview(intent.rowElement);
+    const sourceClone = cloneForPortfolioDndPreview(sourceElement);
+    sourceClone.classList.add("ramzy-dnd-vertical-ghost");
+    const gap = 16;
+    if (intent.edge === "top") stack.append(sourceClone, targetClone);
+    else stack.append(targetClone, sourceClone);
+    overlay.classList.add("ramzy-dnd-layout-overlay-vertical");
+    overlay.append(stack);
+
+    const sourceHeight = Math.max(40, sourceRect.height);
+    const top =
+      intent.edge === "top" ? rowRect.top - sourceHeight - gap : rowRect.top;
+    positionOverlay(
+      rowRect.left,
+      top,
+      rowRect.width,
+      rowRect.height + sourceHeight + gap,
+    );
+  };
+
+  const render = (sourceElement: HTMLElement, intent: DropIntent) => {
+    const key = `${intent.targetPosition}:${intent.columnIndex}:${intent.edge}:${sourceElement.dataset.nodeViewContent ?? ""}`;
+    if (activeKey === key) return;
+    clear();
+    activeKey = key;
+    mutedTarget = intent.rowElement;
+    mutedTarget.classList.add("ramzy-dnd-preview-target-muted");
+    overlay.dataset.dropLabel = dropLabel(intent.edge);
+
+    if (intent.edge === "left" || intent.edge === "right") {
+      renderHorizontal(sourceElement, intent);
+    } else {
+      renderVertical(sourceElement, intent);
+    }
   };
 
   return {
-    element,
     clear,
     render,
     destroy: () => {
       clear();
-      element.remove();
+      overlay.remove();
       host.style.position = previousHostPosition;
     },
   };
+}
+
+function resolveIntent(
+  editor: Editor,
+  source: DragData,
+  pointer: { x: number; y: number },
+): DropIntent | null {
+  const domIntent = resolvePortfolioDropIntent(
+    editor.view.dom,
+    source.sourceElement,
+    pointer,
+  );
+  if (!domIntent) return null;
+  const targetPosition = topLevelPosition(editor, domIntent.rowElement);
+  return targetPosition === null ? null : { ...domIntent, targetPosition };
 }
 
 export function PortfolioDnd({ editor }: { editor: Editor }) {
   useEffect(() => {
     if (editor.isDestroyed || !editor.isEditable) return;
 
-    const preview = createPortfolioDndPreviewLayer(editor);
+    const editorDom = editor.view.dom;
+    const preview = createPortfolioPreview(editor);
     let sourceElement: HTMLElement | null = null;
-    let cleanups: Array<() => void> = [];
+    let activeIntent: DropIntent | null = null;
+    let draggableCleanups: Array<() => void> = [];
     let reconcileFrame = 0;
     let reconcileTimer = 0;
     let dragging = false;
 
-    const destroyEntities = () => {
-      cleanups.forEach((cleanup) => cleanup());
-      cleanups = [];
+    const destroyDraggables = () => {
+      draggableCleanups.forEach((cleanup) => cleanup());
+      draggableCleanups = [];
+    };
+
+    const nativePreview = (
+      nativeSetDragImage: (element: Element, x: number, y: number) => void,
+    ) => {
+      setCustomNativeDragPreview({
+        nativeSetDragImage,
+        getOffset: pointerOutsideOfPreview({ x: "14px", y: "10px" }),
+        render: ({ container }) => {
+          const card = document.createElement("div");
+          card.classList.add("ramzy-dnd-native-preview");
+          container.appendChild(card);
+        },
+      });
     };
 
     const addDraggable = (
@@ -493,7 +351,7 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       handle: HTMLElement,
       position: number,
     ) => {
-      cleanups.push(
+      draggableCleanups.push(
         draggable({
           element,
           dragHandle: handle,
@@ -503,77 +361,15 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
             sourceElement: element,
             label: blockLabel(element),
           }),
-          onGenerateDragPreview: ({ nativeSetDragImage }) => {
-            setCustomNativeDragPreview({
-              nativeSetDragImage,
-              getOffset: pointerOutsideOfPreview({ x: "14px", y: "10px" }),
-              render: ({ container }) => {
-                const card = document.createElement("div");
-                card.classList.add("ramzy-dnd-native-preview");
-                container.appendChild(card);
-              },
-            });
-          },
-        }),
-      );
-    };
-
-    const addDropTarget = (
-      element: HTMLElement,
-      data: DropData,
-      allowedEdges: Edge[],
-    ) => {
-      cleanups.push(
-        dropTargetForElements({
-          element,
-          canDrop: ({ source }) => {
-            if (!isDragData(source.data)) return false;
-            if (
-              data.columnIndex === null &&
-              source.data.sourcePosition === data.targetPosition
-            ) {
-              return false;
-            }
-            if (data.columnIndex !== null) {
-              const targetColumn = data.rowElement.children[
-                data.columnIndex
-              ] as HTMLElement | undefined;
-              if (!targetColumn) return false;
-            }
-            return true;
-          },
-          getData: ({ input, element: targetElement, source }) => {
-            const sourceData = isDragData(source.data) ? source.data : null;
-            const sourceRow = sourceData?.sourceElement.closest<HTMLElement>(
-              '[data-type="columns"]',
-            );
-            const rowIsFull =
-              data.columnIndex !== null &&
-              data.rowElement.childElementCount >= MAX_PORTFOLIO_COLUMNS &&
-              sourceRow !== data.rowElement;
-            const availableEdges: Edge[] = rowIsFull
-              ? ["top", "bottom"]
-              : allowedEdges;
-            const preferredEdge = closestPortfolioDropEdge(
-              targetElement.getBoundingClientRect(),
-              { x: input.clientX, y: input.clientY },
-              availableEdges,
-            );
-            return attachClosestEdge(data, {
-              input,
-              element: targetElement,
-              allowedEdges: [preferredEdge],
-            });
-          },
-          getIsSticky: () => true,
+          onGenerateDragPreview: ({ nativeSetDragImage }) =>
+            nativePreview(nativeSetDragImage),
         }),
       );
     };
 
     const reconcile = () => {
       if (dragging || editor.isDestroyed) return;
-      destroyEntities();
-      const editorDom = editor.view.dom;
+      destroyDraggables();
 
       editorDom
         .querySelectorAll<HTMLElement>("[data-ramzy-block-drag-handle]")
@@ -587,99 +383,33 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       const globalHandle = editorDom.parentElement?.querySelector<HTMLElement>(
         ":scope > .drag-handle",
       );
-      if (globalHandle) {
-        let prepared: { element: HTMLElement; position: number } | null = null;
-        const prepare = (event: PointerEvent) => {
-          prepared = elementAtHandlePointer(
-            editor,
-            event.clientX,
-            event.clientY,
-          );
-        };
-        globalHandle.addEventListener("pointerdown", prepare, true);
-        cleanups.push(() =>
-          globalHandle.removeEventListener("pointerdown", prepare, true),
-        );
-        cleanups.push(
-          draggable({
-            element: globalHandle,
-            dragHandle: globalHandle,
-            canDrag: () => prepared !== null,
-            getInitialData: () => ({
-              type: PORTFOLIO_BLOCK,
-              sourcePosition: prepared?.position ?? -1,
-              sourceElement: prepared?.element ?? editorDom,
-              label: prepared
-                ? blockLabel(prepared.element)
-                : "Portfolio element",
-            }),
+      if (!globalHandle) return;
+
+      let prepared: { element: HTMLElement; position: number } | null = null;
+      const prepare = (event: PointerEvent) => {
+        prepared = elementAtHandlePointer(editor, event.clientX, event.clientY);
+      };
+      globalHandle.addEventListener("pointerdown", prepare, true);
+      draggableCleanups.push(() =>
+        globalHandle.removeEventListener("pointerdown", prepare, true),
+      );
+      draggableCleanups.push(
+        draggable({
+          element: globalHandle,
+          dragHandle: globalHandle,
+          canDrag: () => prepared !== null,
+          getInitialData: () => ({
+            type: PORTFOLIO_BLOCK,
+            sourcePosition: prepared?.position ?? -1,
+            sourceElement: prepared?.element ?? editorDom,
+            label: prepared
+              ? blockLabel(prepared.element)
+              : "Portfolio element",
           }),
-        );
-      }
-
-      Array.from(editorDom.children).forEach((row) => {
-        if (!(row instanceof HTMLElement)) return;
-        const position = topLevelPosition(editor, row);
-        if (position === null) return;
-        const data: DropData = {
-          type: PORTFOLIO_TARGET,
-          targetPosition: position,
-          columnIndex: null,
-          rowElement: row,
-        };
-        addDropTarget(
-          row,
-          data,
-          row.matches('[data-type="columns"]')
-            ? ["top", "bottom"]
-            : ["top", "bottom", "left", "right"],
-        );
-
-        if (!row.matches('[data-type="columns"]')) return;
-        Array.from(row.children).forEach((column, columnIndex) => {
-          if (!(column instanceof HTMLElement)) return;
-          cleanups.push(
-            dropTargetForElements({
-              element: column,
-              canDrop: ({ source, input }) => {
-                if (!isDragData(source.data)) return false;
-                if (!isHorizontalColumnIntent(column, input.clientX)) {
-                  return false;
-                }
-                const sourceColumn =
-                  source.data.sourceElement.closest<HTMLElement>(
-                    '[data-type="column"]',
-                  );
-                const sameColumn = sourceColumn === column;
-                const sourceCanSplit =
-                  meaningfulColumnChildCount(sourceColumn) > 1;
-                if (sameColumn && !sourceCanSplit) return false;
-                const sourceRow = sourceColumn?.parentElement;
-                return !(
-                  row.childElementCount >= MAX_PORTFOLIO_COLUMNS &&
-                  sourceRow !== row
-                );
-              },
-              getData: ({ input }) => {
-                const edge = closestPortfolioDropEdge(
-                  column.getBoundingClientRect(),
-                  { x: input.clientX, y: input.clientY },
-                  ["left", "right"],
-                );
-                return attachClosestEdge(
-                  { ...data, columnIndex },
-                  {
-                    input,
-                    element: column,
-                    allowedEdges: [edge],
-                  },
-                );
-              },
-              getIsSticky: () => false,
-            }),
-          );
-        });
-      });
+          onGenerateDragPreview: ({ nativeSetDragImage }) =>
+            nativePreview(nativeSetDragImage),
+        }),
+      );
     };
 
     const scheduleReconcile = () => {
@@ -690,68 +420,66 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       reconcileTimer = window.setTimeout(reconcile, 120);
     };
 
+    const surfaceCleanup = dropTargetForElements({
+      element: editorDom,
+      canDrop: ({ source }) => isDragData(source.data),
+      getData: () => ({ type: PORTFOLIO_SURFACE }),
+      getIsSticky: () => true,
+    });
+
     const monitorCleanup = monitorForElements({
       canMonitor: ({ source }) => isDragData(source.data),
       onDragStart: ({ source }) => {
         if (!isDragData(source.data)) return;
         dragging = true;
+        activeIntent = null;
         sourceElement = source.data.sourceElement;
         sourceElement.classList.add("ramzy-dnd-source");
-        try {
-          editor.view.dispatch(
-            editor.state.tr.setSelection(
-              NodeSelection.create(
-                editor.state.doc,
-                source.data.sourcePosition,
-              ),
-            ),
-          );
-        } catch {
-          sourceElement.classList.remove("ramzy-dnd-source");
-          sourceElement = null;
-        }
       },
       onDrag: ({ source, location }) => {
         if (!isDragData(source.data)) return;
-        const destination = getDrop(location);
-        if (!destination) {
-          preview.clear();
-          return;
-        }
-        preview.render(
-          source.data.sourceElement,
-          destination.data,
-          destination.edge,
-        );
+        activeIntent = resolveIntent(editor, source.data, {
+          x: location.current.input.clientX,
+          y: location.current.input.clientY,
+        });
+        if (activeIntent)
+          preview.render(source.data.sourceElement, activeIntent);
+        else preview.clear();
       },
       onDrop: ({ source, location }) => {
-        const destination = getDrop(location);
+        const sourceData = isDragData(source.data) ? source.data : null;
+        const finalIntent = sourceData
+          ? (resolveIntent(editor, sourceData, {
+              x: location.current.input.clientX,
+              y: location.current.input.clientY,
+            }) ?? activeIntent)
+          : null;
+
         sourceElement?.classList.remove("ramzy-dnd-source");
         sourceElement = null;
+        activeIntent = null;
         preview.clear();
         dragging = false;
 
-        if (
-          !isDragData(source.data) ||
-          !destination ||
-          !(editor.state.selection instanceof NodeSelection)
-        ) {
+        if (!sourceData || !finalIntent) {
           scheduleReconcile();
           return;
         }
 
         const transaction =
-          destination.edge === "left" || destination.edge === "right"
+          finalIntent.edge === "left" || finalIntent.edge === "right"
             ? createPortfolioGridDropTransaction(
                 editor.state,
-                destination.data.targetPosition,
-                destination.edge,
-                destination.data.columnIndex,
+                finalIntent.targetPosition,
+                finalIntent.edge,
+                finalIntent.columnIndex,
+                sourceData.sourcePosition,
               )
             : createPortfolioVerticalDropTransaction(
                 editor.state,
-                destination.data.targetPosition,
-                destination.edge,
+                finalIntent.targetPosition,
+                finalIntent.edge,
+                sourceData.sourcePosition,
               );
         if (transaction) editor.view.dispatch(transaction);
         requestAnimationFrame(scheduleReconcile);
@@ -771,8 +499,9 @@ export function PortfolioDnd({ editor }: { editor: Editor }) {
       cancelAnimationFrame(reconcileFrame);
       window.clearTimeout(reconcileTimer);
       monitorCleanup();
+      surfaceCleanup();
       autoScrollCleanup();
-      destroyEntities();
+      destroyDraggables();
       sourceElement?.classList.remove("ramzy-dnd-source");
       preview.destroy();
     };

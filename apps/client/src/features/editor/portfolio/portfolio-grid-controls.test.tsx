@@ -1,4 +1,6 @@
-import { fireEvent, render, waitFor } from "@testing-library/react";
+// @vitest-environment jsdom
+
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortfolioGridControls } from "./portfolio-grid-controls";
@@ -58,7 +60,13 @@ function setupGrid() {
     type: { name: "columns" },
     attrs: {},
     childCount: 2,
-    forEach: (callback: (node: typeof columnNode, offset: number, index: number) => void) => {
+    forEach: (
+      callback: (
+        node: typeof columnNode,
+        offset: number,
+        index: number,
+      ) => void,
+    ) => {
       callback(columnNode, 0, 0);
       callback(columnNode, 2, 1);
     },
@@ -104,6 +112,7 @@ describe("PortfolioGridControls live pointer preview", () => {
   });
 
   afterEach(() => {
+    cleanup();
     document
       .querySelectorAll<HTMLElement>('[data-test-editor-root="true"]')
       .forEach((element) => element.remove());

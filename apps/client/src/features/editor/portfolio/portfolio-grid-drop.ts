@@ -126,13 +126,15 @@ function layoutForCount(count: number): string {
 
 function selectedBlockLocation(
   state: EditorState,
+  sourcePosition = state.selection.from,
 ): SelectedBlockLocation | null {
-  if (!(state.selection instanceof NodeSelection)) return null;
+  const sourceNode = state.doc.nodeAt(sourcePosition);
+  if (!sourceNode?.isBlock) return null;
 
   let result: SelectedBlockLocation | null = null;
   state.doc.forEach((topNode, topPosition, topIndex) => {
     if (result) return;
-    if (state.selection.from === topPosition) {
+    if (sourcePosition === topPosition) {
       result = { kind: "top", topIndex, topPosition };
       return;
     }
@@ -144,10 +146,7 @@ function selectedBlockLocation(
       let blockPosition = columnPosition + 1;
       for (let blockIndex = 0; blockIndex < column.childCount; blockIndex++) {
         const block = column.child(blockIndex);
-        if (
-          state.selection.from === blockPosition &&
-          state.selection.to === blockPosition + block.nodeSize
-        ) {
+        if (sourcePosition === blockPosition) {
           result = {
             kind: "column",
             topIndex,
@@ -306,18 +305,17 @@ export function createPortfolioGridDropTransaction(
   targetPosition: number,
   side: GridSide,
   columnIndex: number | null,
+  sourcePosition = state.selection.from,
 ): Transaction | null {
-  if (!(state.selection instanceof NodeSelection)) return null;
-
-  const draggedNode = state.selection.node;
+  const draggedNode = state.doc.nodeAt(sourcePosition);
   const columnsType = state.schema.nodes.columns;
   const columnType = state.schema.nodes.column;
   const paragraphType = state.schema.nodes.paragraph;
-  if (!columnsType || !columnType || !paragraphType || !draggedNode.isBlock) {
+  if (!columnsType || !columnType || !paragraphType || !draggedNode?.isBlock) {
     return null;
   }
 
-  const source = selectedBlockLocation(state);
+  const source = selectedBlockLocation(state, sourcePosition);
   if (!source || draggedNode.type === columnsType) return null;
 
   const originalTargetNode = state.doc.nodeAt(targetPosition);
@@ -451,20 +449,16 @@ export function createPortfolioVerticalDropTransaction(
   state: EditorState,
   targetPosition: number,
   edge: "top" | "bottom",
+  sourcePosition = state.selection.from,
 ): Transaction | null {
-  if (!(state.selection instanceof NodeSelection)) return null;
-
-  const draggedNode = state.selection.node;
+  const draggedNode = state.doc.nodeAt(sourcePosition);
   const targetNode = state.doc.nodeAt(targetPosition);
-  if (!draggedNode.isBlock || !targetNode) return null;
+  if (!draggedNode?.isBlock || !targetNode) return null;
 
-  const source = selectedBlockLocation(state);
+  const source = selectedBlockLocation(state, sourcePosition);
   if (!source || draggedNode.type.name === "columns") return null;
 
-  if (
-    state.selection.from === targetPosition &&
-    state.selection.to === targetPosition + targetNode.nodeSize
-  ) {
+  if (sourcePosition === targetPosition) {
     return null;
   }
 

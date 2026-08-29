@@ -1,5 +1,5 @@
 import { Schema } from "@tiptap/pm/model";
-import { EditorState, NodeSelection } from "@tiptap/pm/state";
+import { EditorState, NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { describe, expect, it } from "vitest";
 import {
   createPortfolioGridDropTransaction,
@@ -164,6 +164,51 @@ describe("portfolio grid drop", () => {
     expect(columns.attrs.layout).toBe("five_equal");
     expect(columns.childCount).toBe(5);
     expect(columns.child(4).textContent).toBe("E");
+  });
+
+  it("repeats drops from two through five columns without changing selection", () => {
+    const initialColumns = schema.nodes.columns.create(
+      { layout: "two_equal" },
+      [column("A"), column("B")],
+    );
+    let doc = schema.nodes.doc.create(null, [
+      initialColumns,
+      paragraph("C"),
+      paragraph("D"),
+      paragraph("E"),
+    ]);
+
+    for (const expectedCount of [3, 4, 5]) {
+      const state = EditorState.create({
+        doc,
+        selection: TextSelection.create(doc, 1),
+      });
+      const sourcePosition = doc.firstChild!.nodeSize;
+      const tr = createPortfolioGridDropTransaction(
+        state,
+        0,
+        "right",
+        expectedCount - 2,
+        sourcePosition,
+      );
+      expect(tr).not.toBeNull();
+      doc = tr!.doc;
+      expect(doc.firstChild!.childCount).toBe(expectedCount);
+      expect(doc.firstChild!.attrs.layout).toBe(
+        expectedCount === 3
+          ? "three_equal"
+          : expectedCount === 4
+            ? "four_equal"
+            : "five_equal",
+      );
+    }
+
+    expect(
+      Array.from(
+        { length: 5 },
+        (_, index) => doc.firstChild!.child(index).textContent,
+      ),
+    ).toEqual(["A", "B", "C", "D", "E"]);
   });
 
   it("caps drag-created rows at five columns", () => {
