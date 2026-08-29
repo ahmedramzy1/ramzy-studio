@@ -95,58 +95,192 @@ function renderDragPreview(container: HTMLElement, label: string) {
   container.appendChild(preview);
 }
 
-function createSnapPreview() {
+type LayoutPreview = {
+  element: HTMLElement;
+  hiddenRow: HTMLElement | null;
+  originalHeight: string;
+  originalMarginTop: string;
+  originalMarginBottom: string;
+  activeKey: string | null;
+};
+
+function createLayoutPreview(): LayoutPreview {
   const preview = document.createElement("div");
-  preview.className = "ramzy-pragmatic-snap-preview";
-  const label = document.createElement("span");
-  preview.appendChild(label);
+  preview.className = "ProseMirror ramzy-portfolio-editor ramzy-live-layout-preview";
   document.body.appendChild(preview);
-  return preview;
+  return {
+    element: preview,
+    hiddenRow: null,
+    originalHeight: "",
+    originalMarginTop: "",
+    originalMarginBottom: "",
+    activeKey: null,
+  };
 }
 
-function hideSnapPreview(preview: HTMLElement) {
-  preview.className = "ramzy-pragmatic-snap-preview";
-  preview.style.display = "none";
+function restorePreviewRow(preview: LayoutPreview) {
+  if (!preview.hiddenRow) return;
+  preview.hiddenRow.style.visibility = "";
+  preview.hiddenRow.style.height = preview.originalHeight;
+  preview.hiddenRow.style.marginTop = preview.originalMarginTop;
+  preview.hiddenRow.style.marginBottom = preview.originalMarginBottom;
+  preview.hiddenRow = null;
 }
 
-function showSnapPreview(
-  preview: HTMLElement,
+function hideLayoutPreview(preview: LayoutPreview) {
+  restorePreviewRow(preview);
+  preview.element.replaceChildren();
+  preview.element.style.display = "none";
+  preview.activeKey = null;
+}
+
+function cloneForLayoutPreview(element: HTMLElement): HTMLElement {
+  const clone = element.cloneNode(true) as HTMLElement;
+  clone
+    .querySelectorAll<HTMLElement>(
+      "[data-drag-handle], [data-ramzy-block-drag-handle], .drag-handle",
+    )
+    .forEach((handle) => handle.remove());
+  clone.querySelectorAll<HTMLElement>("[id]").forEach((node) => {
+    node.removeAttribute("id");
+  });
+  clone.removeAttribute("id");
+  clone.classList.remove("ramzy-pragmatic-dragging", "ProseMirror-selectednode");
+  clone.setAttribute("aria-hidden", "true");
+  clone.style.opacity = "1";
+  clone.style.pointerEvents = "none";
+  clone.style.width = "100%";
+  clone.style.maxWidth = "100%";
+  return clone;
+}
+
+function previewColumn(content: HTMLElement): HTMLElement {
+  const column = document.createElement("div");
+  column.dataset.type = "column";
+  column.appendChild(content);
+  return column;
+}
+
+// Exported for DOM-level regression coverage of the real preview structure.
+// eslint-disable-next-line react-refresh/only-export-components
+export function createPortfolioLayoutPreviewGrid(
+  sourceElement: HTMLElement,
+  rowElement: HTMLElement,
+  columnIndex: number | null,
+  edge: "left" | "right",
+): HTMLElement {
+  const sourceClone = cloneForLayoutPreview(sourceElement);
+  if (columnIndex === null) {
+    const row = document.createElement("div");
+    row.dataset.type = "columns";
+    row.dataset.layout = "two_equal";
+    const targetClone = cloneForLayoutPreview(rowElement);
+    const columns = [previewColumn(targetClone), previewColumn(sourceClone)];
+    if (edge === "left") columns.reverse();
+    row.append(...columns);
+    return row;
+  }
+
+  const row = cloneForLayoutPreview(rowElement);
+  const sourceColumn = sourceElement.closest<HTMLElement>('[data-type="column"]');
+  let insertionIndex =
+    edge === "left" ? columnIndex : columnIndex + 1;
+
+  if (sourceColumn?.parentElement === rowElement) {
+    const sourceColumnIndex = Array.from(rowElement.children).indexOf(
+      sourceColumn,
+    );
+    const clonedSourceColumn = row.children[sourceColumnIndex] as
+      | HTMLElement
+      | undefined;
+    if (clonedSourceColumn) {
+      const sourceBlockIndex = Array.from(sourceColumn.children).indexOf(
+        sourceElement,
+      );
+      clonedSourceColumn.children[sourceBlockIndex]?.remove();
+      if (clonedSourceColumn.children.length === 0) {
+        clonedSourceColumn.remove();
+        if (sourceColumnIndex < insertionIndex) insertionIndex -= 1;
+      }
+    }
+  }
+
+  row.insertBefore(
+    previewColumn(sourceClone),
+    row.children[Math.max(0, insertionIndex)] ?? null,
+  );
+  const count = row.children.length;
+  row.dataset.layout =
+    count === 3
+      ? "three_equal"
+      : count === 4
+        ? "four_equal"
+        : count === 5
+          ? "five_equal"
+          : "two_equal";
+  return row;
+}
+
+function showLayoutPreview(
+  preview: LayoutPreview,
+  sourceElement: HTMLElement,
   target: TargetData,
   edge: Edge,
 ) {
-  const targetRect = target.targetElement.getBoundingClientRect();
+  const key = `${target.targetPosition}:${target.columnIndex}:${edge}`;
+  if (preview.activeKey === key) return;
+  hideLayoutPreview(preview);
+  preview.activeKey = key;
+
   const rowRect = target.rowElement.getBoundingClientRect();
-  const label = preview.firstElementChild as HTMLElement;
-  const vertical = edge === "top" || edge === "bottom";
+  const sourceRect = sourceElement.getBoundingClientRect();
+  preview.hiddenRow = target.rowElement;
+  preview.originalHeight = target.rowElement.style.height;
+  preview.originalMarginTop = target.rowElement.style.marginTop;
+  preview.originalMarginBottom = target.rowElement.style.marginBottom;
+  preview.element.style.display = "block";
+  preview.element.style.left = `${rowRect.left}px`;
+  preview.element.style.width = `${rowRect.width}px`;
 
-  preview.style.display = "block";
-  preview.className = `ramzy-pragmatic-snap-preview ramzy-snap-${edge}`;
-
-  if (vertical) {
-    preview.style.left = `${rowRect.left}px`;
-    preview.style.top = `${edge === "top" ? rowRect.top - 7 : rowRect.bottom - 7}px`;
-    preview.style.width = `${rowRect.width}px`;
-    preview.style.height = "14px";
-    label.textContent = edge === "top" ? "Place above" : "Place below";
+  if (edge === "left" || edge === "right") {
+    const grid = createPortfolioLayoutPreviewGrid(
+      sourceElement,
+      target.rowElement,
+      target.columnIndex,
+      edge,
+    );
+    grid.style.margin = "0";
+    preview.element.style.top = `${rowRect.top}px`;
+    preview.element.appendChild(grid);
+    target.rowElement.style.visibility = "hidden";
+    requestAnimationFrame(() => {
+      if (preview.activeKey !== key) return;
+      const height = Math.max(grid.scrollHeight, 40);
+      target.rowElement.style.height = `${height}px`;
+    });
     return;
   }
 
-  if (target.columnIndex !== null) {
-    const nextCount = Math.min(5, target.columnCount + 1);
-    const slotWidth = rowRect.width / nextCount;
-    const insertionIndex =
-      edge === "left" ? target.columnIndex : target.columnIndex + 1;
-    preview.style.left = `${rowRect.left + slotWidth * insertionIndex + 4}px`;
-    preview.style.top = `${rowRect.top}px`;
-    preview.style.width = `${Math.max(32, slotWidth - 8)}px`;
-    preview.style.height = `${rowRect.height}px`;
+  const clone = cloneForLayoutPreview(sourceElement);
+  const gap = 16;
+  const height = Math.max(sourceRect.height, 40);
+  preview.element.style.top = `${
+    edge === "top" ? rowRect.top : rowRect.bottom + gap
+  }px`;
+  preview.element.appendChild(clone);
+  if (edge === "top") {
+    target.rowElement.style.marginTop = `${
+      Number.parseFloat(getComputedStyle(target.rowElement).marginTop) +
+      height +
+      gap
+    }px`;
   } else {
-    preview.style.left = `${edge === "left" ? targetRect.left : targetRect.left + targetRect.width / 2 + 4}px`;
-    preview.style.top = `${targetRect.top}px`;
-    preview.style.width = `${Math.max(32, targetRect.width / 2 - 4)}px`;
-    preview.style.height = `${targetRect.height}px`;
+    target.rowElement.style.marginBottom = `${
+      Number.parseFloat(getComputedStyle(target.rowElement).marginBottom) +
+      height +
+      gap
+    }px`;
   }
-  label.textContent = edge === "left" ? "Place left" : "Place right";
 }
 
 function targetData(value: Record<string, unknown>): TargetData | null {
@@ -157,7 +291,7 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
   useEffect(() => {
     if (editor.isDestroyed || !editor.isEditable) return;
 
-    const snapPreview = createSnapPreview();
+    const layoutPreview = createLayoutPreview();
     const registrations = new Map<HTMLElement, () => void>();
     let sourceElement: HTMLElement | null = null;
     let scanFrame = 0;
@@ -171,11 +305,18 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
       const cleanup = draggable({
         element,
         dragHandle: handle === element ? undefined : handle,
-        getInitialData: ({ input }) => ({
-          type: DRAG_TYPE,
-          sourcePosition: getPosition(input),
-          label: blockLabel(element),
-        }),
+        getInitialData: ({ input }) => {
+          const sourcePosition = getPosition(input);
+          const nodeDom =
+            sourcePosition === null ? null : editor.view.nodeDOM(sourcePosition);
+          return {
+            type: DRAG_TYPE,
+            sourcePosition,
+            label: blockLabel(
+              nodeDom instanceof HTMLElement ? nodeDom : element,
+            ),
+          };
+        },
         onGenerateDragPreview: ({ nativeSetDragImage, source }) => {
           setCustomNativeDragPreview({
             nativeSetDragImage,
@@ -193,8 +334,10 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
                 NodeSelection.create(editor.state.doc, position),
               ),
             );
-            sourceElement = element;
-            element.classList.add("ramzy-pragmatic-dragging");
+            const nodeDom = editor.view.nodeDOM(position);
+            sourceElement =
+              nodeDom instanceof HTMLElement ? nodeDom : element;
+            sourceElement.classList.add("ramzy-pragmatic-dragging");
           } catch {
             sourceElement = null;
           }
@@ -202,7 +345,7 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
         onDrop: () => {
           sourceElement?.classList.remove("ramzy-pragmatic-dragging");
           sourceElement = null;
-          hideSnapPreview(snapPreview);
+          hideLayoutPreview(layoutPreview);
         },
       });
       registrations.set(handle, cleanup);
@@ -221,7 +364,8 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
         element,
         canDrop: ({ source }) =>
           source.data.type === DRAG_TYPE &&
-          typeof source.data.sourcePosition === "number",
+          typeof source.data.sourcePosition === "number" &&
+          (columnIndex !== null || source.data.sourcePosition !== position),
         getData: ({ input, element: targetElement }) =>
           attachClosestEdge(
             {
@@ -300,8 +444,11 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
       scanFrame = requestAnimationFrame(scan);
     };
     scan();
-    const observer = new MutationObserver(scheduleScan);
-    observer.observe(editor.view.dom, { childList: true, subtree: true });
+    // Rebind only when the ProseMirror document changes. Observing the whole
+    // DOM subtree also reacts to waveform/video rendering and can rebuild drag
+    // registrations dozens of times per second. Selection-only transactions
+    // (including drag start) must not tear down an active draggable either.
+    editor.on("update", scheduleScan);
 
     const monitorCleanup = combine(
       monitorForElements({
@@ -311,16 +458,17 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
           const data = current ? targetData(current.data) : null;
           const edge = current ? extractClosestEdge(current.data) : null;
           if (!data || !edge) {
-            hideSnapPreview(snapPreview);
+            hideLayoutPreview(layoutPreview);
             return;
           }
-          showSnapPreview(snapPreview, data, edge);
+          if (!sourceElement) return;
+          showLayoutPreview(layoutPreview, sourceElement, data, edge);
         },
         onDrop: ({ location }) => {
           const current = location.current.dropTargets[0];
           const data = current ? targetData(current.data) : null;
           const edge = current ? extractClosestEdge(current.data) : null;
-          hideSnapPreview(snapPreview);
+          hideLayoutPreview(layoutPreview);
           if (!data || !edge || !(editor.state.selection instanceof NodeSelection)) {
             return;
           }
@@ -352,13 +500,14 @@ export function PortfolioPragmaticDnd({ editor }: { editor: Editor }) {
     );
 
     return () => {
-      observer.disconnect();
+      editor.off("update", scheduleScan);
       cancelAnimationFrame(scanFrame);
       monitorCleanup();
       for (const cleanup of registrations.values()) cleanup();
       registrations.clear();
       sourceElement?.classList.remove("ramzy-pragmatic-dragging");
-      snapPreview.remove();
+      hideLayoutPreview(layoutPreview);
+      layoutPreview.element.remove();
     };
   }, [editor]);
 
