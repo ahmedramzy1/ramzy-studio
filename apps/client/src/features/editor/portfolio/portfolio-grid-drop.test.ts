@@ -16,7 +16,7 @@ const schema = new Schema({
       content: "column+",
       attrs: { layout: { default: "two_equal" } },
     },
-    column: { content: "block+" },
+    column: { content: "block+", attrs: { width: { default: null } } },
   },
 });
 
@@ -83,12 +83,40 @@ describe("portfolio grid drop", () => {
     expect(columns.child(2).textContent).toBe("C");
   });
 
-  it("caps drag-created rows at five columns", () => {
+  it("keeps manual ratios and allocates space to a newly added column", () => {
     const existingColumns = schema.nodes.columns.create(
-      { layout: "five_equal" },
-      [column("A"), column("B"), column("C"), column("D"), column("E")],
+      { layout: "two_equal" },
+      [
+        schema.nodes.column.create({ width: 2 }, paragraph("A")),
+        schema.nodes.column.create({ width: 1 }, paragraph("B")),
+      ],
     );
-    const source = paragraph("F");
+    const source = paragraph("C");
+    const doc = schema.nodes.doc.create(null, [source, existingColumns]);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 0),
+    });
+    const tr = createPortfolioGridDropTransaction(
+      state,
+      source.nodeSize,
+      "right",
+      1,
+    );
+
+    expect(tr).not.toBeNull();
+    const columns = tr!.doc.firstChild!;
+    expect(columns.child(0).attrs.width).toBe(1.5);
+    expect(columns.child(1).attrs.width).toBe(0.75);
+    expect(columns.child(2).attrs.width).toBe(0.75);
+  });
+
+  it("caps drag-created rows at four columns", () => {
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "four_equal" },
+      [column("A"), column("B"), column("C"), column("D")],
+    );
+    const source = paragraph("E");
     const doc = schema.nodes.doc.create(null, [source, existingColumns]);
     const state = EditorState.create({
       doc,
@@ -100,7 +128,7 @@ describe("portfolio grid drop", () => {
         state,
         source.nodeSize,
         "right",
-        4,
+        3,
       ),
     ).toBeNull();
   });

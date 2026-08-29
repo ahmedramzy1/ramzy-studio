@@ -92,9 +92,8 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 }
 
 .ramzy-dnd-layout-preview {
-  position: fixed;
-  inset: 0 auto auto 0;
-  z-index: 10000;
+  position: absolute;
+  z-index: 20;
   display: none;
   pointer-events: none;
   box-sizing: border-box;
@@ -103,11 +102,35 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   box-shadow: 0 8px 24px rgb(0 0 0 / 8%);
   overflow: visible;
   opacity: 0.96;
-  contain: layout paint;
-  will-change: transform, width;
+  will-change: top, left, width;
   transition:
-    transform 120ms cubic-bezier(0.2, 0, 0, 1),
+    top 100ms cubic-bezier(0.2, 0, 0, 1),
+    left 100ms cubic-bezier(0.2, 0, 0, 1),
     width 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-target {
+  visibility: hidden;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-space-top {
+  margin-top: var(--ramzy-dnd-preview-space);
+  transition: margin 100ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-space-bottom {
+  margin-bottom: var(--ramzy-dnd-preview-space);
+  transition: margin 100ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.ramzy-dnd-native-preview {
+  max-height: 160px;
+  overflow: hidden;
+  border: 1px solid var(--mantine-color-blue-5, #339af0);
+  border-radius: 8px;
+  background: var(--mantine-color-body, #fff);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 18%);
+  opacity: 0.82;
 }
 
 .ramzy-dnd-layout-preview .ramzy-dnd-incoming-column,

@@ -1,68 +1,30 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import {
+  draggable,
+  dropTargetForElements,
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 
-class ResizeObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
+describe("portfolio pragmatic dnd lifecycle", () => {
+  it("can release and rebuild the same source and target after a drop render", () => {
+    const source = document.createElement("div");
+    const handle = document.createElement("button");
+    const target = document.createElement("div");
+    source.appendChild(handle);
+    document.body.append(source, target);
 
-class IntersectionObserverStub {
-  readonly root = null;
-  readonly rootMargin = "0px";
-  readonly thresholds: number[] = [];
+    const register = () => [
+      draggable({ element: source, dragHandle: handle }),
+      dropTargetForElements({ element: target }),
+    ];
 
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  takeRecords() {
-    return [];
-  }
-}
+    const first = register();
+    first.forEach((cleanup) => cleanup());
+    expect(() => {
+      const second = register();
+      second.forEach((cleanup) => cleanup());
+    }).not.toThrow();
 
-vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-vi.stubGlobal("IntersectionObserver", IntersectionObserverStub);
-
-describe("portfolio dnd manager lifecycle", () => {
-  it("supports a second drag after entities are rebuilt following a drop", async () => {
-    const { DragDropManager, Draggable, Droppable } = await import("@dnd-kit/dom");
-    const manager = new DragDropManager({ plugins: [], sensors: [] });
-    let completedDrops = 0;
-    const cleanup = manager.monitor.addEventListener("dragend", () => {
-      completedDrops += 1;
-    });
-
-    const runDrag = async () => {
-      const sourceElement = document.createElement("div");
-      const targetElement = document.createElement("div");
-      document.body.append(sourceElement, targetElement);
-      const source = new Draggable(
-        { id: "source", element: sourceElement, type: "portfolio" },
-        manager,
-      );
-      const target = new Droppable(
-        { id: "target", element: targetElement, type: "portfolio" },
-        manager,
-      );
-      source.register();
-      target.register();
-
-      manager.actions.start({ source, coordinates: { x: 0, y: 0 } });
-      await manager.actions.setDropTarget(target.id);
-      manager.actions.stop();
-      await Promise.resolve();
-
-      source.destroy();
-      target.destroy();
-      sourceElement.remove();
-      targetElement.remove();
-    };
-
-    await runDrag();
-    await runDrag();
-
-    expect(completedDrops).toBe(2);
-    expect(manager.dragOperation.status.idle).toBe(true);
-    cleanup();
-    manager.destroy();
+    source.remove();
+    target.remove();
   });
 });

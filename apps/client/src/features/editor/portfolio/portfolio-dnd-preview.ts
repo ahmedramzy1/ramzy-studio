@@ -125,13 +125,7 @@ export function createPortfolioDndGridPreview(
   );
   const count = row.children.length;
   row.dataset.layout =
-    count === 3
-      ? "three_equal"
-      : count === 4
-        ? "four_equal"
-        : count === 5
-          ? "five_equal"
-          : "two_equal";
+    count === 3 ? "three_equal" : count === 4 ? "four_equal" : "two_equal";
   return row;
 }
 

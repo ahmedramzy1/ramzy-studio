@@ -109,8 +109,40 @@ function findGridDropTarget(
 function layoutForCount(count: number): string {
   if (count === 3) return "three_equal";
   if (count === 4) return "four_equal";
-  if (count === 5) return "five_equal";
   return "two_equal";
+}
+
+function rebalanceColumnWidths(nodes: readonly import("@tiptap/pm/model").Node[]) {
+  const hasManualWidths = nodes.some(
+    (node) => typeof node.attrs.width === "number" && node.attrs.width > 0,
+  );
+  if (!hasManualWidths) {
+    return nodes.map((node) =>
+      node.type.create({ ...node.attrs, width: null }, node.content, node.marks),
+    );
+  }
+
+  const fallback = 1;
+  const total = nodes.reduce(
+    (sum, node) =>
+      sum +
+      (typeof node.attrs.width === "number" && node.attrs.width > 0
+        ? node.attrs.width
+        : fallback),
+    0,
+  );
+  const average = total / nodes.length;
+  return nodes.map((node) => {
+    const width =
+      typeof node.attrs.width === "number" && node.attrs.width > 0
+        ? node.attrs.width
+        : fallback;
+    return node.type.create(
+      { ...node.attrs, width: Number((width / average).toFixed(4)) },
+      node.content,
+      node.marks,
+    );
+  });
 }
 
 export function createPortfolioGridDropTransaction(
@@ -183,14 +215,16 @@ export function createPortfolioGridDropTransaction(
     const insertionIndex =
       side === "left" ? adjustedTargetIndex : adjustedTargetIndex + 1;
     children.splice(insertionIndex, 0, columnType.create(null, draggedNode));
-    if (children.length > 5) return null;
+    if (children.length > 4) return null;
+
+    const balancedChildren = rebalanceColumnWidths(children);
 
     const replacement = columnsType.create(
       {
         ...originalTargetNode.attrs,
         layout: layoutForCount(children.length),
       },
-      Fragment.from(children),
+      Fragment.from(balancedChildren),
     );
     return state.tr
       .replaceWith(
@@ -207,7 +241,7 @@ export function createPortfolioGridDropTransaction(
   if (!targetNode) return null;
 
   if (targetNode.type === columnsType) {
-    if (columnIndex === null || targetNode.childCount >= 5) return null;
+    if (columnIndex === null || targetNode.childCount >= 4) return null;
 
     const children = Array.from({ length: targetNode.childCount }, (_, index) =>
       targetNode.child(index),
@@ -215,12 +249,14 @@ export function createPortfolioGridDropTransaction(
     const insertionIndex = side === "left" ? columnIndex : columnIndex + 1;
     children.splice(insertionIndex, 0, columnType.create(null, draggedNode));
 
+    const balancedChildren = rebalanceColumnWidths(children);
+
     const replacement = columnsType.create(
       {
         ...targetNode.attrs,
         layout: layoutForCount(children.length),
       },
-      Fragment.from(children),
+      Fragment.from(balancedChildren),
     );
     tr.replaceWith(
       mappedTargetPosition,

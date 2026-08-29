@@ -27,10 +27,16 @@ type GridGeometry = {
 
 function topLevelPosition(editor: Editor, element: HTMLElement): number | null {
   try {
-    const position = editor.view.posAtDOM(element, 0);
-    return editor.state.doc.nodeAt(position)?.type.name === "columns"
-      ? position
-      : null;
+    const raw = editor.view.posAtDOM(element, 0);
+    if (editor.state.doc.nodeAt(raw)?.type.name === "columns") return raw;
+    const $position = editor.state.doc.resolve(raw);
+    for (let depth = $position.depth; depth > 0; depth -= 1) {
+      const before = $position.before(depth);
+      if (editor.state.doc.nodeAt(before)?.type.name === "columns") {
+        return before;
+      }
+    }
+    return null;
   } catch {
     return null;
   }

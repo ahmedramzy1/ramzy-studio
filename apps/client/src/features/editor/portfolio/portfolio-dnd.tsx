@@ -2,45 +2,65 @@ import { useEffect } from "react";
 import type { Editor } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import {
-  DragDropManager,
-  Draggable,
-  Droppable,
-  Feedback,
-  type DragEndEvent,
-  type DragMoveEvent,
-} from "@dnd-kit/dom";
+  draggable,
+  dropTargetForElements,
+  monitorForElements,
+  type ElementEventPayloadMap,
+} from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
+import { pointerOutsideOfPreview } from "@atlaskit/pragmatic-drag-and-drop/element/pointer-outside-of-preview";
+import { autoScrollWindowForElements } from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
+import {
+  attachClosestEdge,
+  extractClosestEdge,
+  type Edge,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
 import {
   createPortfolioGridDropTransaction,
   createPortfolioVerticalDropTransaction,
 } from "./portfolio-grid-drop";
 import {
   cloneForPortfolioDndPreview,
-  closestPortfolioDropEdge,
   createPortfolioDndGridPreview,
-  portfolioDropTargetAtPoint,
-  type DropEdge,
-  type PortfolioDropTargetCandidate,
 } from "./portfolio-dnd-preview";
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
+const PORTFOLIO_TARGET = "ramzy-portfolio-target";
 
 type DragData = {
-  sourcePosition: number | null;
-  sourceElement: HTMLElement | null;
+  type: typeof PORTFOLIO_BLOCK;
+  sourcePosition: number;
+  sourceElement: HTMLElement;
   label: string;
 };
 
 type DropData = {
+  type: typeof PORTFOLIO_TARGET;
   targetPosition: number;
   columnIndex: number | null;
   rowElement: HTMLElement;
-  allowedEdges: DropEdge[];
 };
 
-type PreviewState = {
-  element: HTMLElement;
-  key: string | null;
+type ActivePreview = {
+  key: string;
+  target: HTMLElement;
 };
+
+function isDragData(data: Record<string | symbol, unknown>): data is DragData {
+  return (
+    data.type === PORTFOLIO_BLOCK &&
+    typeof data.sourcePosition === "number" &&
+    data.sourceElement instanceof HTMLElement
+  );
+}
+
+function isDropData(data: Record<string | symbol, unknown>): data is DropData {
+  return (
+    data.type === PORTFOLIO_TARGET &&
+    typeof data.targetPosition === "number" &&
+    data.rowElement instanceof HTMLElement
+  );
+}
 
 function topLevelPosition(editor: Editor, element: HTMLElement): number | null {
   try {
@@ -98,400 +118,346 @@ function blockLabel(element: HTMLElement): string {
   return text ? text.slice(0, 54) : "Portfolio element";
 }
 
-function createPreview(): PreviewState {
+function getDrop(
+  location: ElementEventPayloadMap["onDrag"]["location"],
+): { data: DropData; edge: Edge } | null {
+  for (const record of location.current.dropTargets) {
+    if (!isDropData(record.data)) continue;
+    const edge = extractClosestEdge(record.data);
+    if (edge) return { data: record.data, edge };
+  }
+  return null;
+}
+
+function createPreviewLayer(editor: Editor) {
+  const host = editor.view.dom.parentElement ?? editor.view.dom;
   const element = document.createElement("div");
   element.className =
     "ProseMirror ramzy-portfolio-editor ramzy-dnd-layout-preview";
-  document.body.appendChild(element);
-  return { element, key: null };
-}
+  element.setAttribute("contenteditable", "false");
+  element.setAttribute("aria-hidden", "true");
+  host.appendChild(element);
 
-function hidePreview(preview: PreviewState) {
-  preview.element.replaceChildren();
-  preview.element.style.display = "none";
-  preview.element.style.height = "";
-  preview.key = null;
-}
+  let active: ActivePreview | null = null;
 
-function showPreview(
-  preview: PreviewState,
-  sourceElement: HTMLElement,
-  target: DropData,
-  edge: DropEdge,
-) {
-  const key = `${target.targetPosition}:${target.columnIndex}:${edge}`;
-  if (preview.key === key) return;
-  hidePreview(preview);
-  preview.key = key;
+  const clear = () => {
+    if (active) {
+      active.target.classList.remove(
+        "ramzy-dnd-preview-target",
+        "ramzy-dnd-preview-space-top",
+        "ramzy-dnd-preview-space-bottom",
+      );
+      active.target.style.removeProperty("--ramzy-dnd-preview-space");
+    }
+    element.replaceChildren();
+    element.style.display = "none";
+    active = null;
+  };
 
-  const rowRect = target.rowElement.getBoundingClientRect();
-  preview.element.style.display = "block";
-  preview.element.style.width = `${rowRect.width}px`;
-  preview.element.style.transform = `translate3d(${rowRect.left}px, ${rowRect.top}px, 0)`;
+  const render = (
+    sourceElement: HTMLElement,
+    target: DropData,
+    edge: Edge,
+  ) => {
+    const key = `${target.targetPosition}:${target.columnIndex}:${edge}`;
+    if (active?.key === key) return;
+    clear();
 
-  if (edge === "left" || edge === "right") {
-    const grid = createPortfolioDndGridPreview(
-      sourceElement,
-      target.rowElement,
-      target.columnIndex,
-      edge,
-    );
-    grid.style.margin = "0";
-    preview.element.appendChild(grid);
-    return;
-  }
+    const hostRect = host.getBoundingClientRect();
+    const rowRect = target.rowElement.getBoundingClientRect();
+    element.style.display = "block";
+    element.style.left = `${rowRect.left - hostRect.left}px`;
+    element.style.width = `${rowRect.width}px`;
 
-  const clone = cloneForPortfolioDndPreview(sourceElement);
-  clone.classList.add("ramzy-dnd-incoming-block");
-  clone.dataset.dropEdge = edge;
-  const sourceHeight = Math.max(
-    sourceElement.getBoundingClientRect().height,
-    40,
-  );
-  const gap = 16;
-  const y =
-    edge === "top" ? rowRect.top - sourceHeight - gap : rowRect.bottom + gap;
-  preview.element.style.height = `${sourceHeight}px`;
-  preview.element.style.transform = `translate3d(${rowRect.left}px, ${y}px, 0)`;
-  preview.element.appendChild(clone);
-}
+    if (edge === "left" || edge === "right") {
+      const grid = createPortfolioDndGridPreview(
+        sourceElement,
+        target.rowElement,
+        target.columnIndex,
+        edge,
+      );
+      grid.style.margin = "0";
+      element.style.top = `${rowRect.top - hostRect.top}px`;
+      element.appendChild(grid);
+      target.rowElement.classList.add("ramzy-dnd-preview-target");
+    } else {
+      const clone = cloneForPortfolioDndPreview(sourceElement);
+      clone.classList.add("ramzy-dnd-incoming-block");
+      clone.dataset.dropEdge = edge;
+      const sourceHeight = Math.max(
+        sourceElement.getBoundingClientRect().height,
+        40,
+      );
+      const gap = 16;
+      const space = sourceHeight + gap;
+      target.rowElement.style.setProperty(
+        "--ramzy-dnd-preview-space",
+        `${space}px`,
+      );
+      target.rowElement.classList.add(
+        edge === "top"
+          ? "ramzy-dnd-preview-space-top"
+          : "ramzy-dnd-preview-space-bottom",
+      );
+      element.style.top = `${
+        rowRect.top -
+        hostRect.top +
+        (edge === "top" ? 0 : rowRect.height + gap)
+      }px`;
+      element.appendChild(clone);
+    }
 
-function dragData(
-  draggable: { type?: unknown; data: Record<string, unknown> } | null,
-): DragData | null {
-  return draggable?.type === PORTFOLIO_BLOCK
-    ? (draggable.data as DragData)
-    : null;
+    active = { key, target: target.rowElement };
+  };
+
+  return { element, clear, render };
 }
 
 export function PortfolioDnd({ editor }: { editor: Editor }) {
   useEffect(() => {
     if (editor.isDestroyed || !editor.isEditable) return;
 
-    const manager = new DragDropManager({
-      plugins: (defaults) =>
-        defaults.map((plugin) =>
-          plugin === Feedback
-            ? Feedback.configure({ feedback: "none", dropAnimation: null })
-            : plugin,
-        ),
-    });
-    const preview = createPreview();
-    let entities: Array<Draggable | Droppable> = [];
-    let dropTargets: PortfolioDropTargetCandidate<DropData>[] = [];
+    const preview = createPreviewLayer(editor);
     let sourceElement: HTMLElement | null = null;
-    let pointer = { x: 0, y: 0 };
+    let cleanups: Array<() => void> = [];
     let reconcileFrame = 0;
     let reconcileTimer = 0;
-    let dropIsSuspended = false;
-    let dropWatchdog = 0;
-    let globalHandleCleanup: (() => void) | null = null;
+    let dragging = false;
 
     const destroyEntities = () => {
-      globalHandleCleanup?.();
-      globalHandleCleanup = null;
-      entities.forEach((entity) => entity.destroy());
-      entities = [];
-      dropTargets = [];
+      cleanups.forEach((cleanup) => cleanup());
+      cleanups = [];
     };
 
     const addDraggable = (
-      id: string,
       element: HTMLElement,
       handle: HTMLElement,
       position: number,
     ) => {
-      entities.push(
-        new Draggable<DragData>(
-          {
-            id,
-            element,
-            handle,
+      cleanups.push(
+        draggable({
+          element,
+          dragHandle: handle,
+          getInitialData: () => ({
             type: PORTFOLIO_BLOCK,
-            data: {
-              sourcePosition: position,
-              sourceElement: element,
-              label: blockLabel(element),
-            },
+            sourcePosition: position,
+            sourceElement: element,
+            label: blockLabel(element),
+          }),
+          onGenerateDragPreview: ({ nativeSetDragImage }) => {
+            setCustomNativeDragPreview({
+              nativeSetDragImage,
+              getOffset: pointerOutsideOfPreview({ x: "14px", y: "10px" }),
+              render: ({ container }) => {
+                const card = cloneForPortfolioDndPreview(element);
+                card.classList.add("ramzy-dnd-native-preview");
+                card.style.width = `${Math.min(
+                  element.getBoundingClientRect().width,
+                  360,
+                )}px`;
+                container.appendChild(card);
+              },
+            });
           },
-          manager,
-        ),
+        }),
       );
     };
 
-    const addDroppable = (
-      id: string,
+    const addDropTarget = (
       element: HTMLElement,
       data: DropData,
-      collisionPriority: number,
+      allowedEdges: Edge[],
     ) => {
-      dropTargets.push({ element, data, priority: collisionPriority });
-      entities.push(
-        new Droppable<DropData>(
-          {
-            id,
-            element,
-            type: PORTFOLIO_BLOCK,
-            data,
-            collisionPriority,
-            accept: (source) => {
-              const sourceData = dragData(source);
-              return (
-                sourceData?.sourcePosition !== null &&
-                (data.columnIndex !== null ||
-                  sourceData?.sourcePosition !== data.targetPosition)
-              );
-            },
+      cleanups.push(
+        dropTargetForElements({
+          element,
+          canDrop: ({ source }) =>
+            isDragData(source.data) &&
+            !(
+              data.columnIndex === null &&
+              source.data.sourcePosition === data.targetPosition
+            ),
+          getData: ({ input, element: targetElement, source }) => {
+            const sourceData = isDragData(source.data) ? source.data : null;
+            const sourceRow = sourceData?.sourceElement.closest<HTMLElement>(
+              '[data-type="columns"]',
+            );
+            const rowIsFull =
+              data.columnIndex !== null &&
+              data.rowElement.childElementCount >= 4 &&
+              sourceRow !== data.rowElement;
+            return attachClosestEdge(data, {
+              input,
+              element: targetElement,
+              allowedEdges: rowIsFull ? ["top", "bottom"] : allowedEdges,
+            });
           },
-          manager,
-        ),
+          getIsSticky: () => true,
+        }),
       );
     };
 
     const reconcile = () => {
-      if (dropIsSuspended || manager.dragOperation.status.dragging) return;
+      if (dragging || editor.isDestroyed) return;
       destroyEntities();
       const editorDom = editor.view.dom;
 
       editorDom
         .querySelectorAll<HTMLElement>("[data-ramzy-block-drag-handle]")
-        .forEach((handle, index) => {
+        .forEach((handle) => {
           const element = handle.closest<HTMLElement>(".react-renderer");
           if (!element) return;
           const position = selectionPositionForElement(editor, element);
-          if (position === null) return;
-          addDraggable(`block:${position}:${index}`, element, handle, position);
+          if (position !== null) addDraggable(element, handle, position);
         });
 
       const globalHandle = editorDom.parentElement?.querySelector<HTMLElement>(
         ":scope > .drag-handle",
       );
       if (globalHandle) {
-        const globalDraggable = new Draggable<DragData>(
-          {
-            id: "block:global",
-            element: globalHandle,
-            handle: globalHandle,
-            type: PORTFOLIO_BLOCK,
-            data: {
-              sourcePosition: null,
-              sourceElement: null,
-              label: "Portfolio element",
-            },
-          },
-          manager,
-        );
-        entities.push(globalDraggable);
-        const prepareGlobalDrag = (event: PointerEvent) => {
-          const hit = elementAtHandlePointer(
-            editor,
-            event.clientX,
-            event.clientY,
-          );
-          if (!hit) return;
-          globalDraggable.element = hit.element;
-          globalDraggable.data = {
-            sourcePosition: hit.position,
-            sourceElement: hit.element,
-            label: blockLabel(hit.element),
-          };
+        let prepared: { element: HTMLElement; position: number } | null = null;
+        const prepare = (event: PointerEvent) => {
+          prepared = elementAtHandlePointer(editor, event.clientX, event.clientY);
         };
-        globalHandle.addEventListener("pointerdown", prepareGlobalDrag, true);
-        globalHandleCleanup = () =>
-          globalHandle.removeEventListener(
-            "pointerdown",
-            prepareGlobalDrag,
-            true,
-          );
+        globalHandle.addEventListener("pointerdown", prepare, true);
+        cleanups.push(() =>
+          globalHandle.removeEventListener("pointerdown", prepare, true),
+        );
+        cleanups.push(
+          draggable({
+            element: globalHandle,
+            dragHandle: globalHandle,
+            canDrag: () => prepared !== null,
+            getInitialData: () => ({
+              type: PORTFOLIO_BLOCK,
+              sourcePosition: prepared?.position ?? -1,
+              sourceElement: prepared?.element ?? editorDom,
+              label: prepared ? blockLabel(prepared.element) : "Portfolio element",
+            }),
+          }),
+        );
       }
 
-      Array.from(editorDom.children).forEach((row, rowIndex) => {
+      Array.from(editorDom.children).forEach((row) => {
         if (!(row instanceof HTMLElement)) return;
         const position = topLevelPosition(editor, row);
         if (position === null) return;
-        const columns = row.matches('[data-type="columns"]') ? row : null;
-        if (!columns) {
-          addDroppable(
-            `row:${position}:${rowIndex}`,
-            row,
-            {
-              targetPosition: position,
-              columnIndex: null,
-              rowElement: row,
-              allowedEdges: ["top", "bottom", "left", "right"],
-            },
-            1,
-          );
-          return;
-        }
-
-        addDroppable(
-          `row:${position}:${rowIndex}`,
-          columns,
-          {
-            targetPosition: position,
-            columnIndex: null,
-            rowElement: columns,
-            allowedEdges: ["top", "bottom"],
-          },
-          1,
+        const data: DropData = {
+          type: PORTFOLIO_TARGET,
+          targetPosition: position,
+          columnIndex: null,
+          rowElement: row,
+        };
+        addDropTarget(
+          row,
+          data,
+          row.matches('[data-type="columns"]')
+            ? ["top", "bottom"]
+            : ["top", "bottom", "left", "right"],
         );
-        Array.from(columns.children).forEach((column, columnIndex) => {
+
+        if (!row.matches('[data-type="columns"]')) return;
+        Array.from(row.children).forEach((column, columnIndex) => {
           if (!(column instanceof HTMLElement)) return;
-          addDroppable(
-            `column:${position}:${columnIndex}`,
+          addDropTarget(
             column,
-            {
-              targetPosition: position,
-              columnIndex,
-              rowElement: columns,
-              allowedEdges: ["top", "bottom", "left", "right"],
-            },
-            2,
+            { ...data, columnIndex },
+            ["top", "bottom", "left", "right"],
           );
         });
       });
     };
 
     const scheduleReconcile = () => {
-      if (dropIsSuspended || manager.dragOperation.status.dragging) return;
+      if (dragging) return;
       cancelAnimationFrame(reconcileFrame);
       window.clearTimeout(reconcileTimer);
       reconcileFrame = requestAnimationFrame(reconcile);
       reconcileTimer = window.setTimeout(reconcile, 120);
     };
 
-    const renderCurrentPreview = (event: DragMoveEvent) => {
-      const source = dragData(event.operation.source);
-      const registeredTarget = portfolioDropTargetAtPoint(dropTargets, pointer);
-      const target = registeredTarget?.data;
-      if (
-        !source?.sourceElement ||
-        source.sourcePosition === null ||
-        !registeredTarget ||
-        !target ||
-        (target.columnIndex === null &&
-          source.sourcePosition === target.targetPosition)
-      ) {
-        hidePreview(preview);
-        return;
-      }
-      const edge = closestPortfolioDropEdge(
-        registeredTarget.element.getBoundingClientRect(),
-        pointer,
-        target.allowedEdges,
-      );
-      showPreview(preview, source.sourceElement, target, edge);
-    };
-
-    const onPointerMove = (event: PointerEvent) => {
-      pointer = { x: event.clientX, y: event.clientY };
-    };
-    const onDragStart = ({
-      operation,
-    }: {
-      operation: DragMoveEvent["operation"];
-    }) => {
-      const source = dragData(operation.source);
-      if (!source?.sourceElement || source.sourcePosition === null) return;
-      sourceElement = source.sourceElement;
-      sourceElement.classList.add("ramzy-dnd-source");
-      try {
-        editor.view.dispatch(
-          editor.state.tr.setSelection(
-            NodeSelection.create(editor.state.doc, source.sourcePosition),
-          ),
-        );
-      } catch {
-        sourceElement.classList.remove("ramzy-dnd-source");
-        sourceElement = null;
-      }
-    };
-    const onDragEnd = (event: DragEndEvent) => {
-      sourceElement?.classList.remove("ramzy-dnd-source");
-      sourceElement = null;
-      hidePreview(preview);
-      const source = dragData(event.operation.source);
-      const registeredTarget = portfolioDropTargetAtPoint(dropTargets, pointer);
-      const target = registeredTarget?.data;
-      if (
-        event.canceled ||
-        source?.sourcePosition === null ||
-        !registeredTarget ||
-        !target ||
-        (target.columnIndex === null &&
-          source.sourcePosition === target.targetPosition) ||
-        !(editor.state.selection instanceof NodeSelection)
-      ) {
-        scheduleReconcile();
-        return;
-      }
-
-      const edge = closestPortfolioDropEdge(
-        registeredTarget.element.getBoundingClientRect(),
-        pointer,
-        target.allowedEdges,
-      );
-      const suspension = event.suspend();
-      dropIsSuspended = true;
-      let resumed = false;
-      const finishDrop = () => {
-        if (resumed) return;
-        resumed = true;
-        window.clearTimeout(dropWatchdog);
-        dropIsSuspended = false;
-        suspension.resume();
-        scheduleReconcile();
-      };
-      // A failed ProseMirror transaction must never leave dnd-kit suspended.
-      // The watchdog also covers a browser frame being abandoned during
-      // navigation, hot reload, or an unexpected rendering error.
-      dropWatchdog = window.setTimeout(finishDrop, 1_000);
-      requestAnimationFrame(() => {
+    const monitorCleanup = monitorForElements({
+      canMonitor: ({ source }) => isDragData(source.data),
+      onDragStart: ({ source }) => {
+        if (!isDragData(source.data)) return;
+        dragging = true;
+        sourceElement = source.data.sourceElement;
+        sourceElement.classList.add("ramzy-dnd-source");
         try {
-          if (editor.isDestroyed) return;
-          const transaction =
-            edge === "left" || edge === "right"
-              ? createPortfolioGridDropTransaction(
-                  editor.state,
-                  target.targetPosition,
-                  edge,
-                  target.columnIndex,
-                )
-              : createPortfolioVerticalDropTransaction(
-                  editor.state,
-                  target.targetPosition,
-                  edge,
-                );
-          if (transaction) editor.view.dispatch(transaction);
-        } finally {
-          requestAnimationFrame(finishDrop);
+          editor.view.dispatch(
+            editor.state.tr.setSelection(
+              NodeSelection.create(editor.state.doc, source.data.sourcePosition),
+            ),
+          );
+        } catch {
+          sourceElement.classList.remove("ramzy-dnd-source");
+          sourceElement = null;
         }
-      });
-    };
+      },
+      onDrag: ({ source, location }) => {
+        if (!isDragData(source.data)) return;
+        const destination = getDrop(location);
+        if (!destination) {
+          preview.clear();
+          return;
+        }
+        preview.render(
+          source.data.sourceElement,
+          destination.data,
+          destination.edge,
+        );
+      },
+      onDrop: ({ source, location }) => {
+        const destination = getDrop(location);
+        sourceElement?.classList.remove("ramzy-dnd-source");
+        sourceElement = null;
+        preview.clear();
+        dragging = false;
 
-    const cleanups = [
-      manager.monitor.addEventListener("dragstart", onDragStart),
-      manager.monitor.addEventListener("dragmove", renderCurrentPreview),
-      manager.monitor.addEventListener("dragover", renderCurrentPreview),
-      manager.monitor.addEventListener("dragend", onDragEnd),
-    ];
-    window.addEventListener("pointermove", onPointerMove, true);
+        if (
+          !isDragData(source.data) ||
+          !destination ||
+          !(editor.state.selection instanceof NodeSelection)
+        ) {
+          scheduleReconcile();
+          return;
+        }
+
+        const transaction =
+          destination.edge === "left" || destination.edge === "right"
+            ? createPortfolioGridDropTransaction(
+                editor.state,
+                destination.data.targetPosition,
+                destination.edge,
+                destination.data.columnIndex,
+              )
+            : createPortfolioVerticalDropTransaction(
+                editor.state,
+                destination.data.targetPosition,
+                destination.edge,
+              );
+        if (transaction) editor.view.dispatch(transaction);
+        requestAnimationFrame(scheduleReconcile);
+      },
+    });
+
+    const autoScrollCleanup = autoScrollWindowForElements({
+      canScroll: ({ source }) => isDragData(source.data),
+      getAllowedAxis: () => "vertical",
+    });
+
     editor.on("update", scheduleReconcile);
     reconcile();
-    requestAnimationFrame(scheduleReconcile);
 
     return () => {
       editor.off("update", scheduleReconcile);
-      window.removeEventListener("pointermove", onPointerMove, true);
-      cleanups.forEach((cleanup) => cleanup());
       cancelAnimationFrame(reconcileFrame);
       window.clearTimeout(reconcileTimer);
-      window.clearTimeout(dropWatchdog);
+      monitorCleanup();
+      autoScrollCleanup();
       destroyEntities();
-      manager.destroy();
       sourceElement?.classList.remove("ramzy-dnd-source");
-      hidePreview(preview);
+      preview.clear();
       preview.element.remove();
     };
   }, [editor]);
