@@ -195,30 +195,56 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       (column) => column.getBoundingClientRect().width,
     );
     const startX = event.clientX;
+    const handle = event.currentTarget as HTMLElement;
+    const pointerId = event.pointerId;
+    handle.dataset.resizing = "true";
+    handle.setPointerCapture?.(pointerId);
+
+    let latestWeights = resizedColumnWeights(startWidths, dividerIndex, 0);
+
+    const renderLiveWidths = (weights: number[]) => {
+      columns.forEach((column, index) => {
+        column.style.setProperty("flex", `${weights[index]} 1 0%`, "important");
+      });
+    };
 
     const onMove = (moveEvent: PointerEvent) => {
-      const weights = resizedColumnWeights(
+      if (moveEvent.pointerId !== pointerId) return;
+      latestWeights = resizedColumnWeights(
         startWidths,
         dividerIndex,
         moveEvent.clientX - startX,
       );
-      columns.forEach((column, index) => {
-        column.style.flex = String(weights[index]);
-      });
+      renderLiveWidths(latestWeights);
     };
     const finish = (upEvent: PointerEvent) => {
-      const weights = resizedColumnWeights(
+      if (upEvent.pointerId !== pointerId) return;
+      latestWeights = resizedColumnWeights(
         startWidths,
         dividerIndex,
         upEvent.clientX - startX,
       );
+      renderLiveWidths(latestWeights);
       cleanup();
-      setColumnWidths(editor, active.position, weights);
+      setColumnWidths(editor, active.position, latestWeights);
+      requestAnimationFrame(() => {
+        const renderedColumns = Array.from(active.element.children).filter(
+          (child): child is HTMLElement =>
+            child instanceof HTMLElement && child.dataset.type === "column",
+        );
+        renderedColumns.forEach((column, index) => {
+          column.style.setProperty("flex", String(latestWeights[index]));
+        });
+      });
     };
     const cleanup = () => {
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("pointerup", finish, true);
       window.removeEventListener("pointercancel", finish, true);
+      delete handle.dataset.resizing;
+      if (handle.hasPointerCapture?.(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
       resizeCleanupRef.current = null;
     };
     resizeCleanupRef.current = cleanup;
@@ -243,19 +269,49 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       wide: Math.min(1120, Math.max(editorWidth, window.innerWidth - 352)),
       full: Math.min(1440, available),
     };
+    const handle = event.currentTarget as HTMLElement;
+    const pointerId = event.pointerId;
+    handle.dataset.resizing = "true";
+    handle.setPointerCapture?.(pointerId);
+    const originalStyles = {
+      position: active.element.style.position,
+      left: active.element.style.left,
+      width: active.element.style.width,
+      maxWidth: active.element.style.maxWidth,
+      marginLeft: active.element.style.marginLeft,
+      marginRight: active.element.style.marginRight,
+      transform: active.element.style.transform,
+    };
     let nextMode = (active.element.dataset.widthMode ||
       "normal") as PortfolioGridWidthMode;
     setWidthLabel(portfolioGridModeLabel(nextMode));
 
+    const renderLiveMode = (mode: PortfolioGridWidthMode) => {
+      if (mode === "normal") delete active.element.dataset.widthMode;
+      else active.element.dataset.widthMode = mode;
+      active.element.style.position = "relative";
+      active.element.style.left = "50%";
+      active.element.style.width = `${widths[mode]}px`;
+      active.element.style.maxWidth = "none";
+      active.element.style.marginLeft = "0";
+      active.element.style.marginRight = "0";
+      active.element.style.transform = "translateX(-50%)";
+      setWidthLabel(portfolioGridModeLabel(mode));
+    };
+
     const onMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) return;
       const delta = moveEvent.clientX - startX;
       const desired = startWidth + (side === "right" ? delta * 2 : -delta * 2);
       nextMode = nearestPortfolioGridWidthMode(desired, widths);
-      if (nextMode === "normal") delete active.element.dataset.widthMode;
-      else active.element.dataset.widthMode = nextMode;
-      setWidthLabel(portfolioGridModeLabel(nextMode));
+      renderLiveMode(nextMode);
     };
-    const finish = () => {
+    const finish = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      const delta = upEvent.clientX - startX;
+      const desired = startWidth + (side === "right" ? delta * 2 : -delta * 2);
+      nextMode = nearestPortfolioGridWidthMode(desired, widths);
+      renderLiveMode(nextMode);
       cleanup();
       setWidthLabel(null);
       setRowWidthMode(editor, active.position, nextMode);
@@ -264,6 +320,17 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       window.removeEventListener("pointermove", onMove, true);
       window.removeEventListener("pointerup", finish, true);
       window.removeEventListener("pointercancel", finish, true);
+      delete handle.dataset.resizing;
+      if (handle.hasPointerCapture?.(pointerId)) {
+        handle.releasePointerCapture(pointerId);
+      }
+      active.element.style.position = originalStyles.position;
+      active.element.style.left = originalStyles.left;
+      active.element.style.width = originalStyles.width;
+      active.element.style.maxWidth = originalStyles.maxWidth;
+      active.element.style.marginLeft = originalStyles.marginLeft;
+      active.element.style.marginRight = originalStyles.marginRight;
+      active.element.style.transform = originalStyles.transform;
       resizeCleanupRef.current = null;
     };
     resizeCleanupRef.current = cleanup;
