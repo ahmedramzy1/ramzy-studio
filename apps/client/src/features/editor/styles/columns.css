@@ -92,6 +92,14 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   min-height: max(240px, calc(100dvh - 12rem));
 }
 
+/* Reserve one clear authoring strip for the per-column insertion controls.
+ * The next top-level block must start below those controls, not behind them. */
+.ProseMirror.ramzy-portfolio-editor[contenteditable="true"]
+  > div[data-type="columns"]
+  + * {
+  margin-top: 4rem;
+}
+
 .ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source {
   opacity: 0.34;
   pointer-events: none;

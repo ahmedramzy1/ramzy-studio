@@ -14,6 +14,7 @@ interface BlockControl {
   top: number;
   bottom: number;
   insertionTop: number;
+  followsColumns: boolean;
   isSectionHeading: boolean;
   isEmptyTextBlock: boolean;
   usesDedicatedHandle: boolean;
@@ -57,6 +58,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       const nextBlocks: BlockControl[] = [];
       const nextColumns: ColumnControl[] = [];
       const nextSections: SectionChoice[] = [];
+      let previousTopLevelType: string | null = null;
       const docNodes: Array<{
         position: number;
         type: string;
@@ -84,6 +86,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             insertionTop: previous
               ? (previous.bottom + top) / 2 - 14
               : top - 38,
+            followsColumns: previousTopLevelType === "columns",
             isSectionHeading:
               node.type.name === "heading" && node.attrs.level === 1,
             isEmptyTextBlock: node.isTextblock && node.textContent.length === 0,
@@ -122,6 +125,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             });
           }
         }
+        previousTopLevelType = node.type.name;
       });
 
       docNodes.forEach((entry, index) => {
@@ -337,7 +341,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       {!isDocumentEmpty &&
         blocks.map((block) => (
           <React.Fragment key={`${block.position}-${Math.round(block.top)}`}>
-            {!block.isEmptyTextBlock &&
+            {!block.followsColumns &&
+            !block.isEmptyTextBlock &&
             block.position !== editingBlockPosition ? (
               <button
                 type="button"
