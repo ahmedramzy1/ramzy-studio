@@ -44,6 +44,31 @@ type TargetData = {
   columnIndex: number | null;
 };
 
+type FrozenRect = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
+type FrozenColumnGeometry = {
+  element: HTMLElement;
+  rect: FrozenRect;
+};
+
+type FrozenRowGeometry = {
+  element: HTMLElement;
+  targetPosition: number;
+  rect: FrozenRect;
+  columns: FrozenColumnGeometry[];
+};
+
+type DragGeometry = {
+  rows: FrozenRowGeometry[];
+};
+
 function isSourceData(data: unknown): data is SourceData {
   return (
     !!data &&
@@ -183,7 +208,7 @@ function previewFromLocation(
   };
 }
 
-function containsPoint(rect: DOMRect, input: Input) {
+function containsPoint(rect: FrozenRect, input: Input) {
   return (
     input.clientX >= rect.left &&
     input.clientX <= rect.right &&
@@ -192,91 +217,111 @@ function containsPoint(rect: DOMRect, input: Input) {
   );
 }
 
-function verticalDropBand(rect: DOMRect) {
+function verticalDropBand(rect: FrozenRect) {
   return Math.min(72, Math.max(24, rect.height * 0.16), rect.height * 0.35);
 }
 
-function topLevelElementAtInput(editor: Editor, input: Input) {
+function freezeRect(rect: DOMRect): FrozenRect {
+  return {
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function captureDragGeometry(editor: Editor): DragGeometry {
   const root = editor.view.dom;
-  const hits =
-    typeof document.elementsFromPoint === "function"
-      ? document.elementsFromPoint(input.clientX, input.clientY)
-      : [];
-  for (const hit of hits) {
-    if (!(hit instanceof HTMLElement) || !root.contains(hit)) continue;
-    let row = hit;
-    while (row.parentElement && row.parentElement !== root) {
-      row = row.parentElement;
-    }
-    if (row.parentElement === root) return row;
-  }
-  return Array.from(root.children).find(
-    (child): child is HTMLElement =>
-      child instanceof HTMLElement &&
-      containsPoint(child.getBoundingClientRect(), input),
-  );
+  return {
+    rows: Array.from(root.children).flatMap((child) => {
+      if (!(child instanceof HTMLElement)) return [];
+      const targetPosition = topLevelPosition(editor, child);
+      if (targetPosition === null) return [];
+      return [
+        {
+          element: child,
+          targetPosition,
+          rect: freezeRect(child.getBoundingClientRect()),
+          columns: columnElements(child).map((element) => ({
+            element,
+            rect: freezeRect(element.getBoundingClientRect()),
+          })),
+        },
+      ];
+    }),
+  };
+}
+
+function rowGeometryAtInput(geometry: DragGeometry, input: Input) {
+  return geometry.rows.find((row) => containsPoint(row.rect, input));
+}
+
+function edgeForSingleRow(rect: FrozenRect, input: Input) {
+  const verticalBand = verticalDropBand(rect);
+  if (input.clientY <= rect.top + verticalBand) return "top" as const;
+  if (input.clientY >= rect.bottom - verticalBand) return "bottom" as const;
+  return input.clientX < rect.left + rect.width / 2
+    ? ("left" as const)
+    : ("right" as const);
 }
 
 function targetDataAtInput(
   editor: Editor,
   source: SourceData,
   input: Input,
+  geometry: DragGeometry,
 ): Record<string | symbol, unknown> | null {
-  const row = topLevelElementAtInput(editor, input);
-  if (!row) return null;
-  const targetPosition = topLevelPosition(editor, row);
-  if (targetPosition === null) return null;
+  const rowGeometry = rowGeometryAtInput(geometry, input);
+  if (!rowGeometry) return null;
+  const { element: row, targetPosition, rect: rowRect } = rowGeometry;
 
   if (!row.matches('[data-type="columns"]')) {
     if (source.sourcePosition === targetPosition) return null;
-    const rowRect = row.getBoundingClientRect();
-    const verticalBand = verticalDropBand(rowRect);
-    const allowedEdges: Array<"top" | "bottom" | "left" | "right"> =
-      input.clientY <= rowRect.top + verticalBand ||
-      input.clientY >= rowRect.bottom - verticalBand
-        ? ["top", "bottom"]
-        : ["left", "right"];
+    const edge = edgeForSingleRow(rowRect, input);
     return attachClosestEdge(
       { kind: PORTFOLIO_TARGET, targetPosition, columnIndex: null },
       {
         input,
         element: row,
-        allowedEdges,
+        // The single allowed edge encodes the result without remeasuring the
+        // preview-mutated element inside `attachClosestEdge`.
+        allowedEdges: [edge],
       },
     );
   }
 
-  const rowRect = row.getBoundingClientRect();
   const verticalBand = verticalDropBand(rowRect);
   if (
     input.clientY <= rowRect.top + verticalBand ||
     input.clientY >= rowRect.bottom - verticalBand
   ) {
+    const edge =
+      input.clientY < rowRect.top + rowRect.height / 2 ? "top" : "bottom";
     return attachClosestEdge(
       { kind: PORTFOLIO_TARGET, targetPosition, columnIndex: null },
-      { input, element: row, allowedEdges: ["top", "bottom"] },
+      { input, element: row, allowedEdges: [edge] },
     );
   }
 
-  const columns = columnElements(row);
+  const columns = rowGeometry.columns;
   const column =
     columns.find((candidate) =>
-      containsPoint(candidate.getBoundingClientRect(), input),
+      containsPoint(candidate.rect, input),
     ) ??
-    columns.reduce<HTMLElement | null>((nearest, candidate) => {
+    columns.reduce<FrozenColumnGeometry | null>((nearest, candidate) => {
       if (!nearest) return candidate;
-      const candidateRect = candidate.getBoundingClientRect();
-      const nearestRect = nearest.getBoundingClientRect();
       const candidateDistance = Math.abs(
-        input.clientX - (candidateRect.left + candidateRect.right) / 2,
+        input.clientX - (candidate.rect.left + candidate.rect.right) / 2,
       );
       const nearestDistance = Math.abs(
-        input.clientX - (nearestRect.left + nearestRect.right) / 2,
+        input.clientX - (nearest.rect.left + nearest.rect.right) / 2,
       );
       return candidateDistance < nearestDistance ? candidate : nearest;
     }, null);
   if (!column) return null;
-  if (source.sourceElement.closest('[data-type="column"]') === column) {
+  if (source.sourceElement.closest('[data-type="column"]') === column.element) {
     return null;
   }
   if (
@@ -291,7 +336,15 @@ function targetDataAtInput(
       targetPosition,
       columnIndex: columns.indexOf(column),
     },
-    { input, element: column, allowedEdges: ["left", "right"] },
+    {
+      input,
+      element: column.element,
+      allowedEdges: [
+        input.clientX < column.rect.left + column.rect.width / 2
+          ? "left"
+          : "right",
+      ],
+    },
   );
 }
 
@@ -299,6 +352,7 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
   useEffect(() => {
     const root = editor.view.dom;
     const handleCleanups = new Map<HTMLElement, () => void>();
+    let dragGeometry: DragGeometry | null = null;
 
     const registerHandle = (handle: HTMLElement) => {
       if (handleCleanups.has(handle)) return;
@@ -362,21 +416,28 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
     });
 
     const clearPreview = () => setPortfolioDndPreview(editor, null);
+    const dataAtInput = (source: SourceData, input: Input) => {
+      dragGeometry ??= captureDragGeometry(editor);
+      return targetDataAtInput(editor, source, input, dragGeometry);
+    };
     const targetCleanup = dropTargetForElements({
       element: root,
       canDrop: ({ source, input }) =>
         isSourceData(source.data) &&
-        targetDataAtInput(editor, source.data, input) !== null,
+        dataAtInput(source.data, input) !== null,
       getData: ({ source, input }) =>
         isSourceData(source.data)
-          ? (targetDataAtInput(editor, source.data, input) ?? {
+          ? (dataAtInput(source.data, input) ?? {
               kind: "inactive",
             })
           : { kind: "inactive" },
     });
     const monitorCleanup = monitorForElements({
       canMonitor: ({ source }) => isSourceData(source.data),
-      onDragStart: clearPreview,
+      onDragStart: () => {
+        clearPreview();
+        dragGeometry = captureDragGeometry(editor);
+      },
       onDropTargetChange: ({ source, location }) => {
         if (!isSourceData(source.data)) return;
         setPortfolioDndPreview(
@@ -398,6 +459,7 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
           location.current.dropTargets,
         );
         clearPreview();
+        dragGeometry = null;
         if (!preview) return;
         const transaction =
           preview.edge === "left" || preview.edge === "right"
@@ -427,6 +489,7 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
       observer.disconnect();
       cleanup();
       handleCleanups.forEach((unbind) => unbind());
+      dragGeometry = null;
       clearPreview();
     };
   }, [editor]);

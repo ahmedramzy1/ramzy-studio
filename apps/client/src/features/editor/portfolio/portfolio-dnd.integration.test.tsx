@@ -298,6 +298,53 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
     },
   );
 
+  it.each([
+    {
+      edge: "left",
+      x: 350,
+      previewRect: [500, 100, 400, 300] as const,
+    },
+    {
+      edge: "right",
+      x: 650,
+      previewRect: [100, 100, 400, 300] as const,
+    },
+  ] as const)(
+    "keeps the first $edge column snap stable after its preview reshapes the target",
+    ({ edge, x, previewRect }) => {
+      editor = createEditor();
+      render(<PortfolioDnd editor={editor} />);
+
+      const target = editor.view.dom.children[0] as HTMLElement;
+      const source = editor.view.dom.children[1] as HTMLElement;
+      const handle = source.querySelector<HTMLElement>(
+        "[data-ramzy-block-drag-handle]",
+      )!;
+      setRect(target, 100, 100, 800, 300);
+      setRect(source, 100, 440, 800, 180);
+
+      handle.dispatchEvent(dragEvent("dragstart", 130, 470));
+      target.dispatchEvent(dragEvent("dragover", x, 250));
+      expect(target.dataset.ramzyDropEdge).toBe(edge);
+
+      // The live preview turns the target into one half of the future row.
+      // Hit-testing must continue to use the original full-row safe zone.
+      setRect(
+        target,
+        previewRect[0],
+        previewRect[1],
+        previewRect[2],
+        previewRect[3],
+      );
+      target.dispatchEvent(dragEvent("dragover", x, 250));
+
+      expect(target.dataset.ramzyDropEdge).toBe(edge);
+      expect(target.classList.contains("ramzy-dnd-preview-single-row")).toBe(
+        true,
+      );
+    },
+  );
+
   it("keeps dragging after every drop while growing from two to five columns", async () => {
     editor = createEditor(["B", "C", "D", "E"]);
     render(<PortfolioDnd editor={editor} />);
