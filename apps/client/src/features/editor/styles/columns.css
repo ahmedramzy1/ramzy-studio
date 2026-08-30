@@ -346,6 +346,19 @@ div[data-type="columns"][data-width-mode="wide"] {
   transform: translateX(-50%);
 }
 
+/* A resize gesture keeps its exact released desktop width. Width presets still
+ * provide useful reset points and clear this custom value when selected. */
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-custom-width] {
+  position: relative;
+  left: 50%;
+  width: min(var(--ramzy-columns-custom-width), calc(100vw - 6rem));
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+  transform: translateX(-50%);
+}
+
 @media (max-width: $mantine-breakpoint-sm) {
   div[data-type="columns"][data-width-mode="wide"] {
     margin-left: -1rem;
@@ -364,6 +377,13 @@ div[data-type="columns"][data-width-mode="wide"] {
 
   .ProseMirror.ramzy-portfolio-editor
     div[data-type="columns"][data-width-mode="full"] {
+    left: auto;
+    width: 100%;
+    transform: none;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-custom-width] {
     left: auto;
     width: 100%;
     transform: none;
@@ -465,9 +485,14 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
     padding-left: 1rem;
   }
 
-  div[data-type="columns"][data-width-mode="wide"] {
+  div[data-type="columns"][data-width-mode="wide"],
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-custom-width] {
+    left: auto;
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    max-width: 100%;
+    transform: none;
   }
 }

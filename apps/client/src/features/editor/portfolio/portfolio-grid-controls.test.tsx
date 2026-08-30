@@ -10,63 +10,14 @@ import {
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-type DragLocation = {
-  initial: { input: { clientX: number } };
-  current: { input: { clientX: number } };
-};
+class TestPointerEvent extends MouseEvent {
+  readonly pointerId: number;
 
-const dragHarness = vi.hoisted(() => ({
-  registrations: new Map<
-    HTMLElement,
-    {
-      onDragStart?: () => void;
-      onDrag?: (event: { location: DragLocation }) => void;
-      onDrop?: (event: { location: DragLocation }) => void;
-    }
-  >(),
-}));
-
-vi.mock("@atlaskit/pragmatic-drag-and-drop/element/adapter", () => ({
-  draggable: (options: {
-    element: HTMLElement;
-    onDragStart?: () => void;
-    onDrag?: (event: { location: DragLocation }) => void;
-    onDrop?: (event: { location: DragLocation }) => void;
-  }) => {
-    dragHarness.registrations.set(options.element, options);
-    return () => dragHarness.registrations.delete(options.element);
-  },
-}));
-
-vi.mock(
-  "@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview",
-  () => ({ disableNativeDragPreview: vi.fn() }),
-);
-
-function location(from: number, to: number): DragLocation {
-  return {
-    initial: { input: { clientX: from } },
-    current: { input: { clientX: to } },
-  };
+  constructor(type: string, init: PointerEventInit) {
+    super(type, init);
+    this.pointerId = init.pointerId ?? 0;
+  }
 }
-
-function dragBy(handle: HTMLElement, delta: number) {
-  const registration = dragHarness.registrations.get(handle)!;
-  registration.onDragStart?.();
-  registration.onDrag?.({ location: location(200, 200 + delta) });
-}
-
-function dropBy(handle: HTMLElement, delta: number) {
-  const registration = dragHarness.registrations.get(handle)!;
-  registration.onDrop?.({ location: location(200, 200 + delta) });
-}
-
-vi.mock("@atlaskit/pragmatic-drag-and-drop/combine", () => ({
-  combine:
-    (...cleanups: Array<() => void>) =>
-    () =>
-      cleanups.forEach((cleanup) => cleanup()),
-}));
 
 import { PortfolioGridControls } from "./portfolio-grid-controls";
 
@@ -82,6 +33,18 @@ function rect(left: number, width: number, height = 300): DOMRect {
     y: 100,
     toJSON: () => ({}),
   };
+}
+
+function startResize(handle: HTMLElement, clientX = 200, pointerId = 7) {
+  fireEvent.pointerDown(handle, { button: 0, clientX, pointerId });
+}
+
+function moveResize(clientX: number, pointerId = 7) {
+  fireEvent.pointerMove(window, { clientX, pointerId });
+}
+
+function finishResize(clientX: number, pointerId = 7) {
+  fireEvent.pointerUp(window, { clientX, pointerId });
 }
 
 function setupGrid({ columnCount = 2, gap = 0 } = {}) {
@@ -166,6 +129,8 @@ function setupGrid({ columnCount = 2, gap = 0 } = {}) {
   render(<PortfolioGridControls editor={editor} />);
   fireEvent.pointerMove(row);
   return {
+    editor,
+    transaction,
     editorDom,
     row,
     columns,
@@ -176,6 +141,7 @@ function setupGrid({ columnCount = 2, gap = 0 } = {}) {
 
 describe("PortfolioGridControls live pointer preview", () => {
   beforeEach(() => {
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -196,7 +162,6 @@ describe("PortfolioGridControls live pointer preview", () => {
       .querySelectorAll<HTMLElement>('[data-test-editor-root="true"]')
       .forEach((element) => element.remove());
     vi.unstubAllGlobals();
-    dragHarness.registrations.clear();
   });
 
   it("changes adjacent column pixels before pointer release", async () => {
@@ -209,7 +174,10 @@ describe("PortfolioGridControls live pointer preview", () => {
       return element!;
     });
 
-    act(() => dragBy(handle, 100));
+    act(() => {
+      startResize(handle);
+      moveResize(300);
+    });
 
     expect(left.style.getPropertyValue("width")).toBe("500px");
     expect(right.style.getPropertyValue("width")).toBe("300px");
@@ -258,15 +226,18 @@ describe("PortfolioGridControls live pointer preview", () => {
     });
     const rightHandle = handles[1];
 
-    act(() => dragBy(rightHandle, 64));
+    act(() => {
+      startResize(rightHandle);
+      moveResize(264);
+    });
 
     expect(row.style.getPropertyValue("width")).toBe("928px");
     expect(rightHandle.dataset.resizing).toBe("true");
     await waitFor(() => expect(rightHandle.style.left).toBe("1019px"));
   });
 
-  it("persists only after the live resize has been previewed", async () => {
-    const { left, right } = setupGrid();
+  it("persists divider weights only after the live resize", async () => {
+    const { editor, left, right } = setupGrid();
     const handle = await waitFor(() =>
       document.querySelector<HTMLElement>(
         '.ramzy-grid-resize-handle[data-kind="divider"]',
@@ -274,11 +245,122 @@ describe("PortfolioGridControls live pointer preview", () => {
     );
     expect(handle).not.toBeNull();
 
-    act(() => dragBy(handle!, -80));
+    act(() => {
+      startResize(handle!);
+      moveResize(120);
+    });
     expect(left.style.getPropertyValue("width")).toBe("320px");
     expect(right.style.getPropertyValue("width")).toBe("480px");
+    expect(editor.view.dispatch).not.toHaveBeenCalled();
 
-    act(() => dropBy(handle!, -80));
+    act(() => finishResize(120));
     expect(handle!.dataset.resizing).toBeUndefined();
+    expect(editor.view.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([2, 3, 4, 5])(
+    "resizes only the adjacent pair in a %i-column row",
+    async (columnCount) => {
+      const { columns } = setupGrid({ columnCount });
+      const handles = await waitFor(() => {
+        const elements = document.querySelectorAll<HTMLElement>(
+          '.ramzy-grid-resize-handle[data-kind="divider"]',
+        );
+        expect(elements).toHaveLength(columnCount - 1);
+        return elements;
+      });
+      const dividerIndex = Math.min(1, handles.length - 1);
+      const originalWidths = columns.map(
+        (column) => column.getBoundingClientRect().width,
+      );
+
+      act(() => {
+        startResize(handles[dividerIndex]);
+        moveResize(248);
+      });
+
+      columns.forEach((column, index) => {
+        const width = Number.parseFloat(column.style.width);
+        if (index === dividerIndex) {
+          expect(width).toBeCloseTo(originalWidths[index] + 48);
+        } else if (index === dividerIndex + 1) {
+          expect(width).toBeCloseTo(originalWidths[index] - 48);
+        } else {
+          expect(width).toBeCloseTo(originalWidths[index]);
+        }
+      });
+    },
+  );
+
+  it("mirrors left and right outer-handle movement around the row centre", async () => {
+    const { row } = setupGrid();
+    const handles = await waitFor(() => {
+      const elements = document.querySelectorAll<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="outer"]',
+      );
+      expect(elements).toHaveLength(2);
+      return elements;
+    });
+
+    act(() => {
+      startResize(handles[0], 100);
+      moveResize(36);
+    });
+    expect(row.style.width).toBe("928px");
+    act(() => finishResize(36));
+
+    row.style.width = "";
+    act(() => {
+      startResize(handles[1], 900, 8);
+      moveResize(964, 8);
+    });
+    expect(row.style.width).toBe("928px");
+  });
+
+  it("persists the exact outer width so release matches the preview", async () => {
+    const { editor, transaction, row } = setupGrid();
+    const handle = await waitFor(() =>
+      document.querySelector<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+      ),
+    );
+    expect(handle).not.toBeNull();
+
+    act(() => {
+      startResize(handle!);
+      moveResize(235);
+    });
+    expect(row.style.width).toBe("870px");
+    expect(editor.view.dispatch).not.toHaveBeenCalled();
+
+    act(() => finishResize(235));
+    expect(transaction.setNodeMarkup).toHaveBeenCalledWith(
+      0,
+      undefined,
+      expect.objectContaining({ customWidth: 870 }),
+    );
+    expect(editor.view.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the live preview without persisting when cancelled", async () => {
+    const { editor, left, right } = setupGrid();
+    const handle = await waitFor(() =>
+      document.querySelector<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="divider"]',
+      ),
+    );
+    expect(handle).not.toBeNull();
+
+    act(() => {
+      startResize(handle!);
+      moveResize(280);
+    });
+    expect(left.style.width).toBe("480px");
+    expect(right.style.width).toBe("320px");
+
+    act(() => fireEvent.pointerCancel(window, { pointerId: 7 }));
+    expect(left.style.width).toBe("");
+    expect(right.style.width).toBe("");
+    expect(editor.view.dispatch).not.toHaveBeenCalled();
   });
 });

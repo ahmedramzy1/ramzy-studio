@@ -1,12 +1,12 @@
 export type PortfolioGridWidthMode = "normal" | "wide" | "full";
 
-const MIN_COLUMN_WIDTH = 96;
+export const MIN_PORTFOLIO_COLUMN_WIDTH = 96;
 
 export function resizedColumnWeights(
   widths: number[],
   dividerIndex: number,
   delta: number,
-  minWidth = MIN_COLUMN_WIDTH,
+  minWidth = MIN_PORTFOLIO_COLUMN_WIDTH,
 ): number[] {
   if (
     dividerIndex < 0 ||
@@ -35,7 +35,7 @@ export function resizedColumnPixelWidths(
   widths: number[],
   dividerIndex: number,
   delta: number,
-  minWidth = MIN_COLUMN_WIDTH,
+  minWidth = MIN_PORTFOLIO_COLUMN_WIDTH,
 ): number[] {
   const weights = resizedColumnWeights(widths, dividerIndex, delta, minWidth);
   const average = widths.reduce((sum, width) => sum + width, 0) / widths.length;

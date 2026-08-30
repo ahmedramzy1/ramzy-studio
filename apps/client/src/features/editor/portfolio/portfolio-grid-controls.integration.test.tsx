@@ -1,41 +1,34 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import type { Editor } from "@tiptap/core";
+import { Editor as TiptapEditor, type Editor } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import { Column, Columns } from "@docmost/editor-ext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortfolioGridControls } from "./portfolio-grid-controls";
 
-class TestDataTransfer {
-  dropEffect = "none";
-  effectAllowed = "all";
-  files = [];
-  items = [];
-  private values = new Map<string, string>();
-  get types() {
-    return [...this.values.keys()];
+class TestPointerEvent extends MouseEvent {
+  readonly pointerId: number;
+
+  constructor(type: string, init: PointerEventInit) {
+    super(type, init);
+    this.pointerId = init.pointerId ?? 0;
   }
-  clearData() {
-    this.values.clear();
-  }
-  getData(type: string) {
-    return this.values.get(type) ?? "";
-  }
-  setData(type: string, value: string) {
-    this.values.set(type, value);
-  }
-  setDragImage() {}
 }
 
-class TestDragEvent extends MouseEvent {
-  readonly dataTransfer = new TestDataTransfer() as unknown as DataTransfer;
-}
-
-function dragEvent(type: string, clientX: number, clientY = 200) {
-  return new TestDragEvent(type, {
+function pointerEvent(
+  type: string,
+  clientX: number,
+  pointerId = 9,
+  clientY = 200,
+) {
+  return new TestPointerEvent(type, {
     bubbles: true,
     cancelable: true,
+    button: 0,
     clientX,
     clientY,
+    pointerId,
   });
 }
 
@@ -119,9 +112,9 @@ function setupGrid() {
   return { row, left, right };
 }
 
-describe("portfolio grid resize through Pragmatic Drag and Drop", () => {
+describe("portfolio grid resize through browser pointer events", () => {
   beforeEach(() => {
-    vi.stubGlobal("DragEvent", TestDragEvent);
+    vi.stubGlobal("PointerEvent", TestPointerEvent);
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -142,16 +135,14 @@ describe("portfolio grid resize through Pragmatic Drag and Drop", () => {
     vi.unstubAllGlobals();
   });
 
-  it("updates divider and row widths during the native drag frame", () => {
+  it("updates divider and row widths during native pointer movement", () => {
     const { row, left, right } = setupGrid();
     const divider = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="divider"]',
     )!;
-    expect(divider.draggable).toBe(true);
-
     act(() => {
-      divider.dispatchEvent(dragEvent("dragstart", 500));
-      document.body.dispatchEvent(dragEvent("dragover", 600));
+      divider.dispatchEvent(pointerEvent("pointerdown", 500));
+      window.dispatchEvent(pointerEvent("pointermove", 600));
     });
 
     expect(left.style.width).toBe("500px");
@@ -159,18 +150,53 @@ describe("portfolio grid resize through Pragmatic Drag and Drop", () => {
     expect(divider.dataset.resizing).toBe("true");
 
     act(() => {
-      document.body.dispatchEvent(dragEvent("drop", 600));
+      window.dispatchEvent(pointerEvent("pointerup", 600));
     });
 
     const outerRight = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
     )!;
     act(() => {
-      outerRight.dispatchEvent(dragEvent("dragstart", 900));
-      document.body.dispatchEvent(dragEvent("dragover", 964));
+      outerRight.dispatchEvent(pointerEvent("pointerdown", 900, 10));
+      window.dispatchEvent(pointerEvent("pointermove", 964, 10));
     });
 
     expect(row.style.width).toBe("928px");
     expect(outerRight.dataset.resizing).toBe("true");
+  });
+
+  it("serializes exact row width and lets a width preset reset it", () => {
+    const editor = new TiptapEditor({
+      extensions: [StarterKit, Columns, Column],
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "columns",
+            attrs: {
+              layout: "two_equal",
+              widthMode: "wide",
+              customWidth: 870,
+            },
+            content: [
+              { type: "column", content: [{ type: "paragraph" }] },
+              { type: "column", content: [{ type: "paragraph" }] },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(editor.getHTML()).toContain('data-custom-width="870"');
+    expect(editor.getHTML()).toContain(
+      "--ramzy-columns-custom-width: 870px",
+    );
+
+    editor.commands.setTextSelection(2);
+    expect(editor.commands.setColumnsWidthMode("normal")).toBe(true);
+    expect(editor.getJSON().content?.[0].attrs).toEqual(
+      expect.objectContaining({ customWidth: null, widthMode: "normal" }),
+    );
+    editor.destroy();
   });
 });

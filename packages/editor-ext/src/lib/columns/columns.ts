@@ -26,6 +26,7 @@ export type WidthMode = "normal" | "wide" | "full";
 export interface ColumnsAttributes {
   layout?: ColumnsLayout;
   widthMode?: WidthMode;
+  customWidth?: number | null;
   verticalAlign?: ColumnsVerticalAlign;
   gap?: ColumnsGap;
 }
@@ -95,6 +96,29 @@ export const Columns = Node.create<ColumnsOptions>({
           if (!attributes.widthMode || attributes.widthMode === "normal")
             return {};
           return { "data-width-mode": attributes.widthMode };
+        },
+      },
+      customWidth: {
+        default: null,
+        parseHTML: (element) => {
+          const width = Number.parseFloat(
+            element.getAttribute("data-custom-width") || "",
+          );
+          return Number.isFinite(width) && width > 0 ? width : null;
+        },
+        renderHTML: (attributes: ColumnsAttributes) => {
+          const width = attributes.customWidth;
+          if (
+            typeof width !== "number" ||
+            !Number.isFinite(width) ||
+            width <= 0
+          )
+            return {};
+          const roundedWidth = Math.round(width);
+          return {
+            "data-custom-width": roundedWidth,
+            style: `--ramzy-columns-custom-width: ${roundedWidth}px`,
+          };
         },
       },
       verticalAlign: {
@@ -174,7 +198,10 @@ export const Columns = Node.create<ColumnsOptions>({
       setColumnsWidthMode:
         (widthMode) =>
         ({ commands }) =>
-          commands.updateAttributes("columns", { widthMode }),
+          commands.updateAttributes("columns", {
+            widthMode,
+            customWidth: null,
+          }),
 
       setColumnCount:
         (count: number) =>
