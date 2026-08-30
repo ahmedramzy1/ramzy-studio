@@ -8,6 +8,7 @@ import React from "react";
 export function BlockDragHandle({ label = "Drag block" }: { label?: string }) {
   return (
     <div
+      className="ramzy-block-drag-handle"
       data-drag-handle
       data-ramzy-block-drag-handle
       contentEditable={false}
@@ -15,32 +16,20 @@ export function BlockDragHandle({ label = "Drag block" }: { label?: string }) {
       tabIndex={-1}
       aria-label={label}
       title={label}
-      style={{
-        position: "absolute",
-        left: -42,
-        top: 10,
-        zIndex: 8,
-        width: 34,
-        height: 48,
-        display: "grid",
-        placeItems: "center",
-        border: "1px solid var(--mantine-color-default-border)",
-        borderRadius: 8,
-        background: "var(--mantine-color-body)",
-        color: "var(--mantine-color-dimmed)",
-        boxShadow: "0 2px 10px rgba(0,0,0,.08)",
-        cursor: "grab",
-        userSelect: "none",
-        touchAction: "none",
-      }}
     >
-      <svg width="14" height="22" viewBox="0 0 14 22" fill="currentColor" aria-hidden="true">
-        <circle cx="4" cy="5" r="1.5" />
-        <circle cx="10" cy="5" r="1.5" />
-        <circle cx="4" cy="11" r="1.5" />
-        <circle cx="10" cy="11" r="1.5" />
-        <circle cx="4" cy="17" r="1.5" />
-        <circle cx="10" cy="17" r="1.5" />
+      <svg
+        width="10"
+        height="16"
+        viewBox="0 0 10 16"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <circle cx="3" cy="3" r="1" />
+        <circle cx="7" cy="3" r="1" />
+        <circle cx="3" cy="8" r="1" />
+        <circle cx="7" cy="8" r="1" />
+        <circle cx="3" cy="13" r="1" />
+        <circle cx="7" cy="13" r="1" />
       </svg>
     </div>
   );

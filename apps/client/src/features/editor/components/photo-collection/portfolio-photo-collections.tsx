@@ -133,7 +133,7 @@ function PhotoCollectionView({ editor, node, selected, updateAttributes }: NodeV
       {editable && <BlockDragHandle label={`Drag photo ${kind} block`} />}
       <div style={{ border: editable ? "1px solid var(--mantine-color-default-border)" : 0, borderRadius: 10, overflow: "hidden", background: "var(--mantine-color-body)" }}>
         {(editable || node.attrs.title) && (
-          <input value={node.attrs.title || ""} readOnly={!editable} placeholder={kind === "album" ? "Photo album title…" : "Image grid title…"} onChange={(event) => updateAttributes({ title: event.currentTarget.value })} style={{ width: "100%", height: 48, boxSizing: "border-box", border: 0, borderBottom: editable ? "1px solid var(--mantine-color-default-border)" : 0, padding: "0 14px", background: "transparent", color: "inherit", fontSize: 16, fontWeight: 700, outline: "none" }} />
+          <input className="ramzy-photo-collection-title" value={node.attrs.title || ""} readOnly={!editable} placeholder={kind === "album" ? "Photo album title…" : "Image grid title…"} onChange={(event) => updateAttributes({ title: event.currentTarget.value })} style={{ width: "100%", height: 48, boxSizing: "border-box", border: 0, borderBottom: editable ? "1px solid var(--mantine-color-default-border)" : 0, padding: "0 14px", background: "transparent", color: "inherit", fontSize: 16, fontWeight: 700, outline: "none" }} />
         )}
 
         {kind === "grid" && images.length > 0 && (

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -78,18 +84,23 @@ function rect(left: number, width: number, height = 300): DOMRect {
   };
 }
 
-function setupGrid() {
+function setupGrid({ columnCount = 2, gap = 0 } = {}) {
   const editorDom = document.createElement("div");
   editorDom.dataset.testEditorRoot = "true";
   const row = document.createElement("div");
-  const left = document.createElement("div");
-  const right = document.createElement("div");
+  const columns = Array.from({ length: columnCount }, () =>
+    document.createElement("div"),
+  );
   row.dataset.type = "columns";
-  left.dataset.type = "column";
-  right.dataset.type = "column";
-  row.append(left, right);
+  columns.forEach((column) => {
+    column.dataset.type = "column";
+    row.append(column);
+  });
   editorDom.append(row);
   document.body.append(editorDom);
+
+  const availableWidth = 800 - gap * (columnCount - 1);
+  const defaultColumnWidth = availableWidth / columnCount;
 
   Object.defineProperty(editorDom, "getBoundingClientRect", {
     value: () => rect(100, 800),
@@ -97,22 +108,30 @@ function setupGrid() {
   Object.defineProperty(row, "getBoundingClientRect", {
     value: () => rect(100, Number.parseFloat(row.style.width) || 800),
   });
-  Object.defineProperty(left, "getBoundingClientRect", {
-    value: () => rect(100, Number.parseFloat(left.style.width) || 400),
-  });
-  Object.defineProperty(right, "getBoundingClientRect", {
-    value: () =>
-      rect(
-        100 + (Number.parseFloat(left.style.width) || 400),
-        Number.parseFloat(right.style.width) || 400,
-      ),
+  columns.forEach((column, index) => {
+    Object.defineProperty(column, "getBoundingClientRect", {
+      value: () => {
+        const precedingWidth = columns
+          .slice(0, index)
+          .reduce(
+            (sum, candidate) =>
+              sum +
+              (Number.parseFloat(candidate.style.width) || defaultColumnWidth),
+            0,
+          );
+        return rect(
+          100 + precedingWidth + gap * index,
+          Number.parseFloat(column.style.width) || defaultColumnWidth,
+        );
+      },
+    });
   });
 
   const columnNode = { attrs: {}, nodeSize: 2 };
   const rowNode = {
     type: { name: "columns" },
     attrs: {},
-    childCount: 2,
+    childCount: columnCount,
     forEach: (
       callback: (
         node: typeof columnNode,
@@ -120,8 +139,9 @@ function setupGrid() {
         index: number,
       ) => void,
     ) => {
-      callback(columnNode, 0, 0);
-      callback(columnNode, 2, 1);
+      columns.forEach((_column, index) =>
+        callback(columnNode, index * 2, index),
+      );
     },
   };
   const transaction = {
@@ -145,7 +165,13 @@ function setupGrid() {
 
   render(<PortfolioGridControls editor={editor} />);
   fireEvent.pointerMove(row);
-  return { editorDom, row, left, right };
+  return {
+    editorDom,
+    row,
+    columns,
+    left: columns[0],
+    right: columns[1],
+  };
 }
 
 describe("PortfolioGridControls live pointer preview", () => {
@@ -190,6 +216,36 @@ describe("PortfolioGridControls live pointer preview", () => {
     expect(handle.dataset.resizing).toBe("true");
     await waitFor(() => expect(handle.style.left).toBe("591px"));
   });
+
+  it.each([2, 3, 4, 5])(
+    "centres every divider and guide across a %i-column row",
+    async (columnCount) => {
+      const gap = 32;
+      const { columns } = setupGrid({ columnCount, gap });
+      const handles = await waitFor(() => {
+        const elements = document.querySelectorAll<HTMLElement>(
+          '.ramzy-grid-resize-handle[data-kind="divider"]',
+        );
+        expect(elements).toHaveLength(columnCount - 1);
+        return elements;
+      });
+      const guides = document.querySelectorAll<HTMLElement>(
+        ".ramzy-grid-divider-guide",
+      );
+      expect(guides).toHaveLength(columnCount - 1);
+
+      handles.forEach((handle, index) => {
+        const leftRect = columns[index].getBoundingClientRect();
+        const rightRect = columns[index + 1].getBoundingClientRect();
+        const midpoint = (leftRect.right + rightRect.left) / 2;
+
+        expect(Number.parseFloat(handle.style.left) + 9).toBeCloseTo(midpoint);
+        expect(Number.parseFloat(guides[index].style.left)).toBeCloseTo(
+          midpoint,
+        );
+      });
+    },
+  );
 
   it("changes the full row width before pointer release", async () => {
     const { row } = setupGrid();

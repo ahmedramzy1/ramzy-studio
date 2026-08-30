@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/core";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
@@ -384,14 +384,28 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         />
       ))}
       {geometry.dividers.map((handle, index) => (
-        <div
-          key={`divider-${index}`}
-          className="ramzy-grid-resize-handle"
-          data-kind="divider"
-          data-index={index}
-          title="Drag to resize columns"
-          style={{ left: handle.left, top: handle.top, height: handle.height }}
-        />
+        <Fragment key={`divider-${index}`}>
+          <div
+            className="ramzy-grid-divider-guide"
+            data-index={index}
+            style={{
+              left: handle.left + 9,
+              top: handle.top,
+              height: handle.height,
+            }}
+          />
+          <div
+            className="ramzy-grid-resize-handle"
+            data-kind="divider"
+            data-index={index}
+            title="Drag to resize columns"
+            style={{
+              left: handle.left,
+              top: handle.top,
+              height: handle.height,
+            }}
+          />
+        </Fragment>
       ))}
       {widthLabel && (
         <div

@@ -277,16 +277,6 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   flex: 2;
 }
 
-.ProseMirror.ramzy-portfolio-editor[contenteditable="true"]
-  div[data-type="columns"].has-focus
-  > div[data-type="column"]
-  + div[data-type="column"] {
-  border-left: 1px dashed
-    light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
-  padding-left: calc(var(--ramzy-columns-gap) - 1px);
-  margin-left: calc(var(--ramzy-columns-gap) * -1);
-}
-
 .ProseMirror.ramzy-portfolio-editor div[data-type="column"] > :first-child {
   margin-top: 0;
 }
@@ -400,6 +390,20 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
   pointer-events: auto;
   cursor: col-resize;
   touch-action: none;
+}
+
+.ramzy-grid-divider-guide {
+  position: fixed;
+  width: 0;
+  border-left: 1px dashed
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
+  pointer-events: none;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="column"]
+  .ramzy-photo-collection-title {
+  padding-left: 2.5rem !important;
 }
 
 .ramzy-grid-resize-handle::after {
