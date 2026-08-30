@@ -9,6 +9,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortfolioDnd } from "./portfolio-dnd";
 import { PortfolioDndPreview } from "./portfolio-dnd-preview-extension";
 
+type ElementAutoScrollRegistration = {
+  element: Element;
+  getAllowedAxis?: () => string;
+};
+
+const autoScrollHarness = vi.hoisted(() => ({
+  elements: [] as ElementAutoScrollRegistration[],
+  windows: [] as Array<{ getAllowedAxis?: () => string }>,
+}));
+
+vi.mock("@atlaskit/pragmatic-drag-and-drop-auto-scroll/element", () => ({
+  autoScrollForElements: (args: ElementAutoScrollRegistration) => {
+    autoScrollHarness.elements.push(args);
+    return () => undefined;
+  },
+  autoScrollWindowForElements: (args: { getAllowedAxis?: () => string }) => {
+    autoScrollHarness.windows.push(args);
+    return () => undefined;
+  },
+}));
+
 const TestColumns = Node.create({
   name: "columns",
   group: "block",
@@ -289,10 +310,80 @@ function createRoadEditor() {
   });
 }
 
+function createTwoGridEditor() {
+  const element = document.createElement("div");
+  document.body.append(element);
+  return new Editor({
+    element,
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      TestColumns,
+      TestColumn,
+      TestMedia,
+      PortfolioDndPreview,
+    ],
+    content: {
+      type: "doc",
+      content: [
+        {
+          type: "columns",
+          attrs: { layout: "two_equal" },
+          content: [
+            {
+              type: "column",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Source remaining" }],
+                },
+              ],
+            },
+            {
+              type: "column",
+              content: [
+                { type: "media", attrs: { label: "Grid transfer" } },
+                { type: "paragraph" },
+              ],
+            },
+          ],
+        },
+        {
+          type: "columns",
+          attrs: { layout: "two_equal" },
+          content: [
+            {
+              type: "column",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Destination A" }],
+                },
+              ],
+            },
+            {
+              type: "column",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Destination B" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  });
+}
+
 describe("portfolio Pragmatic Drag and Drop integration", () => {
   let editor: Editor | null = null;
 
   beforeEach(() => {
+    autoScrollHarness.elements.length = 0;
+    autoScrollHarness.windows.length = 0;
     vi.stubGlobal("DragEvent", TestDragEvent);
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
       window.setTimeout(() => callback(performance.now()), 0),
@@ -578,18 +669,18 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
       direction: "above",
       targetIndex: 0,
       clientY: 80,
-      expected: ["Road above", "", "Remaining lane", "Road below"],
-      expectedTypes: ["paragraph", "media", "paragraph", "paragraph"],
+      expected: ["Road above", "Remaining lane", "Road below"],
+      expectedTypes: ["columns", "paragraph", "paragraph"],
     },
     {
       direction: "below",
       targetIndex: 2,
       clientY: 760,
-      expected: ["Road above", "Remaining lane", "", "Road below"],
-      expectedTypes: ["paragraph", "paragraph", "media", "paragraph"],
+      expected: ["Road above", "Remaining lane", "Road below"],
+      expectedTypes: ["paragraph", "paragraph", "columns"],
     },
   ] as const)(
-    "keeps a grid card scoped to its road when extracting $direction",
+    "moves a grid card into the standalone row $direction",
     ({ targetIndex, clientY, expected, expectedTypes }) => {
       editor = createRoadEditor();
       render(<PortfolioDnd editor={editor} />);
@@ -620,14 +711,11 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
 
       expect(
         editor.view.dom.querySelectorAll(".ramzy-dnd-row-slot"),
-      ).toHaveLength(1);
-      expect(
-        editor.view.dom.querySelector(".ramzy-dnd-column-slot"),
-      ).toBeNull();
+      ).toHaveLength(0);
       expect(
         unrelatedTarget.classList.contains("ramzy-dnd-preview-single-row"),
-      ).toBe(false);
-      expect(columns[1].classList).toContain("ramzy-dnd-source-column-vacated");
+      ).toBe(true);
+      expect(unrelatedTarget.dataset.ramzyDropEdge).toBe("right");
 
       unrelatedTarget.dispatchEvent(dragEvent("drop", 500, clientY));
 
@@ -641,15 +729,105 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
           (_, index) => editor!.state.doc.child(index).textContent,
         ),
       ).toEqual(expected);
-      expect(editor.state.doc.childCount).toBe(4);
+      expect(editor.state.doc.childCount).toBe(3);
       expect(
         Array.from(
           { length: editor.state.doc.childCount },
           (_, index) => editor!.state.doc.child(index).type.name,
         ),
       ).toEqual(expectedTypes);
+      const destination = editor.state.doc.child(targetIndex === 0 ? 0 : 2);
+      expect(destination.childCount).toBe(2);
+      expect(destination.child(0).firstChild?.type.name).toBe("paragraph");
+      expect(destination.child(1).firstChild?.type.name).toBe("media");
     },
   );
+
+  it("moves a grid card into a different multi-column row", () => {
+    editor = createTwoGridEditor();
+    render(<PortfolioDnd editor={editor} />);
+
+    const sourceRow = editor.view.dom.children[0] as HTMLElement;
+    const destinationRow = editor.view.dom.children[1] as HTMLElement;
+    const sourceColumns = Array.from(sourceRow.children) as HTMLElement[];
+    const destinationColumns = Array.from(
+      destinationRow.children,
+    ) as HTMLElement[];
+    const source = sourceColumns[1].querySelector<HTMLElement>(
+      '.react-renderer[data-type="media"]',
+    )!;
+    const handle = source.querySelector<HTMLElement>(
+      "[data-ramzy-block-drag-handle]",
+    )!;
+
+    setRect(sourceRow, 100, 100, 800, 300);
+    setRect(sourceColumns[0], 100, 100, 390, 300);
+    setRect(sourceColumns[1], 510, 100, 390, 300);
+    setRect(source, 510, 150, 390, 180);
+    setRect(destinationRow, 100, 500, 800, 300);
+    setRect(destinationColumns[0], 100, 500, 390, 300);
+    setRect(destinationColumns[1], 510, 500, 390, 300);
+
+    handle.dispatchEvent(dragEvent("dragstart", 540, 180));
+    const dragOver = dragEvent("dragover", 890, 650);
+    destinationColumns[1].dispatchEvent(dragOver);
+
+    expect(dragOver.defaultPrevented).toBe(true);
+    expect(
+      editor.view.dom.querySelector(".ramzy-dnd-column-slot"),
+    ).not.toBeNull();
+
+    destinationColumns[1].dispatchEvent(dragEvent("drop", 890, 650));
+
+    expect(editor.state.doc.childCount).toBe(2);
+    expect(editor.state.doc.child(0).type.name).toBe("paragraph");
+    expect(editor.state.doc.child(0).textContent).toBe("Source remaining");
+    expect(editor.state.doc.child(1).type.name).toBe("columns");
+    expect(editor.state.doc.child(1).childCount).toBe(3);
+    expect(
+      Array.from(
+        { length: 3 },
+        (_, index) => editor!.state.doc.child(1).child(index).textContent,
+      ),
+    ).toEqual(["Destination A", "Destination B", ""]);
+    expect(editor.state.doc.child(1).child(2).firstChild?.type.name).toBe(
+      "media",
+    );
+  });
+
+  it("registers the editor viewport and keeps frozen targets aligned while it scrolls", () => {
+    editor = createEditor();
+    const viewport = document.createElement("div");
+    viewport.style.overflowY = "auto";
+    document.body.append(viewport);
+    viewport.append(editor.view.dom.parentElement!);
+    render(<PortfolioDnd editor={editor} />);
+
+    const target = editor.view.dom.children[0] as HTMLElement;
+    const source = editor.view.dom.children[1] as HTMLElement;
+    const handle = source.querySelector<HTMLElement>(
+      "[data-ramzy-block-drag-handle]",
+    )!;
+    setRect(target, 100, 700, 800, 200);
+    setRect(source, 100, 1000, 800, 180);
+
+    expect(
+      autoScrollHarness.elements.some(
+        (registration) => registration.element === viewport,
+      ),
+    ).toBe(true);
+    expect(autoScrollHarness.windows).toHaveLength(1);
+
+    handle.dispatchEvent(dragEvent("dragstart", 140, 1050));
+    viewport.scrollTop = 600;
+    const dragOver = dragEvent("dragover", 700, 150);
+    target.dispatchEvent(dragOver);
+
+    expect(dragOver.defaultPrevented).toBe(true);
+    expect(target.classList).toContain("ramzy-dnd-preview-single-row");
+    expect(target.dataset.ramzyDropEdge).toBe("right");
+    handle.dispatchEvent(dragEvent("dragend", 700, 150));
+  });
 
   it("keeps one extraction destination when the pointer leaves the row width", () => {
     editor = createRoadEditor();

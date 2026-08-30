@@ -211,6 +211,67 @@ describe("portfolio grid drop", () => {
     ).toEqual(["A", "B", "C", "D", "E"]);
   });
 
+  it.each(
+    [2, 3, 4, 5].flatMap((sourceCount) =>
+      [2, 3, 4].map((destinationCount) => ({
+        sourceCount,
+        destinationCount,
+      })),
+    ),
+  )(
+    "moves from a $sourceCount-column row into a $destinationCount-column row",
+    ({ sourceCount, destinationCount }) => {
+      const sourceColumns = Array.from({ length: sourceCount }, (_, index) =>
+        column(`Source ${index + 1}`),
+      );
+      const destinationColumns = Array.from(
+        { length: destinationCount },
+        (_, index) => column(`Destination ${index + 1}`),
+      );
+      const sourceRow = schema.nodes.columns.create(
+        { layout: `${sourceCount}_columns` },
+        sourceColumns,
+      );
+      const destinationRow = schema.nodes.columns.create(
+        { layout: `${destinationCount}_columns` },
+        destinationColumns,
+      );
+      const doc = schema.nodes.doc.create(null, [sourceRow, destinationRow]);
+      const sourceColumnIndex = sourceCount - 1;
+      const sourcePosition =
+        1 +
+        sourceColumns
+          .slice(0, sourceColumnIndex)
+          .reduce(
+            (position, sourceColumn) => position + sourceColumn.nodeSize,
+            0,
+          ) +
+        1;
+      const state = EditorState.create({ doc });
+
+      const tr = createPortfolioGridDropTransaction(
+        state,
+        sourceRow.nodeSize,
+        "right",
+        destinationCount - 1,
+        sourcePosition,
+      );
+
+      expect(tr).not.toBeNull();
+      const destination = tr!.doc.lastChild!;
+      expect(destination.type.name).toBe("columns");
+      expect(destination.childCount).toBe(destinationCount + 1);
+      expect(destination.lastChild?.textContent).toBe(`Source ${sourceCount}`);
+      expect(destination.attrs.layout).toBe(
+        destinationCount + 1 === 3
+          ? "three_equal"
+          : destinationCount + 1 === 4
+            ? "four_equal"
+            : "five_equal",
+      );
+    },
+  );
+
   it("caps drag-created rows at five columns", () => {
     const existingColumns = schema.nodes.columns.create(
       { layout: "five_equal" },

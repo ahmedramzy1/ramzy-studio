@@ -12,7 +12,10 @@ import {
   attachClosestEdge,
   extractClosestEdge,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge";
-import { autoScrollWindowForElements } from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
+import {
+  autoScrollForElements,
+  autoScrollWindowForElements,
+} from "@atlaskit/pragmatic-drag-and-drop-auto-scroll/element";
 import type {
   DropTargetRecord,
   Input,
@@ -68,6 +71,7 @@ type FrozenRowGeometry = {
 
 type DragGeometry = {
   rows: FrozenRowGeometry[];
+  verticalScrollOffset: number;
 };
 
 function isSourceData(data: unknown): data is SourceData {
@@ -233,9 +237,39 @@ function freezeRect(rect: DOMRect): FrozenRect {
   };
 }
 
-function captureDragGeometry(editor: Editor): DragGeometry {
+function verticalScrollContainers(root: HTMLElement) {
+  const containers: HTMLElement[] = [];
+  for (
+    let element: HTMLElement | null = root;
+    element;
+    element = element.parentElement
+  ) {
+    const overflowY = window.getComputedStyle(element).overflowY;
+    if (
+      overflowY === "auto" ||
+      overflowY === "scroll" ||
+      overflowY === "overlay"
+    ) {
+      containers.push(element);
+    }
+  }
+  return containers;
+}
+
+function verticalScrollOffset(scrollContainers: readonly HTMLElement[]) {
+  return (
+    window.scrollY +
+    scrollContainers.reduce((offset, element) => offset + element.scrollTop, 0)
+  );
+}
+
+function captureDragGeometry(
+  editor: Editor,
+  scrollContainers: readonly HTMLElement[],
+): DragGeometry {
   const root = editor.view.dom;
   return {
+    verticalScrollOffset: verticalScrollOffset(scrollContainers),
     rows: Array.from(root.children).flatMap((child) => {
       if (!(child instanceof HTMLElement)) return [];
       const targetPosition = topLevelPosition(editor, child);
@@ -253,6 +287,18 @@ function captureDragGeometry(editor: Editor): DragGeometry {
       ];
     }),
   };
+}
+
+function inputForFrozenGeometry(
+  scrollContainers: readonly HTMLElement[],
+  geometry: DragGeometry,
+  input: Input,
+) {
+  const scrollDelta =
+    verticalScrollOffset(scrollContainers) - geometry.verticalScrollOffset;
+  return scrollDelta === 0
+    ? input
+    : { ...input, clientY: input.clientY + scrollDelta };
 }
 
 function rowGeometryAtInput(geometry: DragGeometry, input: Input) {
@@ -347,10 +393,8 @@ function targetForGridSource(
   row: FrozenRowGeometry,
   input: Input,
 ): Record<string | symbol, unknown> | null {
-  // A block that starts inside a grid keeps that row as its drag context.
-  // Moving vertically leaves the row; moving horizontally only reorders its
-  // lanes. Other document rows must never become nested/side targets midway
-  // through the same drag.
+  // While the pointer remains in the source row, vertical movement extracts
+  // the block and horizontal movement reorders its lanes.
   const verticalBand = verticalDropBand(row.rect);
   if (input.clientY <= row.rect.top + verticalBand) {
     return targetForVerticalRowExit(row, input, "top");
@@ -364,16 +408,11 @@ function targetForGridSource(
   return targetForColumnLane(source, row, input);
 }
 
-function targetDataAtInput(
+function targetForDestinationRow(
   source: SourceData,
+  rowGeometry: FrozenRowGeometry,
   input: Input,
-  geometry: DragGeometry,
 ): Record<string | symbol, unknown> | null {
-  const sourceRow = sourceRowGeometry(geometry, source);
-  if (sourceRow) return targetForGridSource(source, sourceRow, input);
-
-  const rowGeometry = rowGeometryAtInput(geometry, input);
-  if (!rowGeometry) return null;
   const { element: row, targetPosition, rect: rowRect } = rowGeometry;
 
   if (!row.matches('[data-type="columns"]')) {
@@ -407,9 +446,26 @@ function targetDataAtInput(
   return targetForColumnLane(source, rowGeometry, input);
 }
 
+function targetDataAtInput(
+  source: SourceData,
+  input: Input,
+  geometry: DragGeometry,
+): Record<string | symbol, unknown> | null {
+  const sourceRow = sourceRowGeometry(geometry, source);
+  const rowGeometry = rowGeometryAtInput(geometry, input);
+  if (rowGeometry && rowGeometry !== sourceRow) {
+    return targetForDestinationRow(source, rowGeometry, input);
+  }
+  if (sourceRow) return targetForGridSource(source, sourceRow, input);
+  return rowGeometry
+    ? targetForDestinationRow(source, rowGeometry, input)
+    : null;
+}
+
 function PortfolioDndController({ editor }: { editor: Editor }) {
   useEffect(() => {
     const root = editor.view.dom;
+    const scrollContainers = verticalScrollContainers(root);
     const handleCleanups = new Map<HTMLElement, () => void>();
     let dragGeometry: DragGeometry | null = null;
 
@@ -495,8 +551,12 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
     root.addEventListener("dragstart", onNativeDragStart, true);
     root.addEventListener("dragend", onNativeDragEnd, true);
     const dataAtInput = (source: SourceData, input: Input) => {
-      dragGeometry ??= captureDragGeometry(editor);
-      return targetDataAtInput(source, input, dragGeometry);
+      dragGeometry ??= captureDragGeometry(editor, scrollContainers);
+      return targetDataAtInput(
+        source,
+        inputForFrozenGeometry(scrollContainers, dragGeometry, input),
+        dragGeometry,
+      );
     };
     const targetCleanup = dropTargetForElements({
       element: root,
@@ -512,7 +572,7 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
       onDragStart: () => {
         clearPreview();
         setDragUiActive(true);
-        dragGeometry = captureDragGeometry(editor);
+        dragGeometry = captureDragGeometry(editor, scrollContainers);
       },
       onDropTargetChange: ({ source, location }) => {
         if (!isSourceData(source.data)) return;
@@ -557,10 +617,21 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
       },
     });
 
+    const autoScrollCleanups = scrollContainers.map((element) =>
+      autoScrollForElements({
+        element,
+        canScroll: ({ source }) => isSourceData(source.data),
+        getAllowedAxis: () => "vertical",
+      }),
+    );
     const cleanup = combine(
       targetCleanup,
       monitorCleanup,
-      autoScrollWindowForElements({ getAllowedAxis: () => "vertical" }),
+      autoScrollWindowForElements({
+        canScroll: ({ source }) => isSourceData(source.data),
+        getAllowedAxis: () => "vertical",
+      }),
+      ...autoScrollCleanups,
     );
     return () => {
       observer.disconnect();
