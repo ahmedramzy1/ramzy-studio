@@ -86,6 +86,12 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   padding: 0;
 }
 
+/* Keep the editable canvas tall enough to remain the active drop surface when
+ * a short document's last row is pulled downward into a new road. */
+.ProseMirror.ramzy-portfolio-editor[contenteditable="true"] {
+  min-height: max(240px, calc(100dvh - 12rem));
+}
+
 .ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source {
   opacity: 0.34;
   pointer-events: none;
@@ -373,7 +379,10 @@ div[data-type="columns"][data-width-mode="wide"] {
   pointer-events: none;
 }
 
-body:has(.ramzy-dnd-source) .ramzy-grid-resize-layer {
+body:has(.ramzy-dnd-source) .ramzy-grid-resize-layer,
+body.ramzy-portfolio-dnd-active .ramzy-grid-resize-layer,
+body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-block,
+body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
   display: none;
 }
 

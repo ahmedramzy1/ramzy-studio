@@ -544,6 +544,8 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
       handle.dispatchEvent(dragEvent("dragstart", 540, 320));
       unrelatedTarget.dispatchEvent(dragEvent("dragover", 500, clientY));
 
+      expect(document.body.classList).toContain("ramzy-portfolio-dnd-active");
+
       expect(
         editor.view.dom.querySelectorAll(".ramzy-dnd-row-slot"),
       ).toHaveLength(1);
@@ -556,6 +558,10 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
       expect(columns[1].classList).toContain("ramzy-dnd-source-column-vacated");
 
       unrelatedTarget.dispatchEvent(dragEvent("drop", 500, clientY));
+
+      expect(document.body.classList).not.toContain(
+        "ramzy-portfolio-dnd-active",
+      );
 
       expect(
         Array.from(
@@ -572,6 +578,73 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
       ).toEqual(expectedTypes);
     },
   );
+
+  it("keeps one extraction destination when the pointer leaves the row width", () => {
+    editor = createRoadEditor();
+    render(<PortfolioDnd editor={editor} />);
+
+    const row = editor.view.dom.children[1] as HTMLElement;
+    const columns = Array.from(row.children) as HTMLElement[];
+    const source = columns[1].querySelector<HTMLElement>(
+      '.react-renderer[data-type="media"]',
+    )!;
+    const handle = source.querySelector<HTMLElement>(
+      "[data-ramzy-block-drag-handle]",
+    )!;
+
+    setRect(editor.view.dom.children[0] as HTMLElement, 100, 20, 800, 140);
+    setRect(row, 100, 200, 800, 400);
+    setRect(columns[0], 100, 200, 390, 400);
+    setRect(columns[1], 510, 200, 390, 400);
+    setRect(source, 510, 280, 390, 180);
+    setRect(editor.view.dom.children[2] as HTMLElement, 100, 650, 800, 220);
+
+    handle.dispatchEvent(dragEvent("dragstart", 540, 320));
+    editor.view.dom.dispatchEvent(dragEvent("dragover", 980, 760));
+
+    expect(
+      editor.view.dom.querySelectorAll(
+        ".ramzy-dnd-row-slot, .ramzy-dnd-column-slot",
+      ),
+    ).toHaveLength(1);
+    expect(editor.view.dom.querySelector(".ramzy-dnd-row-slot")).not.toBeNull();
+
+    editor.view.dom.dispatchEvent(dragEvent("drop", 980, 760));
+
+    expect(editor.state.doc.child(2).type.name).toBe("media");
+    expect(document.body.classList).not.toContain("ramzy-portfolio-dnd-active");
+  });
+
+  it("keeps unrelated editor guides suppressed through a no-op lane", () => {
+    editor = createTwoColumnEditor();
+    render(<PortfolioDnd editor={editor} />);
+
+    const row = editor.view.dom.firstElementChild as HTMLElement;
+    const columns = Array.from(row.children) as HTMLElement[];
+    const source = columns[1].querySelector<HTMLElement>(
+      '.react-renderer[data-type="media"]',
+    )!;
+    const handle = source.querySelector<HTMLElement>(
+      "[data-ramzy-block-drag-handle]",
+    )!;
+    setRect(row, 100, 100, 800, 400);
+    setRect(columns[0], 100, 100, 390, 400);
+    setRect(columns[1], 510, 100, 390, 400);
+    setRect(source, 510, 180, 390, 180);
+
+    handle.dispatchEvent(dragEvent("dragstart", 540, 220));
+    columns[1].dispatchEvent(dragEvent("dragover", 700, 300));
+
+    expect(document.body.classList).toContain("ramzy-portfolio-dnd-active");
+    expect(
+      editor.view.dom.querySelector(
+        ".ramzy-dnd-row-slot, .ramzy-dnd-column-slot",
+      ),
+    ).toBeNull();
+
+    handle.dispatchEvent(dragEvent("dragend", 700, 300));
+    expect(document.body.classList).not.toContain("ramzy-portfolio-dnd-active");
+  });
 
   it("previews and swaps the right grid item to the left", () => {
     editor = createTwoColumnEditor();

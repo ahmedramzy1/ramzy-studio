@@ -28,6 +28,7 @@ import {
 
 const PORTFOLIO_BLOCK = "ramzy-portfolio-block";
 const PORTFOLIO_TARGET = "ramzy-portfolio-target";
+const PORTFOLIO_DND_ACTIVE_CLASS = "ramzy-portfolio-dnd-active";
 const MAX_COLUMNS = 5;
 
 type SourceData = {
@@ -350,16 +351,15 @@ function targetForGridSource(
   // Moving vertically leaves the row; moving horizontally only reorders its
   // lanes. Other document rows must never become nested/side targets midway
   // through the same drag.
-  if (input.clientX < row.rect.left || input.clientX > row.rect.right) {
-    return null;
-  }
-
   const verticalBand = verticalDropBand(row.rect);
   if (input.clientY <= row.rect.top + verticalBand) {
     return targetForVerticalRowExit(row, input, "top");
   }
   if (input.clientY >= row.rect.bottom - verticalBand) {
     return targetForVerticalRowExit(row, input, "bottom");
+  }
+  if (input.clientX < row.rect.left || input.clientX > row.rect.right) {
+    return null;
   }
   return targetForColumnLane(source, row, input);
 }
@@ -475,6 +475,25 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
     });
 
     const clearPreview = () => setPortfolioDndPreview(editor, null);
+    const setDragUiActive = (active: boolean) => {
+      document.body.classList.toggle(PORTFOLIO_DND_ACTIVE_CLASS, active);
+    };
+    // Native lifecycle listeners cover deliberate no-op lanes where Pragmatic
+    // DnD correctly exposes no target and therefore may not advance its target
+    // callbacks. The editor's unrelated resize/drop guides must still remain
+    // hidden until the physical drag ends.
+    const onNativeDragStart = (event: DragEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("[data-ramzy-block-drag-handle]")
+      ) {
+        setDragUiActive(true);
+      }
+    };
+    const onNativeDragEnd = () => setDragUiActive(false);
+    root.addEventListener("dragstart", onNativeDragStart, true);
+    root.addEventListener("dragend", onNativeDragEnd, true);
     const dataAtInput = (source: SourceData, input: Input) => {
       dragGeometry ??= captureDragGeometry(editor);
       return targetDataAtInput(source, input, dragGeometry);
@@ -485,15 +504,14 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
         isSourceData(source.data) && dataAtInput(source.data, input) !== null,
       getData: ({ source, input }) =>
         isSourceData(source.data)
-          ? (dataAtInput(source.data, input) ?? {
-              kind: "inactive",
-            })
+          ? (dataAtInput(source.data, input) ?? { kind: "inactive" })
           : { kind: "inactive" },
     });
     const monitorCleanup = monitorForElements({
       canMonitor: ({ source }) => isSourceData(source.data),
       onDragStart: () => {
         clearPreview();
+        setDragUiActive(true);
         dragGeometry = captureDragGeometry(editor);
       },
       onDropTargetChange: ({ source, location }) => {
@@ -511,6 +529,7 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
         );
       },
       onDrop: ({ source, location }) => {
+        setDragUiActive(false);
         if (!isSourceData(source.data)) return;
         const preview = previewFromLocation(
           source.data,
@@ -545,9 +564,12 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
     );
     return () => {
       observer.disconnect();
+      root.removeEventListener("dragstart", onNativeDragStart, true);
+      root.removeEventListener("dragend", onNativeDragEnd, true);
       cleanup();
       handleCleanups.forEach((unbind) => unbind());
       dragGeometry = null;
+      setDragUiActive(false);
       clearPreview();
     };
   }, [editor]);
