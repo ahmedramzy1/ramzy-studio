@@ -70,6 +70,21 @@ function blocksInColumn(column: import("@tiptap/pm/model").Node) {
   );
 }
 
+function blocksForUnwrappedColumn(column: import("@tiptap/pm/model").Node) {
+  const blocks = blocksInColumn(column);
+  const trailing = blocks.at(-1);
+  const previous = blocks.at(-2);
+  if (
+    trailing &&
+    previous &&
+    isEmptyParagraph(trailing) &&
+    !previous.isTextblock
+  ) {
+    blocks.pop();
+  }
+  return blocks;
+}
+
 function isEmptyParagraph(node: import("@tiptap/pm/model").Node): boolean {
   return node.type.name === "paragraph" && node.content.size === 0;
 }
@@ -121,7 +136,7 @@ function gridAfterRemovingBlock(
   }
 
   if (columns.length === 0) return [];
-  if (columns.length === 1) return blocksInColumn(columns[0]);
+  if (columns.length === 1) return blocksForUnwrappedColumn(columns[0]);
   return [
     columnsNode.type.create(
       { ...columnsNode.attrs, layout: layoutForCount(columns.length) },

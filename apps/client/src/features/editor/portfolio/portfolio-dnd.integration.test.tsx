@@ -195,6 +195,48 @@ function createTwoColumnEditor() {
   });
 }
 
+function createTwoAtomColumnEditor() {
+  const element = document.createElement("div");
+  document.body.append(element);
+  return new Editor({
+    element,
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      TestColumns,
+      TestColumn,
+      TestMedia,
+      PortfolioDndPreview,
+    ],
+    content: {
+      type: "doc",
+      content: [
+        {
+          type: "columns",
+          attrs: { layout: "two_equal" },
+          content: [
+            {
+              type: "column",
+              content: [
+                { type: "media", attrs: { label: "Remaining album" } },
+                { type: "paragraph" },
+              ],
+            },
+            {
+              type: "column",
+              content: [
+                { type: "media", attrs: { label: "Extracted album" } },
+                { type: "paragraph" },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  });
+}
+
 function createRoadEditor() {
   const element = document.createElement("div");
   document.body.append(element);
@@ -499,6 +541,36 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
     expect(editor.state.doc.child(0).type.name).toBe("paragraph");
     expect(editor.state.doc.child(0).textContent).toBe("Target");
     expect(editor.state.doc.child(1).type.name).toBe("media");
+  });
+
+  it("extracts one of two atom cards without creating a paragraph between them", () => {
+    editor = createTwoAtomColumnEditor();
+    render(<PortfolioDnd editor={editor} />);
+
+    const row = editor.view.dom.firstElementChild as HTMLElement;
+    const columns = Array.from(row.children) as HTMLElement[];
+    const source = columns[1].querySelector<HTMLElement>(
+      '.react-renderer[data-type="media"]',
+    )!;
+    const handle = source.querySelector<HTMLElement>(
+      "[data-ramzy-block-drag-handle]",
+    )!;
+    setRect(row, 100, 100, 800, 400);
+    setRect(columns[0], 100, 100, 390, 400);
+    setRect(columns[1], 510, 100, 390, 400);
+    setRect(source, 510, 180, 390, 180);
+
+    handle.dispatchEvent(dragEvent("dragstart", 540, 220));
+    row.dispatchEvent(dragEvent("dragover", 700, 492));
+    row.dispatchEvent(dragEvent("drop", 700, 492));
+
+    expect(editor.state.doc.childCount).toBe(2);
+    expect(
+      Array.from(
+        { length: editor.state.doc.childCount },
+        (_, index) => editor!.state.doc.child(index).type.name,
+      ),
+    ).toEqual(["media", "media"]);
   });
 
   it.each([

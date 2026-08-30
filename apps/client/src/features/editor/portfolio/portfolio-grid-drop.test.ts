@@ -406,4 +406,25 @@ describe("portfolio vertical drop", () => {
     expect(tr!.doc.child(0).textContent).toBe("B");
     expect(tr!.doc.child(1).type.name).toBe("media");
   });
+
+  it("does not unwrap an atom column's editable placeholder between extracted rows", () => {
+    const editableAtomColumn = () =>
+      schema.nodes.column.create(null, [media(), paragraph("")]);
+    const existingColumns = schema.nodes.columns.create(
+      { layout: "two_equal" },
+      [editableAtomColumn(), editableAtomColumn()],
+    );
+    const doc = schema.nodes.doc.create(null, existingColumns);
+    const state = EditorState.create({
+      doc,
+      selection: NodeSelection.create(doc, 7),
+    });
+
+    const tr = createPortfolioVerticalDropTransaction(state, 0, "bottom");
+
+    expect(tr).not.toBeNull();
+    expect(tr!.doc.childCount).toBe(2);
+    expect(tr!.doc.child(0).type.name).toBe("media");
+    expect(tr!.doc.child(1).type.name).toBe("media");
+  });
 });
