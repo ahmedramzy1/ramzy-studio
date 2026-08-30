@@ -161,6 +161,7 @@ describe("PortfolioGridControls live pointer preview", () => {
     document
       .querySelectorAll<HTMLElement>('[data-test-editor-root="true"]')
       .forEach((element) => element.remove());
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -234,6 +235,36 @@ describe("PortfolioGridControls live pointer preview", () => {
     expect(row.style.getPropertyValue("width")).toBe("928px");
     expect(rightHandle.dataset.resizing).toBe("true");
     await waitFor(() => expect(rightHandle.style.left).toBe("1019px"));
+  });
+
+  it("tracks captured handle movement when the window pointer stream is unavailable", async () => {
+    const nativeAddEventListener = window.addEventListener.bind(window);
+    vi.spyOn(window, "addEventListener").mockImplementation(
+      (type, listener, options) => {
+        if (type === "pointermove") return;
+        nativeAddEventListener(type, listener, options);
+      },
+    );
+
+    const { row } = setupGrid();
+    const rightHandle = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+      );
+      expect(element).not.toBeNull();
+      return element!;
+    });
+
+    act(() => {
+      startResize(rightHandle, 900);
+      fireEvent.pointerMove(rightHandle, {
+        clientX: 964,
+        pointerId: 7,
+      });
+    });
+
+    expect(row.style.width).toBe("928px");
+    expect(rightHandle.dataset.resizing).toBe("true");
   });
 
   it("persists divider weights only after the live resize", async () => {

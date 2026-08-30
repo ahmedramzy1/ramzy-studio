@@ -1,6 +1,7 @@
 import {
   Fragment,
   type PointerEvent as ReactPointerEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -232,58 +233,54 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     };
   }, [active, editor]);
 
-  useEffect(() => {
-    const moveTo = (delta: number) => {
-      const session = sessionRef.current;
-      if (!session) return;
-      session.delta = delta;
-      if (session.kind === "column") {
-        session.latestWeights = resizedColumnWeights(
-          session.startWidths,
-          session.dividerIndex,
-          session.delta,
-        );
-        const pixels = resizedColumnPixelWidths(
-          session.startWidths,
-          session.dividerIndex,
-          session.delta,
-        );
-        session.columns.forEach((column, index) => {
-          column.style.setProperty(
-            "flex",
-            `0 0 ${pixels[index]}px`,
-            "important",
-          );
-          column.style.setProperty("width", `${pixels[index]}px`, "important");
-        });
-        setGeometry(measureGrid(session.active.element));
-        return;
-      }
-
-      const requested =
-        session.startWidth +
-        (session.side === "right" ? session.delta * 2 : -session.delta * 2);
-      const desired = Math.min(
-        session.maximumWidth,
-        Math.max(session.minimumWidth, requested),
+  const moveTo = useCallback((delta: number) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    session.delta = delta;
+    if (session.kind === "column") {
+      session.latestWeights = resizedColumnWeights(
+        session.startWidths,
+        session.dividerIndex,
+        session.delta,
       );
-      session.latestWidth = desired;
-      session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
-      const { element } = session.active;
-      element.style.setProperty("position", "relative", "important");
-      element.style.setProperty("left", "50%", "important");
-      element.style.setProperty("width", `${desired}px`, "important");
-      element.style.setProperty("max-width", "none", "important");
-      element.style.setProperty("margin-left", "0", "important");
-      element.style.setProperty("margin-right", "0", "important");
-      element.style.setProperty("transform", "translateX(-50%)", "important");
-      setWidthLabel(
-        `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`,
+      const pixels = resizedColumnPixelWidths(
+        session.startWidths,
+        session.dividerIndex,
+        session.delta,
       );
-      setGeometry(measureGrid(element));
-    };
+      session.columns.forEach((column, index) => {
+        column.style.setProperty("flex", `0 0 ${pixels[index]}px`, "important");
+        column.style.setProperty("width", `${pixels[index]}px`, "important");
+      });
+      setGeometry(measureGrid(session.active.element));
+      return;
+    }
 
-    const end = (commit: boolean) => {
+    const requested =
+      session.startWidth +
+      (session.side === "right" ? session.delta * 2 : -session.delta * 2);
+    const desired = Math.min(
+      session.maximumWidth,
+      Math.max(session.minimumWidth, requested),
+    );
+    session.latestWidth = desired;
+    session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
+    const { element } = session.active;
+    element.style.setProperty("position", "relative", "important");
+    element.style.setProperty("left", "50%", "important");
+    element.style.setProperty("width", `${desired}px`, "important");
+    element.style.setProperty("max-width", "none", "important");
+    element.style.setProperty("margin-left", "0", "important");
+    element.style.setProperty("margin-right", "0", "important");
+    element.style.setProperty("transform", "translateX(-50%)", "important");
+    setWidthLabel(
+      `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`,
+    );
+    setGeometry(measureGrid(element));
+  }, []);
+
+  const endResize = useCallback(
+    (commit: boolean) => {
       const session = sessionRef.current;
       if (!session) return;
       delete session.handle.dataset.resizing;
@@ -323,8 +320,11 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         }
         requestAnimationFrame(() => restoreRowStyles(session));
       }
-    };
+    },
+    [editor],
+  );
 
+  useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       const session = sessionRef.current;
       if (!session || session.pointerId !== event.pointerId) return;
@@ -336,17 +336,17 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       if (!session || session.pointerId !== event.pointerId) return;
       event.preventDefault();
       moveTo(event.clientX - session.startClientX);
-      end(true);
+      endResize(true);
     };
     const onPointerCancel = (event: PointerEvent) => {
       if (sessionRef.current?.pointerId !== event.pointerId) return;
-      end(false);
+      endResize(false);
     };
-    const onBlur = () => end(false);
+    const onBlur = () => endResize(false);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && sessionRef.current) {
         event.preventDefault();
-        end(false);
+        endResize(false);
       }
     };
 
@@ -367,9 +367,33 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       window.removeEventListener("pointercancel", onPointerCancel, true);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("keydown", onKeyDown, true);
-      end(false);
+      endResize(false);
     };
-  }, [editor]);
+  }, [endResize, moveTo]);
+
+  const moveResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const session = sessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    moveTo(event.clientX - session.startClientX);
+  };
+
+  const finishResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const session = sessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    moveTo(event.clientX - session.startClientX);
+    endResize(true);
+  };
+
+  const cancelResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (sessionRef.current?.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    endResize(false);
+  };
 
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!active || event.button !== 0 || sessionRef.current) return;
@@ -465,6 +489,9 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           data-side={index === 0 ? "left" : "right"}
           title="Drag to change row width"
           onPointerDown={startResize}
+          onPointerMove={moveResize}
+          onPointerUp={finishResize}
+          onPointerCancel={cancelResize}
           style={{ left: handle.left, top: handle.top, height: handle.height }}
         />
       ))}
@@ -485,6 +512,9 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
             data-index={index}
             title="Drag to resize columns"
             onPointerDown={startResize}
+            onPointerMove={moveResize}
+            onPointerUp={finishResize}
+            onPointerCancel={cancelResize}
             style={{
               left: handle.left,
               top: handle.top,
