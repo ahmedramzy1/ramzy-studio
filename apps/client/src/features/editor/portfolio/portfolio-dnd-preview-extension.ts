@@ -142,6 +142,8 @@ function decorationsForPortfolioDndPreview(
         },
       ),
     );
+    const vacated = sourceColumnDecoration(state, preview);
+    if (vacated) decorations.push(vacated);
   }
 
   return DecorationSet.create(state.doc, decorations);

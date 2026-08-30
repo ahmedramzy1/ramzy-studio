@@ -104,8 +104,11 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   );
   box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
   opacity: 0.72;
+  transform: rotate(-1.5deg) translateY(-2px);
+  transform-origin: 16% 12%;
   overflow: hidden;
   pointer-events: none;
+  will-change: transform;
 }
 
 .ramzy-dnd-column-slot,

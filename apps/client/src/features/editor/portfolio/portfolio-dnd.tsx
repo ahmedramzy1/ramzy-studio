@@ -258,6 +258,19 @@ function rowGeometryAtInput(geometry: DragGeometry, input: Input) {
   return geometry.rows.find((row) => containsPoint(row.rect, input));
 }
 
+function sourceRowGeometry(
+  geometry: DragGeometry,
+  source: SourceData,
+): FrozenRowGeometry | null {
+  return (
+    geometry.rows.find((row) =>
+      row.columns.some((column) =>
+        column.element.contains(source.sourceElement),
+      ),
+    ) ?? null
+  );
+}
+
 function edgeForSingleRow(rect: FrozenRect, input: Input) {
   const verticalBand = verticalDropBand(rect);
   if (input.clientY <= rect.top + verticalBand) return "top" as const;
@@ -267,12 +280,98 @@ function edgeForSingleRow(rect: FrozenRect, input: Input) {
     : ("right" as const);
 }
 
+function targetForVerticalRowExit(
+  row: FrozenRowGeometry,
+  input: Input,
+  edge: "top" | "bottom",
+) {
+  return attachClosestEdge(
+    {
+      kind: PORTFOLIO_TARGET,
+      targetPosition: row.targetPosition,
+      columnIndex: null,
+    },
+    { input, element: row.element, allowedEdges: [edge] },
+  );
+}
+
+function targetForColumnLane(
+  source: SourceData,
+  row: FrozenRowGeometry,
+  input: Input,
+): Record<string | symbol, unknown> | null {
+  const columns = row.columns;
+  const column =
+    columns.find((candidate) => containsPoint(candidate.rect, input)) ??
+    columns.reduce<FrozenColumnGeometry | null>((nearest, candidate) => {
+      if (!nearest) return candidate;
+      const candidateDistance = Math.abs(
+        input.clientX - (candidate.rect.left + candidate.rect.right) / 2,
+      );
+      const nearestDistance = Math.abs(
+        input.clientX - (nearest.rect.left + nearest.rect.right) / 2,
+      );
+      return candidateDistance < nearestDistance ? candidate : nearest;
+    }, null);
+  if (!column) return null;
+  if (source.sourceElement.closest('[data-type="column"]') === column.element) {
+    return null;
+  }
+  if (
+    columns.length >= MAX_COLUMNS &&
+    !sourceCanReplaceOwnColumn(source, row.element)
+  ) {
+    return null;
+  }
+  return attachClosestEdge(
+    {
+      kind: PORTFOLIO_TARGET,
+      targetPosition: row.targetPosition,
+      columnIndex: columns.indexOf(column),
+    },
+    {
+      input,
+      element: column.element,
+      allowedEdges: [
+        input.clientX < column.rect.left + column.rect.width / 2
+          ? "left"
+          : "right",
+      ],
+    },
+  );
+}
+
+function targetForGridSource(
+  source: SourceData,
+  row: FrozenRowGeometry,
+  input: Input,
+): Record<string | symbol, unknown> | null {
+  // A block that starts inside a grid keeps that row as its drag context.
+  // Moving vertically leaves the row; moving horizontally only reorders its
+  // lanes. Other document rows must never become nested/side targets midway
+  // through the same drag.
+  if (input.clientX < row.rect.left || input.clientX > row.rect.right) {
+    return null;
+  }
+
+  const verticalBand = verticalDropBand(row.rect);
+  if (input.clientY <= row.rect.top + verticalBand) {
+    return targetForVerticalRowExit(row, input, "top");
+  }
+  if (input.clientY >= row.rect.bottom - verticalBand) {
+    return targetForVerticalRowExit(row, input, "bottom");
+  }
+  return targetForColumnLane(source, row, input);
+}
+
 function targetDataAtInput(
-  editor: Editor,
   source: SourceData,
   input: Input,
   geometry: DragGeometry,
 ): Record<string | symbol, unknown> | null {
+  const sourceRow = sourceRowGeometry(geometry, source);
+  if (sourceRow) return targetForGridSource(source, sourceRow, input);
+
   const rowGeometry = rowGeometryAtInput(geometry, input);
   if (!rowGeometry) return null;
   const { element: row, targetPosition, rect: rowRect } = rowGeometry;
@@ -305,47 +404,7 @@ function targetDataAtInput(
     );
   }
 
-  const columns = rowGeometry.columns;
-  const column =
-    columns.find((candidate) =>
-      containsPoint(candidate.rect, input),
-    ) ??
-    columns.reduce<FrozenColumnGeometry | null>((nearest, candidate) => {
-      if (!nearest) return candidate;
-      const candidateDistance = Math.abs(
-        input.clientX - (candidate.rect.left + candidate.rect.right) / 2,
-      );
-      const nearestDistance = Math.abs(
-        input.clientX - (nearest.rect.left + nearest.rect.right) / 2,
-      );
-      return candidateDistance < nearestDistance ? candidate : nearest;
-    }, null);
-  if (!column) return null;
-  if (source.sourceElement.closest('[data-type="column"]') === column.element) {
-    return null;
-  }
-  if (
-    columns.length >= MAX_COLUMNS &&
-    !sourceCanReplaceOwnColumn(source, row)
-  ) {
-    return null;
-  }
-  return attachClosestEdge(
-    {
-      kind: PORTFOLIO_TARGET,
-      targetPosition,
-      columnIndex: columns.indexOf(column),
-    },
-    {
-      input,
-      element: column.element,
-      allowedEdges: [
-        input.clientX < column.rect.left + column.rect.width / 2
-          ? "left"
-          : "right",
-      ],
-    },
-  );
+  return targetForColumnLane(source, rowGeometry, input);
 }
 
 function PortfolioDndController({ editor }: { editor: Editor }) {
@@ -418,13 +477,12 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
     const clearPreview = () => setPortfolioDndPreview(editor, null);
     const dataAtInput = (source: SourceData, input: Input) => {
       dragGeometry ??= captureDragGeometry(editor);
-      return targetDataAtInput(editor, source, input, dragGeometry);
+      return targetDataAtInput(source, input, dragGeometry);
     };
     const targetCleanup = dropTargetForElements({
       element: root,
       canDrop: ({ source, input }) =>
-        isSourceData(source.data) &&
-        dataAtInput(source.data, input) !== null,
+        isSourceData(source.data) && dataAtInput(source.data, input) !== null,
       getData: ({ source, input }) =>
         isSourceData(source.data)
           ? (dataAtInput(source.data, input) ?? {

@@ -195,6 +195,58 @@ function createTwoColumnEditor() {
   });
 }
 
+function createRoadEditor() {
+  const element = document.createElement("div");
+  document.body.append(element);
+  return new Editor({
+    element,
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      TestColumns,
+      TestColumn,
+      TestMedia,
+      PortfolioDndPreview,
+    ],
+    content: {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Road above" }],
+        },
+        {
+          type: "columns",
+          attrs: { layout: "two_equal" },
+          content: [
+            {
+              type: "column",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Remaining lane" }],
+                },
+              ],
+            },
+            {
+              type: "column",
+              content: [
+                { type: "media", attrs: { label: "Dragged lane" } },
+                { type: "paragraph" },
+              ],
+            },
+          ],
+        },
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "Road below" }],
+        },
+      ],
+    },
+  });
+}
+
 describe("portfolio Pragmatic Drag and Drop integration", () => {
   let editor: Editor | null = null;
 
@@ -448,6 +500,78 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
     expect(editor.state.doc.child(0).textContent).toBe("Target");
     expect(editor.state.doc.child(1).type.name).toBe("media");
   });
+
+  it.each([
+    {
+      direction: "above",
+      targetIndex: 0,
+      clientY: 80,
+      expected: ["Road above", "", "Remaining lane", "Road below"],
+      expectedTypes: ["paragraph", "media", "paragraph", "paragraph"],
+    },
+    {
+      direction: "below",
+      targetIndex: 2,
+      clientY: 760,
+      expected: ["Road above", "Remaining lane", "", "Road below"],
+      expectedTypes: ["paragraph", "paragraph", "media", "paragraph"],
+    },
+  ] as const)(
+    "keeps a grid card scoped to its road when extracting $direction",
+    ({ targetIndex, clientY, expected, expectedTypes }) => {
+      editor = createRoadEditor();
+      render(<PortfolioDnd editor={editor} />);
+
+      const unrelatedTarget = editor.view.dom.children[
+        targetIndex
+      ] as HTMLElement;
+      const row = editor.view.dom.children[1] as HTMLElement;
+      const columns = Array.from(row.children) as HTMLElement[];
+      const source = columns[1].querySelector<HTMLElement>(
+        '.react-renderer[data-type="media"]',
+      )!;
+      const handle = source.querySelector<HTMLElement>(
+        "[data-ramzy-block-drag-handle]",
+      )!;
+
+      setRect(editor.view.dom.children[0] as HTMLElement, 100, 20, 800, 140);
+      setRect(row, 100, 200, 800, 400);
+      setRect(columns[0], 100, 200, 390, 400);
+      setRect(columns[1], 510, 200, 390, 400);
+      setRect(source, 510, 280, 390, 180);
+      setRect(editor.view.dom.children[2] as HTMLElement, 100, 650, 800, 220);
+
+      handle.dispatchEvent(dragEvent("dragstart", 540, 320));
+      unrelatedTarget.dispatchEvent(dragEvent("dragover", 500, clientY));
+
+      expect(
+        editor.view.dom.querySelectorAll(".ramzy-dnd-row-slot"),
+      ).toHaveLength(1);
+      expect(
+        editor.view.dom.querySelector(".ramzy-dnd-column-slot"),
+      ).toBeNull();
+      expect(
+        unrelatedTarget.classList.contains("ramzy-dnd-preview-single-row"),
+      ).toBe(false);
+      expect(columns[1].classList).toContain("ramzy-dnd-source-column-vacated");
+
+      unrelatedTarget.dispatchEvent(dragEvent("drop", 500, clientY));
+
+      expect(
+        Array.from(
+          { length: editor.state.doc.childCount },
+          (_, index) => editor!.state.doc.child(index).textContent,
+        ),
+      ).toEqual(expected);
+      expect(editor.state.doc.childCount).toBe(4);
+      expect(
+        Array.from(
+          { length: editor.state.doc.childCount },
+          (_, index) => editor!.state.doc.child(index).type.name,
+        ),
+      ).toEqual(expectedTypes);
+    },
+  );
 
   it("previews and swaps the right grid item to the left", () => {
     editor = createTwoColumnEditor();
