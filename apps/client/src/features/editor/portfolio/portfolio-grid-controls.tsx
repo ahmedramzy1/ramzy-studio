@@ -1,5 +1,6 @@
 import {
   Fragment,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -27,7 +28,7 @@ type GridGeometry = {
 
 type ColumnResizeSession = {
   kind: "column";
-  pointerId: number;
+  pointerId: number | null;
   startClientX: number;
   active: ActiveGrid;
   handle: HTMLElement;
@@ -41,7 +42,7 @@ type ColumnResizeSession = {
 
 type RowResizeSession = {
   kind: "row";
-  pointerId: number;
+  pointerId: number | null;
   startClientX: number;
   active: ActiveGrid;
   handle: HTMLElement;
@@ -285,7 +286,10 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       if (!session) return;
       delete session.handle.dataset.resizing;
       try {
-        if (session.handle.hasPointerCapture(session.pointerId)) {
+        if (
+          session.pointerId !== null &&
+          session.handle.hasPointerCapture(session.pointerId)
+        ) {
           session.handle.releasePointerCapture(session.pointerId);
         }
       } catch {
@@ -327,13 +331,23 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       const session = sessionRef.current;
-      if (!session || session.pointerId !== event.pointerId) return;
+      if (
+        !session ||
+        session.pointerId === null ||
+        session.pointerId !== event.pointerId
+      )
+        return;
       event.preventDefault();
       moveTo(event.clientX - session.startClientX);
     };
     const onPointerUp = (event: PointerEvent) => {
       const session = sessionRef.current;
-      if (!session || session.pointerId !== event.pointerId) return;
+      if (
+        !session ||
+        session.pointerId === null ||
+        session.pointerId !== event.pointerId
+      )
+        return;
       event.preventDefault();
       moveTo(event.clientX - session.startClientX);
       endResize(true);
@@ -341,6 +355,19 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     const onPointerCancel = (event: PointerEvent) => {
       if (sessionRef.current?.pointerId !== event.pointerId) return;
       endResize(false);
+    };
+    const onMouseMove = (event: MouseEvent) => {
+      const session = sessionRef.current;
+      if (!session || session.pointerId !== null) return;
+      event.preventDefault();
+      moveTo(event.clientX - session.startClientX);
+    };
+    const onMouseUp = (event: MouseEvent) => {
+      const session = sessionRef.current;
+      if (!session || session.pointerId !== null) return;
+      event.preventDefault();
+      moveTo(event.clientX - session.startClientX);
+      endResize(true);
     };
     const onBlur = () => endResize(false);
     const onKeyDown = (event: KeyboardEvent) => {
@@ -359,12 +386,22 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       passive: false,
     });
     window.addEventListener("pointercancel", onPointerCancel, true);
+    window.addEventListener("mousemove", onMouseMove, {
+      capture: true,
+      passive: false,
+    });
+    window.addEventListener("mouseup", onMouseUp, {
+      capture: true,
+      passive: false,
+    });
     window.addEventListener("blur", onBlur);
     window.addEventListener("keydown", onKeyDown, true);
     return () => {
       window.removeEventListener("pointermove", onPointerMove, true);
       window.removeEventListener("pointerup", onPointerUp, true);
       window.removeEventListener("pointercancel", onPointerCancel, true);
+      window.removeEventListener("mousemove", onMouseMove, true);
+      window.removeEventListener("mouseup", onMouseUp, true);
       window.removeEventListener("blur", onBlur);
       window.removeEventListener("keydown", onKeyDown, true);
       endResize(false);
@@ -373,7 +410,12 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
 
   const moveResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     const session = sessionRef.current;
-    if (!session || session.pointerId !== event.pointerId) return;
+    if (
+      !session ||
+      session.pointerId === null ||
+      session.pointerId !== event.pointerId
+    )
+      return;
     event.preventDefault();
     event.stopPropagation();
     moveTo(event.clientX - session.startClientX);
@@ -381,7 +423,12 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
 
   const finishResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     const session = sessionRef.current;
-    if (!session || session.pointerId !== event.pointerId) return;
+    if (
+      !session ||
+      session.pointerId === null ||
+      session.pointerId !== event.pointerId
+    )
+      return;
     event.preventDefault();
     event.stopPropagation();
     moveTo(event.clientX - session.startClientX);
@@ -395,16 +442,19 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     endResize(false);
   };
 
-  const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!active || event.button !== 0 || sessionRef.current) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const handle = event.currentTarget;
+  const beginResize = (
+    handle: HTMLDivElement,
+    clientX: number,
+    pointerId: number | null,
+  ) => {
+    if (!active || sessionRef.current) return;
     handle.dataset.resizing = "true";
-    try {
-      handle.setPointerCapture(event.pointerId);
-    } catch {
-      // Window-level pointer listeners still keep the gesture continuous.
+    if (pointerId !== null) {
+      try {
+        handle.setPointerCapture(pointerId);
+      } catch {
+        // Window-level pointer listeners still keep the gesture continuous.
+      }
     }
 
     if (handle.dataset.kind === "divider") {
@@ -415,8 +465,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       );
       sessionRef.current = {
         kind: "column",
-        pointerId: event.pointerId,
-        startClientX: event.clientX,
+        pointerId,
+        startClientX: clientX,
         active,
         handle,
         columns,
@@ -447,8 +497,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       "normal") as PortfolioGridWidthMode;
     sessionRef.current = {
       kind: "row",
-      pointerId: event.pointerId,
-      startClientX: event.clientX,
+      pointerId,
+      startClientX: clientX,
       active,
       handle,
       side: handle.dataset.side === "left" ? "left" : "right",
@@ -478,6 +528,21 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     );
   };
 
+  const startPointerResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse") return;
+    if (!active || event.button !== 0 || sessionRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginResize(event.currentTarget, event.clientX, event.pointerId);
+  };
+
+  const startMouseResize = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!active || event.button !== 0 || sessionRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginResize(event.currentTarget, event.clientX, null);
+  };
+
   if (!active || !geometry) return null;
   return createPortal(
     <div className="ramzy-grid-resize-layer" aria-hidden="true">
@@ -488,7 +553,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           data-kind="outer"
           data-side={index === 0 ? "left" : "right"}
           title="Drag to change row width"
-          onPointerDown={startResize}
+          onMouseDown={startMouseResize}
+          onPointerDown={startPointerResize}
           onPointerMove={moveResize}
           onPointerUp={finishResize}
           onPointerCancel={cancelResize}
@@ -511,7 +577,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
             data-kind="divider"
             data-index={index}
             title="Drag to resize columns"
-            onPointerDown={startResize}
+            onMouseDown={startMouseResize}
+            onPointerDown={startPointerResize}
             onPointerMove={moveResize}
             onPointerUp={finishResize}
             onPointerCancel={cancelResize}

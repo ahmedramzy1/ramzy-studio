@@ -12,10 +12,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 class TestPointerEvent extends MouseEvent {
   readonly pointerId: number;
+  readonly pointerType: string;
 
   constructor(type: string, init: PointerEventInit) {
     super(type, init);
     this.pointerId = init.pointerId ?? 0;
+    this.pointerType = init.pointerType ?? "";
   }
 }
 
@@ -45,6 +47,18 @@ function moveResize(clientX: number, pointerId = 7) {
 
 function finishResize(clientX: number, pointerId = 7) {
   fireEvent.pointerUp(window, { clientX, pointerId });
+}
+
+function startMouseResize(handle: HTMLElement, clientX = 200) {
+  fireEvent.mouseDown(handle, { button: 0, clientX });
+}
+
+function moveMouseResize(clientX: number) {
+  fireEvent.mouseMove(window, { buttons: 1, clientX });
+}
+
+function finishMouseResize(clientX: number) {
+  fireEvent.mouseUp(window, { button: 0, clientX });
 }
 
 function setupGrid({ columnCount = 2, gap = 0 } = {}) {
@@ -265,6 +279,45 @@ describe("PortfolioGridControls live pointer preview", () => {
 
     expect(row.style.width).toBe("928px");
     expect(rightHandle.dataset.resizing).toBe("true");
+  });
+
+  it("previews desktop mouse resizing continuously before mouseup", async () => {
+    const { row, left, right } = setupGrid();
+    const outerRight = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+      );
+      expect(element).not.toBeNull();
+      return element!;
+    });
+
+    act(() => {
+      fireEvent.pointerDown(outerRight, {
+        button: 0,
+        clientX: 900,
+        pointerId: 7,
+        pointerType: "mouse",
+      });
+      expect(outerRight.dataset.resizing).toBeUndefined();
+      startMouseResize(outerRight, 900);
+      moveMouseResize(964);
+    });
+    expect(row.style.width).toBe("928px");
+    expect(outerRight.dataset.resizing).toBe("true");
+
+    act(() => finishMouseResize(964));
+    row.style.width = "";
+
+    const divider = document.querySelector<HTMLElement>(
+      '.ramzy-grid-resize-handle[data-kind="divider"]',
+    )!;
+    act(() => {
+      startMouseResize(divider, 500);
+      moveMouseResize(600);
+    });
+    expect(left.style.width).toBe("500px");
+    expect(right.style.width).toBe("300px");
+    expect(divider.dataset.resizing).toBe("true");
   });
 
   it("persists divider weights only after the live resize", async () => {
