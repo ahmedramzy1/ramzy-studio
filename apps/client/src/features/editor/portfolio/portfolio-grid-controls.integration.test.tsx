@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
-import { Editor as TiptapEditor, type Editor } from "@tiptap/core";
+import { Editor as TiptapEditor, Node } from "@tiptap/core";
+import Document from "@tiptap/extension-document";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
 import StarterKit from "@tiptap/starter-kit";
 import { Column, Columns } from "@docmost/editor-ext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortfolioGridControls } from "./portfolio-grid-controls";
+import { PortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
 
 class TestPointerEvent extends MouseEvent {
   readonly pointerId: number;
@@ -46,70 +50,104 @@ function rect(left: number, width: number, height = 300): DOMRect {
   };
 }
 
-function setupGrid() {
-  const editorDom = document.createElement("div");
-  const row = document.createElement("div");
-  const left = document.createElement("div");
-  const right = document.createElement("div");
-  row.dataset.type = "columns";
-  left.dataset.type = "column";
-  right.dataset.type = "column";
-  row.append(left, right);
-  editorDom.append(row);
-  document.body.append(editorDom);
+const TestColumns = Node.create({
+  name: "columns",
+  group: "block",
+  content: "column+",
+  addAttributes: () => ({
+    layout: { default: "two_equal" },
+    widthMode: { default: "normal" },
+    customWidth: { default: null },
+  }),
+  parseHTML: () => [{ tag: 'div[data-type="columns"]' }],
+  renderHTML: ({ HTMLAttributes }) => [
+    "div",
+    { ...HTMLAttributes, "data-type": "columns" },
+    0,
+  ],
+});
 
+const TestColumn = Node.create({
+  name: "column",
+  group: "block",
+  content: "block+",
+  addAttributes: () => ({ width: { default: null } }),
+  parseHTML: () => [{ tag: 'div[data-type="column"]' }],
+  renderHTML: ({ HTMLAttributes }) => [
+    "div",
+    { ...HTMLAttributes, "data-type": "column" },
+    0,
+  ],
+});
+
+function previewWidth(
+  element: HTMLElement,
+  property: string,
+  fallback: number,
+) {
+  return (
+    Number.parseFloat(element.style.getPropertyValue(property)) || fallback
+  );
+}
+
+function setupProseMirrorGrid() {
+  const element = document.createElement("div");
+  document.body.append(element);
+  const editor = new TiptapEditor({
+    element,
+    extensions: [
+      Document,
+      Paragraph,
+      Text,
+      TestColumns,
+      TestColumn,
+      PortfolioGridResizePreview,
+    ],
+    content: {
+      type: "doc",
+      content: [
+        {
+          type: "columns",
+          content: [
+            { type: "column", content: [{ type: "paragraph" }] },
+            { type: "column", content: [{ type: "paragraph" }] },
+          ],
+        },
+      ],
+    },
+  });
+  const editorDom = editor.view.dom;
+  const row = editorDom.querySelector<HTMLElement>('[data-type="columns"]')!;
+  const [left, right] = Array.from(
+    row.querySelectorAll<HTMLElement>('[data-type="column"]'),
+  );
   Object.defineProperty(editorDom, "getBoundingClientRect", {
     value: () => rect(100, 800),
   });
   Object.defineProperty(row, "getBoundingClientRect", {
-    value: () => rect(100, Number.parseFloat(row.style.width) || 800),
+    value: () =>
+      rect(100, previewWidth(row, "--ramzy-grid-preview-width", 800)),
   });
   Object.defineProperty(left, "getBoundingClientRect", {
-    value: () => rect(100, Number.parseFloat(left.style.width) || 400),
+    value: () =>
+      rect(100, previewWidth(left, "--ramzy-grid-preview-column-width", 400)),
   });
   Object.defineProperty(right, "getBoundingClientRect", {
-    value: () =>
-      rect(
-        100 + (Number.parseFloat(left.style.width) || 400),
-        Number.parseFloat(right.style.width) || 400,
-      ),
+    value: () => {
+      const leftWidth = previewWidth(
+        left,
+        "--ramzy-grid-preview-column-width",
+        400,
+      );
+      return rect(
+        100 + leftWidth,
+        previewWidth(right, "--ramzy-grid-preview-column-width", 400),
+      );
+    },
   });
-
-  const columnNode = { attrs: {}, nodeSize: 2 };
-  const rowNode = {
-    type: { name: "columns" },
-    attrs: {},
-    childCount: 2,
-    forEach: (
-      callback: (
-        node: typeof columnNode,
-        offset: number,
-        index: number,
-      ) => void,
-    ) => {
-      callback(columnNode, 0, 0);
-      callback(columnNode, 2, 1);
-    },
-  };
-  const editor = {
-    isDestroyed: false,
-    isEditable: true,
-    view: {
-      dom: editorDom,
-      posAtDOM: () => 0,
-      dispatch: vi.fn(),
-    },
-    state: {
-      doc: { nodeAt: () => rowNode },
-      tr: { setNodeMarkup: vi.fn().mockReturnThis() },
-    },
-    on: vi.fn(),
-    off: vi.fn(),
-  } as unknown as Editor;
-
   render(<PortfolioGridControls editor={editor} />);
   fireEvent.pointerMove(row);
-  return { row, left, right };
+  return { editor, row, left, right };
 }
 
 describe("portfolio grid resize through browser pointer events", () => {
@@ -135,8 +173,8 @@ describe("portfolio grid resize through browser pointer events", () => {
     vi.unstubAllGlobals();
   });
 
-  it("updates divider and row widths during native pointer movement", () => {
-    const { row, left, right } = setupGrid();
+  it("keeps live divider widths after ProseMirror observes the DOM and before release", async () => {
+    const { editor, left, right } = setupProseMirrorGrid();
     const divider = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="divider"]',
     )!;
@@ -145,13 +183,37 @@ describe("portfolio grid resize through browser pointer events", () => {
       window.dispatchEvent(pointerEvent("pointermove", 600));
     });
 
-    expect(left.style.width).toBe("500px");
-    expect(right.style.width).toBe("300px");
+    await Promise.resolve();
+    expect(
+      left.style.getPropertyValue("--ramzy-grid-preview-column-width"),
+    ).toBe("500px");
+    expect(
+      right.style.getPropertyValue("--ramzy-grid-preview-column-width"),
+    ).toBe("300px");
+    expect(left.classList.contains("ramzy-grid-resize-preview-column")).toBe(
+      true,
+    );
     expect(divider.dataset.resizing).toBe("true");
 
     act(() => {
       window.dispatchEvent(pointerEvent("pointerup", 600));
     });
+
+    const rowNode = editor.state.doc.child(0);
+    expect(
+      Array.from(
+        { length: rowNode.childCount },
+        (_, index) => rowNode.child(index).attrs,
+      ),
+    ).toEqual([
+      expect.objectContaining({ width: 1.25 }),
+      expect.objectContaining({ width: 0.75 }),
+    ]);
+    editor.destroy();
+  });
+
+  it("keeps the live outer width after ProseMirror observes the DOM and before release", async () => {
+    const { editor, row } = setupProseMirrorGrid();
 
     const outerRight = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
@@ -161,8 +223,16 @@ describe("portfolio grid resize through browser pointer events", () => {
       window.dispatchEvent(pointerEvent("pointermove", 964, 10));
     });
 
-    expect(row.style.width).toBe("928px");
+    await Promise.resolve();
+    expect(row.style.getPropertyValue("--ramzy-grid-preview-width")).toBe(
+      "928px",
+    );
+    expect(row.classList.contains("ramzy-grid-resize-preview-row")).toBe(true);
     expect(outerRight.dataset.resizing).toBe("true");
+    expect(editor.getJSON().content?.[0].attrs).toEqual(
+      expect.objectContaining({ customWidth: null }),
+    );
+    editor.destroy();
   });
 
   it("serializes exact row width and lets a width preset reset it", () => {
@@ -188,9 +258,7 @@ describe("portfolio grid resize through browser pointer events", () => {
     });
 
     expect(editor.getHTML()).toContain('data-custom-width="870"');
-    expect(editor.getHTML()).toContain(
-      "--ramzy-columns-custom-width: 870px",
-    );
+    expect(editor.getHTML()).toContain("--ramzy-columns-custom-width: 870px");
 
     editor.commands.setTextSelection(2);
     expect(editor.commands.setColumnsWidthMode("normal")).toBe(true);

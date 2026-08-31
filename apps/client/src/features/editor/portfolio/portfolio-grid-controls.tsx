@@ -17,6 +17,7 @@ import {
   resizedColumnWeights,
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
+import { setPortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
 
 type ActiveGrid = { element: HTMLElement; position: number };
 type HandleGeometry = { left: number; top: number; height: number };
@@ -34,7 +35,6 @@ type ColumnResizeSession = {
   handle: HTMLElement;
   columns: HTMLElement[];
   startWidths: number[];
-  originalStyles: Array<{ flex: string; width: string }>;
   dividerIndex: number;
   delta: number;
   latestWeights: number[];
@@ -54,15 +54,6 @@ type RowResizeSession = {
   maximumWidth: number;
   latestWidth: number;
   nextMode: PortfolioGridWidthMode;
-  originalStyles: {
-    position: string;
-    left: string;
-    width: string;
-    maxWidth: string;
-    marginLeft: string;
-    marginRight: string;
-    transform: string;
-  };
 };
 
 type ResizeSession = ColumnResizeSession | RowResizeSession;
@@ -152,24 +143,6 @@ function setRowWidth(
   );
 }
 
-function restoreColumnStyles(session: ColumnResizeSession) {
-  session.columns.forEach((column, index) => {
-    column.style.flex = session.originalStyles[index].flex;
-    column.style.width = session.originalStyles[index].width;
-  });
-}
-
-function restoreRowStyles(session: RowResizeSession) {
-  const { element } = session.active;
-  element.style.position = session.originalStyles.position;
-  element.style.left = session.originalStyles.left;
-  element.style.width = session.originalStyles.width;
-  element.style.maxWidth = session.originalStyles.maxWidth;
-  element.style.marginLeft = session.originalStyles.marginLeft;
-  element.style.marginRight = session.originalStyles.marginRight;
-  element.style.transform = session.originalStyles.transform;
-}
-
 export function PortfolioGridControls({ editor }: { editor: Editor }) {
   const [active, setActive] = useState<ActiveGrid | null>(null);
   const [geometry, setGeometry] = useState<GridGeometry | null>(null);
@@ -234,51 +207,52 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     };
   }, [active, editor]);
 
-  const moveTo = useCallback((delta: number) => {
-    const session = sessionRef.current;
-    if (!session) return;
-    session.delta = delta;
-    if (session.kind === "column") {
-      session.latestWeights = resizedColumnWeights(
-        session.startWidths,
-        session.dividerIndex,
-        session.delta,
-      );
-      const pixels = resizedColumnPixelWidths(
-        session.startWidths,
-        session.dividerIndex,
-        session.delta,
-      );
-      session.columns.forEach((column, index) => {
-        column.style.setProperty("flex", `0 0 ${pixels[index]}px`, "important");
-        column.style.setProperty("width", `${pixels[index]}px`, "important");
-      });
-      setGeometry(measureGrid(session.active.element));
-      return;
-    }
+  const moveTo = useCallback(
+    (delta: number) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      session.delta = delta;
+      if (session.kind === "column") {
+        session.latestWeights = resizedColumnWeights(
+          session.startWidths,
+          session.dividerIndex,
+          session.delta,
+        );
+        const pixels = resizedColumnPixelWidths(
+          session.startWidths,
+          session.dividerIndex,
+          session.delta,
+        );
+        setPortfolioGridResizePreview(editor, {
+          kind: "columns",
+          rowPosition: session.active.position,
+          widths: pixels,
+        });
+        setGeometry(measureGrid(session.active.element));
+        return;
+      }
 
-    const requested =
-      session.startWidth +
-      (session.side === "right" ? session.delta * 2 : -session.delta * 2);
-    const desired = Math.min(
-      session.maximumWidth,
-      Math.max(session.minimumWidth, requested),
-    );
-    session.latestWidth = desired;
-    session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
-    const { element } = session.active;
-    element.style.setProperty("position", "relative", "important");
-    element.style.setProperty("left", "50%", "important");
-    element.style.setProperty("width", `${desired}px`, "important");
-    element.style.setProperty("max-width", "none", "important");
-    element.style.setProperty("margin-left", "0", "important");
-    element.style.setProperty("margin-right", "0", "important");
-    element.style.setProperty("transform", "translateX(-50%)", "important");
-    setWidthLabel(
-      `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`,
-    );
-    setGeometry(measureGrid(element));
-  }, []);
+      const requested =
+        session.startWidth +
+        (session.side === "right" ? session.delta * 2 : -session.delta * 2);
+      const desired = Math.min(
+        session.maximumWidth,
+        Math.max(session.minimumWidth, requested),
+      );
+      session.latestWidth = desired;
+      session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
+      setPortfolioGridResizePreview(editor, {
+        kind: "row",
+        rowPosition: session.active.position,
+        width: desired,
+      });
+      setWidthLabel(
+        `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`,
+      );
+      setGeometry(measureGrid(session.active.element));
+    },
+    [editor],
+  );
 
   const endResize = useCallback(
     (commit: boolean) => {
@@ -297,21 +271,15 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       }
       sessionRef.current = null;
       if (session.kind === "column") {
-        if (!commit) {
-          restoreColumnStyles(session);
-          setGeometry(measureGrid(session.active.element));
-          return;
+        if (commit) {
+          setColumnWidths(
+            editor,
+            session.active.position,
+            session.latestWeights,
+          );
         }
-        setColumnWidths(editor, session.active.position, session.latestWeights);
-        requestAnimationFrame(() => {
-          columnsIn(session.active.element).forEach((column, index) => {
-            column.style.setProperty(
-              "flex",
-              String(session.latestWeights[index]),
-            );
-            column.style.removeProperty("width");
-          });
-        });
+        setPortfolioGridResizePreview(editor, null);
+        setGeometry(measureGrid(session.active.element));
       } else {
         setWidthLabel(null);
         if (commit) {
@@ -322,7 +290,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
             session.latestWidth,
           );
         }
-        requestAnimationFrame(() => restoreRowStyles(session));
+        setPortfolioGridResizePreview(editor, null);
+        setGeometry(measureGrid(session.active.element));
       }
     },
     [editor],
@@ -471,10 +440,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         handle,
         columns,
         startWidths,
-        originalStyles: columns.map((column) => ({
-          flex: column.style.flex,
-          width: column.style.width,
-        })),
         dividerIndex,
         delta: 0,
         latestWeights: resizedColumnWeights(startWidths, dividerIndex, 0),
@@ -513,15 +478,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       maximumWidth: Math.max(minimumWidth, Math.min(1440, available)),
       latestWidth: startWidth,
       nextMode,
-      originalStyles: {
-        position: active.element.style.position,
-        left: active.element.style.left,
-        width: active.element.style.width,
-        maxWidth: active.element.style.maxWidth,
-        marginLeft: active.element.style.marginLeft,
-        marginRight: active.element.style.marginRight,
-        transform: active.element.style.transform,
-      },
     };
     setWidthLabel(
       `${portfolioGridModeLabel(nextMode)} · ${Math.round(startWidth)} px`,

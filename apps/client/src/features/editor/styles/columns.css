@@ -359,6 +359,26 @@ div[data-type="columns"][data-width-mode="wide"] {
   transform: translateX(-50%);
 }
 
+/* Resize previews are ProseMirror decorations rather than unmanaged DOM
+ * mutations. The editor therefore owns every intermediate frame and its DOM
+ * observer cannot roll the preview back before the browser paints it. */
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"].ramzy-grid-resize-preview-row {
+  position: relative !important;
+  left: 50% !important;
+  width: var(--ramzy-grid-preview-width) !important;
+  max-width: none !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  transform: translateX(-50%) !important;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="column"].ramzy-grid-resize-preview-column {
+  flex: 0 0 var(--ramzy-grid-preview-column-width) !important;
+  width: var(--ramzy-grid-preview-column-width) !important;
+}
+
 @media (max-width: $mantine-breakpoint-sm) {
   div[data-type="columns"][data-width-mode="wide"] {
     margin-left: -1rem;

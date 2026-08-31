@@ -121,21 +121,56 @@ function setupGrid({ columnCount = 2, gap = 0 } = {}) {
       );
     },
   };
+  const editorState: Record<string, unknown> = {};
   const transaction = {
     setNodeMarkup: vi.fn().mockReturnThis(),
+    setMeta: vi.fn().mockImplementation(function (
+      this: { preview?: unknown },
+      key: unknown,
+      value: unknown,
+    ) {
+      if (key !== "addToHistory") {
+        this.preview = value;
+        const pluginKey = key as { key?: string };
+        if (pluginKey.key) editorState[pluginKey.key] = value;
+      }
+      return this;
+    }),
   };
+  const dispatch = vi.fn(() => {
+    const preview = (
+      transaction as typeof transaction & {
+        preview?:
+          | { kind: "row"; width: number }
+          | { kind: "columns"; widths: number[] }
+          | null;
+      }
+    ).preview;
+    if (preview?.kind === "row") {
+      row.style.width = `${preview.width}px`;
+    } else if (preview?.kind === "columns") {
+      columns.forEach((column, index) => {
+        column.style.width = `${preview.widths[index]}px`;
+      });
+    } else if (preview === null) {
+      row.style.width = "";
+      columns.forEach((column) => {
+        column.style.width = "";
+      });
+    }
+  });
   const editor = {
     isDestroyed: false,
     isEditable: true,
     view: {
       dom: editorDom,
       posAtDOM: () => 0,
-      dispatch: vi.fn(),
+      dispatch,
     },
-    state: {
+    state: Object.assign(editorState, {
       doc: { nodeAt: () => rowNode },
       tr: transaction,
-    },
+    }),
     on: vi.fn(),
     off: vi.fn(),
   } as unknown as Editor;
@@ -321,7 +356,7 @@ describe("PortfolioGridControls live pointer preview", () => {
   });
 
   it("persists divider weights only after the live resize", async () => {
-    const { editor, left, right } = setupGrid();
+    const { transaction, left, right } = setupGrid();
     const handle = await waitFor(() =>
       document.querySelector<HTMLElement>(
         '.ramzy-grid-resize-handle[data-kind="divider"]',
@@ -335,11 +370,11 @@ describe("PortfolioGridControls live pointer preview", () => {
     });
     expect(left.style.getPropertyValue("width")).toBe("320px");
     expect(right.style.getPropertyValue("width")).toBe("480px");
-    expect(editor.view.dispatch).not.toHaveBeenCalled();
+    expect(transaction.setNodeMarkup).not.toHaveBeenCalled();
 
     act(() => finishResize(120));
     expect(handle!.dataset.resizing).toBeUndefined();
-    expect(editor.view.dispatch).toHaveBeenCalledTimes(1);
+    expect(transaction.setNodeMarkup).toHaveBeenCalledTimes(2);
   });
 
   it.each([2, 3, 4, 5])(
@@ -402,7 +437,7 @@ describe("PortfolioGridControls live pointer preview", () => {
   });
 
   it("persists the exact outer width so release matches the preview", async () => {
-    const { editor, transaction, row } = setupGrid();
+    const { transaction, row } = setupGrid();
     const handle = await waitFor(() =>
       document.querySelector<HTMLElement>(
         '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
@@ -415,7 +450,7 @@ describe("PortfolioGridControls live pointer preview", () => {
       moveResize(235);
     });
     expect(row.style.width).toBe("870px");
-    expect(editor.view.dispatch).not.toHaveBeenCalled();
+    expect(transaction.setNodeMarkup).not.toHaveBeenCalled();
 
     act(() => finishResize(235));
     expect(transaction.setNodeMarkup).toHaveBeenCalledWith(
@@ -423,11 +458,10 @@ describe("PortfolioGridControls live pointer preview", () => {
       undefined,
       expect.objectContaining({ customWidth: 870 }),
     );
-    expect(editor.view.dispatch).toHaveBeenCalledTimes(1);
   });
 
   it("restores the live preview without persisting when cancelled", async () => {
-    const { editor, left, right } = setupGrid();
+    const { transaction, left, right } = setupGrid();
     const handle = await waitFor(() =>
       document.querySelector<HTMLElement>(
         '.ramzy-grid-resize-handle[data-kind="divider"]',
@@ -445,6 +479,6 @@ describe("PortfolioGridControls live pointer preview", () => {
     act(() => fireEvent.pointerCancel(window, { pointerId: 7 }));
     expect(left.style.width).toBe("");
     expect(right.style.width).toBe("");
-    expect(editor.view.dispatch).not.toHaveBeenCalled();
+    expect(transaction.setNodeMarkup).not.toHaveBeenCalled();
   });
 });
