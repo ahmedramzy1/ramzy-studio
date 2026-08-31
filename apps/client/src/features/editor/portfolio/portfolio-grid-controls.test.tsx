@@ -141,12 +141,12 @@ function setupGrid({ columnCount = 2, gap = 0 } = {}) {
     const preview = (
       transaction as typeof transaction & {
         preview?:
-          | { kind: "row"; width: number }
+          | { kind: "block"; width: number }
           | { kind: "columns"; widths: number[] }
           | null;
       }
     ).preview;
-    if (preview?.kind === "row") {
+    if (preview?.kind === "block") {
       row.style.width = `${preview.width}px`;
     } else if (preview?.kind === "columns") {
       columns.forEach((column, index) => {

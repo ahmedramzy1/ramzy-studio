@@ -37,7 +37,10 @@ import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
 import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
 import { PortfolioDnd } from "./portfolio-dnd";
 import { PortfolioDndPreview } from "./portfolio-dnd-preview-extension";
-import { PortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
+import {
+  PortfolioBlockWidth,
+  PortfolioGridResizePreview,
+} from "./portfolio-grid-resize-preview-extension";
 import { PortfolioGridControls } from "./portfolio-grid-controls";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
@@ -177,6 +180,7 @@ function DirectPortfolioEditor({
         nativeDrag: false,
       }),
       PortfolioDndPreview,
+      PortfolioBlockWidth,
       PortfolioGridResizePreview,
       PortfolioGridNormalizer,
       UndoRedo,

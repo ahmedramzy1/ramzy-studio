@@ -359,18 +359,20 @@ div[data-type="columns"][data-width-mode="wide"] {
   transform: translateX(-50%);
 }
 
-/* Resize previews are ProseMirror decorations rather than unmanaged DOM
- * mutations. The editor therefore owns every intermediate frame and its DOM
- * observer cannot roll the preview back before the browser paints it. */
-.ProseMirror.ramzy-portfolio-editor
-  div[data-type="columns"].ramzy-grid-resize-preview-row {
+/* Exact widths are shared by standalone top-level blocks and grid rows.
+ * Saved widths and live previews are ProseMirror-owned decorations, so React
+ * node views and ordinary document nodes follow the same layout contract. */
+.ProseMirror.ramzy-portfolio-editor > .ramzy-portfolio-custom-width,
+.ProseMirror.ramzy-portfolio-editor > .ramzy-block-resize-preview,
+.ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
   position: relative !important;
   left: 50% !important;
-  width: var(--ramzy-grid-preview-width) !important;
+  width: min(var(--ramzy-portfolio-block-width), calc(100vw - 6rem)) !important;
   max-width: none !important;
   margin-right: 0 !important;
   margin-left: 0 !important;
   transform: translateX(-50%) !important;
+  box-sizing: border-box;
 }
 
 .ProseMirror.ramzy-portfolio-editor
@@ -408,6 +410,17 @@ div[data-type="columns"][data-width-mode="wide"] {
     width: 100%;
     transform: none;
   }
+
+  .ProseMirror.ramzy-portfolio-editor > .ramzy-portfolio-custom-width,
+  .ProseMirror.ramzy-portfolio-editor > .ramzy-block-resize-preview,
+  .ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
+    left: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    transform: none !important;
+  }
 }
 
 .ramzy-grid-resize-layer {
@@ -437,6 +450,18 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
   width: 0;
   border-left: 1px dashed
     light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
+  pointer-events: none;
+}
+
+.ramzy-block-resize-guide {
+  position: fixed;
+  width: 1px;
+  background: color-mix(
+    in srgb,
+    var(--mantine-color-blue-5, #339af0) 78%,
+    transparent
+  );
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 45%);
   pointer-events: none;
 }
 
@@ -507,7 +532,9 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
 
   div[data-type="columns"][data-width-mode="wide"],
   .ProseMirror.ramzy-portfolio-editor
-    div[data-type="columns"][data-custom-width] {
+    div[data-type="columns"][data-custom-width],
+  .ProseMirror.ramzy-portfolio-editor > .ramzy-portfolio-custom-width,
+  .ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
     left: auto;
     margin-left: 0;
     margin-right: 0;

@@ -19,9 +19,13 @@ import {
 } from "./portfolio-grid-resize";
 import { setPortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
 
-type ActiveGrid = { element: HTMLElement; position: number };
+type ActiveBlock = {
+  element: HTMLElement;
+  position: number;
+  nodeType: string;
+};
 type HandleGeometry = { left: number; top: number; height: number };
-type GridGeometry = {
+type BlockGeometry = {
   outer: [HandleGeometry, HandleGeometry];
   dividers: HandleGeometry[];
   badge: { left: number; top: number };
@@ -31,7 +35,7 @@ type ColumnResizeSession = {
   kind: "column";
   pointerId: number | null;
   startClientX: number;
-  active: ActiveGrid;
+  active: ActiveBlock;
   handle: HTMLElement;
   columns: HTMLElement[];
   startWidths: number[];
@@ -44,7 +48,7 @@ type RowResizeSession = {
   kind: "row";
   pointerId: number | null;
   startClientX: number;
-  active: ActiveGrid;
+  active: ActiveBlock;
   handle: HTMLElement;
   side: "left" | "right";
   startWidth: number;
@@ -61,18 +65,45 @@ type ResizeSession = ColumnResizeSession | RowResizeSession;
 function topLevelPosition(editor: Editor, element: HTMLElement): number | null {
   try {
     const raw = editor.view.posAtDOM(element, 0);
-    if (editor.state.doc.nodeAt(raw)?.type.name === "columns") return raw;
-    const $position = editor.state.doc.resolve(raw);
-    for (let depth = $position.depth; depth > 0; depth -= 1) {
-      const before = $position.before(depth);
-      if (editor.state.doc.nodeAt(before)?.type.name === "columns") {
-        return before;
-      }
+    let exact: number | null = null;
+    let containing: number | null = null;
+    if (typeof editor.state.doc.forEach === "function") {
+      editor.state.doc.forEach((node, position) => {
+        if (position === raw) exact = position;
+        if (raw > position && raw < position + node.nodeSize) {
+          containing = position;
+        }
+      });
+      if (exact !== null || containing !== null) return exact ?? containing;
     }
+    const directNode = editor.state.doc.nodeAt(raw);
+    return directNode?.isBlock || directNode?.type.name === "columns"
+      ? raw
+      : null;
   } catch {
     // The hovered node view can be replaced during an editor update.
   }
   return null;
+}
+
+function topLevelElement(editorDom: HTMLElement, target: HTMLElement) {
+  let element: HTMLElement | null = target;
+  while (element?.parentElement && element.parentElement !== editorDom) {
+    element = element.parentElement;
+  }
+  return element?.parentElement === editorDom ? element : null;
+}
+
+function supportsPortfolioWidth(editor: Editor, position: number) {
+  const node = editor.state.doc.nodeAt(position);
+  return (
+    node?.type.name === "columns" ||
+    (!!node?.isBlock &&
+      Object.prototype.hasOwnProperty.call(
+        node.type.spec.attrs ?? {},
+        "portfolioWidth",
+      ))
+  );
 }
 
 function columnsIn(element: HTMLElement) {
@@ -82,7 +113,7 @@ function columnsIn(element: HTMLElement) {
   );
 }
 
-function measureGrid(element: HTMLElement): GridGeometry | null {
+function measureBlock(element: HTMLElement): BlockGeometry | null {
   if (!element.isConnected) return null;
   const rect = element.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return null;
@@ -126,27 +157,35 @@ function setColumnWidths(
   editor.view.dispatch(tr);
 }
 
-function setRowWidth(
+function setBlockWidth(
   editor: Editor,
-  rowPosition: number,
+  position: number,
   widthMode: PortfolioGridWidthMode,
   customWidth: number,
 ) {
-  const row = editor.state.doc.nodeAt(rowPosition);
-  if (!row || row.type.name !== "columns") return;
+  const node = editor.state.doc.nodeAt(position);
+  if (!node || (!node.isBlock && node.type.name !== "columns")) return;
+  const attributes =
+    node.type.name === "columns"
+      ? {
+          ...node.attrs,
+          widthMode,
+          customWidth: Math.round(customWidth),
+        }
+      : {
+          ...node.attrs,
+          portfolioWidth: Math.round(customWidth),
+        };
   editor.view.dispatch(
-    editor.state.tr.setNodeMarkup(rowPosition, undefined, {
-      ...row.attrs,
-      widthMode,
-      customWidth: Math.round(customWidth),
-    }),
+    editor.state.tr.setNodeMarkup(position, undefined, attributes),
   );
 }
 
 export function PortfolioGridControls({ editor }: { editor: Editor }) {
-  const [active, setActive] = useState<ActiveGrid | null>(null);
-  const [geometry, setGeometry] = useState<GridGeometry | null>(null);
+  const [active, setActive] = useState<ActiveBlock | null>(null);
+  const [geometry, setGeometry] = useState<BlockGeometry | null>(null);
   const [widthLabel, setWidthLabel] = useState<string | null>(null);
+  const [outerResizing, setOuterResizing] = useState(false);
   const sessionRef = useRef<ResizeSession | null>(null);
 
   useEffect(() => {
@@ -154,17 +193,23 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     const editorDom = editor.view.dom;
     const activateFromTarget = (target: EventTarget | null) => {
       if (sessionRef.current || !(target instanceof HTMLElement)) return;
-      const element = target.closest<HTMLElement>('[data-type="columns"]');
-      if (!element || !editorDom.contains(element)) {
+      const element = topLevelElement(editorDom, target);
+      if (!element) {
         setActive(null);
         return;
       }
       const position = topLevelPosition(editor, element);
-      if (position === null) return;
+      if (position === null || !supportsPortfolioWidth(editor, position)) {
+        setActive(null);
+        return;
+      }
+      const nodeType = editor.state.doc.nodeAt(position)!.type.name;
       setActive((current) =>
-        current?.element === element && current.position === position
+        current?.element === element &&
+        current.position === position &&
+        current.nodeType === nodeType
           ? current
-          : { element, position },
+          : { element, position, nodeType },
       );
     };
     const onPointerMove = (event: PointerEvent) =>
@@ -187,7 +232,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     const measure = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const next = measureGrid(active.element);
+        const next = measureBlock(active.element);
         setGeometry(next);
         if (!next) setActive(null);
       });
@@ -228,7 +273,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           rowPosition: session.active.position,
           widths: pixels,
         });
-        setGeometry(measureGrid(session.active.element));
+        setGeometry(measureBlock(session.active.element));
         return;
       }
 
@@ -242,14 +287,16 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       session.latestWidth = desired;
       session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
       setPortfolioGridResizePreview(editor, {
-        kind: "row",
-        rowPosition: session.active.position,
+        kind: "block",
+        position: session.active.position,
         width: desired,
       });
       setWidthLabel(
-        `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`,
+        session.active.nodeType === "columns"
+          ? `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`
+          : `${Math.round(desired)} px`,
       );
-      setGeometry(measureGrid(session.active.element));
+      setGeometry(measureBlock(session.active.element));
     },
     [editor],
   );
@@ -270,6 +317,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         // Capture can already be gone after a browser-level cancellation.
       }
       sessionRef.current = null;
+      setOuterResizing(false);
       if (session.kind === "column") {
         if (commit) {
           setColumnWidths(
@@ -279,11 +327,11 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           );
         }
         setPortfolioGridResizePreview(editor, null);
-        setGeometry(measureGrid(session.active.element));
+        setGeometry(measureBlock(session.active.element));
       } else {
         setWidthLabel(null);
         if (commit) {
-          setRowWidth(
+          setBlockWidth(
             editor,
             session.active.position,
             session.nextMode,
@@ -291,7 +339,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
           );
         }
         setPortfolioGridResizePreview(editor, null);
-        setGeometry(measureGrid(session.active.element));
+        setGeometry(measureBlock(session.active.element));
       }
     },
     [editor],
@@ -447,6 +495,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       return;
     }
 
+    setOuterResizing(true);
     const startWidth = active.element.getBoundingClientRect().width;
     const editorWidth = editor.view.dom.getBoundingClientRect().width;
     const available = Math.max(editorWidth, window.innerWidth - 96);
@@ -457,7 +506,9 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     );
     const totalGapWidth = Math.max(0, startWidth - occupiedColumnWidth);
     const minimumWidth =
-      columns.length * MIN_PORTFOLIO_COLUMN_WIDTH + totalGapWidth;
+      active.nodeType === "columns"
+        ? columns.length * MIN_PORTFOLIO_COLUMN_WIDTH + totalGapWidth
+        : 240;
     const nextMode = (active.element.dataset.widthMode ||
       "normal") as PortfolioGridWidthMode;
     sessionRef.current = {
@@ -475,12 +526,14 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         full: Math.min(1440, available),
       },
       minimumWidth,
-      maximumWidth: Math.max(minimumWidth, Math.min(1440, available)),
+      maximumWidth: Math.max(minimumWidth, available),
       latestWidth: startWidth,
       nextMode,
     };
     setWidthLabel(
-      `${portfolioGridModeLabel(nextMode)} · ${Math.round(startWidth)} px`,
+      active.nodeType === "columns"
+        ? `${portfolioGridModeLabel(nextMode)} · ${Math.round(startWidth)} px`
+        : `${Math.round(startWidth)} px`,
     );
   };
 
@@ -502,13 +555,26 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
   if (!active || !geometry) return null;
   return createPortal(
     <div className="ramzy-grid-resize-layer" aria-hidden="true">
+      {outerResizing &&
+        geometry.outer.map((guide, index) => (
+          <div
+            key={index === 0 ? "width-guide-left" : "width-guide-right"}
+            className="ramzy-block-resize-guide"
+            data-side={index === 0 ? "left" : "right"}
+            style={{
+              left: guide.left + 9,
+              top: guide.top,
+              height: guide.height,
+            }}
+          />
+        ))}
       {geometry.outer.map((handle, index) => (
         <div
           key={index === 0 ? "outer-left" : "outer-right"}
           className="ramzy-grid-resize-handle"
           data-kind="outer"
           data-side={index === 0 ? "left" : "right"}
-          title="Drag to change row width"
+          title="Drag to change block width"
           onMouseDown={startMouseResize}
           onPointerDown={startPointerResize}
           onPointerMove={moveResize}

@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 
-import { Editor as TiptapEditor, Node } from "@tiptap/core";
+import { Editor as TiptapEditor, type JSONContent, Node } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  PortfolioBlockWidth,
   PortfolioGridResizePreview,
   setPortfolioGridResizePreview,
 } from "./portfolio-grid-resize-preview-extension";
 
-const content = {
+const content: JSONContent = {
   type: "doc",
   content: [
     {
@@ -43,7 +44,10 @@ const TestColumn = Node.create({
 
 const editors: TiptapEditor[] = [];
 
-function createEditor(onUpdate = vi.fn()) {
+function createEditor(
+  onUpdate = vi.fn(),
+  editorContent: JSONContent = content,
+) {
   const element = document.createElement("div");
   document.body.append(element);
   const editor = new TiptapEditor({
@@ -54,9 +58,10 @@ function createEditor(onUpdate = vi.fn()) {
       Text,
       TestColumns,
       TestColumn,
+      PortfolioBlockWidth,
       PortfolioGridResizePreview,
     ],
-    content,
+    content: editorContent,
     onUpdate,
   });
   editors.push(editor);
@@ -68,28 +73,53 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe("PortfolioGridResizePreview", () => {
-  it("renders and clears an editor-owned row width without changing the document", () => {
+describe("portfolio block width and grid resize preview", () => {
+  it("renders and clears an editor-owned block width without changing the document", () => {
     const { editor, element, onUpdate } = createEditor();
     const before = editor.getJSON();
     const row = element.querySelector<HTMLElement>('[data-type="columns"]')!;
 
     setPortfolioGridResizePreview(editor, {
-      kind: "row",
-      rowPosition: 0,
+      kind: "block",
+      position: 0,
       width: 928,
     });
 
-    expect(row.classList.contains("ramzy-grid-resize-preview-row")).toBe(true);
-    expect(row.style.getPropertyValue("--ramzy-grid-preview-width")).toBe(
+    expect(row.classList.contains("ramzy-block-resize-preview")).toBe(true);
+    expect(row.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe(
       "928px",
     );
     expect(editor.getJSON()).toEqual(before);
     expect(onUpdate).not.toHaveBeenCalled();
 
     setPortfolioGridResizePreview(editor, null);
-    expect(row.classList.contains("ramzy-grid-resize-preview-row")).toBe(false);
-    expect(row.style.getPropertyValue("--ramzy-grid-preview-width")).toBe("");
+    expect(row.classList.contains("ramzy-block-resize-preview")).toBe(false);
+    expect(row.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe(
+      "",
+    );
+  });
+
+  it("serializes and decorates a saved width on a standalone block", () => {
+    const { editor, element, onUpdate } = createEditor(vi.fn(), {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          attrs: { portfolioWidth: 640 },
+          content: [{ type: "text", text: "Standalone" }],
+        },
+      ],
+    });
+    const paragraph = element.querySelector<HTMLElement>("p")!;
+
+    expect(paragraph.classList.contains("ramzy-portfolio-custom-width")).toBe(
+      true,
+    );
+    expect(
+      paragraph.style.getPropertyValue("--ramzy-portfolio-block-width"),
+    ).toBe("640px");
+    expect(editor.getHTML()).toContain('data-portfolio-width="640"');
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 
   it("renders every intermediate divider width through column decorations", () => {
