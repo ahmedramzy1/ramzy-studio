@@ -395,19 +395,64 @@ describe("PortfolioGridControls live pointer preview", () => {
 
       act(() => {
         startResize(handles[dividerIndex]);
-        moveResize(248);
+        moveResize(217);
       });
 
       columns.forEach((column, index) => {
         const width = Number.parseFloat(column.style.width);
         if (index === dividerIndex) {
-          expect(width).toBeCloseTo(originalWidths[index] + 48);
+          expect(width).toBeCloseTo(originalWidths[index] + 17, 1);
         } else if (index === dividerIndex + 1) {
-          expect(width).toBeCloseTo(originalWidths[index] - 48);
+          expect(width).toBeCloseTo(originalWidths[index] - 17, 1);
         } else {
           expect(width).toBeCloseTo(originalWidths[index]);
         }
       });
+    },
+  );
+
+  it.each([2, 3, 4, 5])(
+    "snaps the selected pair to 60/40 with visible feedback in a %i-column row",
+    async (columnCount) => {
+      const { columns } = setupGrid({ columnCount });
+      const handles = await waitFor(() => {
+        const elements = document.querySelectorAll<HTMLElement>(
+          '.ramzy-grid-resize-handle[data-kind="divider"]',
+        );
+        expect(elements).toHaveLength(columnCount - 1);
+        return elements;
+      });
+      const dividerIndex = Math.min(1, handles.length - 1);
+      const originalWidths = columns.map(
+        (column) => column.getBoundingClientRect().width,
+      );
+      const pairDelta = originalWidths[dividerIndex] * 0.2;
+
+      act(() => {
+        startResize(handles[dividerIndex], 200);
+        moveResize(200 + pairDelta);
+      });
+
+      columns.forEach((column, index) => {
+        const width = Number.parseFloat(column.style.width);
+        if (index === dividerIndex) {
+          expect(width).toBeCloseTo(originalWidths[index] * 1.2, 1);
+        } else if (index === dividerIndex + 1) {
+          expect(width).toBeCloseTo(originalWidths[index] * 0.8, 1);
+        } else {
+          expect(width).toBeCloseTo(originalWidths[index], 1);
+        }
+      });
+      expect(
+        document.querySelector<HTMLElement>(
+          '.ramzy-block-resize-snap-guide[data-kind="column-ratio"][data-active="true"]',
+        )?.dataset.ratio,
+      ).toBe("60% / 40%");
+      expect(
+        document.querySelector<HTMLElement>(
+          '.ramzy-grid-width-badge[data-kind="column-ratio"]',
+        )?.textContent,
+      ).toBe("60% / 40%");
     },
   );
 

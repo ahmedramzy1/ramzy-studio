@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_PORTFOLIO_BLOCK_WIDTH,
+  formatPortfolioColumnRatio,
   nearestPortfolioGridWidthMode,
+  portfolioColumnRatioGuides,
   portfolioResizeGuideWidths,
   portfolioGridModeLabel,
   resizedColumnPixelWidths,
   resizedColumnWeights,
   snapPortfolioBlockWidth,
+  snapPortfolioColumnRatio,
 } from "./portfolio-grid-resize";
 
 describe("portfolio grid resizing", () => {
@@ -26,6 +29,40 @@ describe("portfolio grid resizing", () => {
     expect(resizedColumnPixelWidths([300, 300, 300], 0, 60)).toEqual([
       360, 240, 300,
     ]);
+  });
+
+  it("builds useful pair-ratio guides without violating minimum widths", () => {
+    const guides = portfolioColumnRatioGuides(800, 96);
+
+    expect(guides.map((guide) => guide.label)).toEqual(
+      expect.arrayContaining([
+        "20% / 80%",
+        "25% / 75%",
+        "33% / 67%",
+        "40% / 60%",
+        "50% / 50%",
+        "60% / 40%",
+        "67% / 33%",
+        "75% / 25%",
+        "80% / 20%",
+      ]),
+    );
+    expect(guides.every((guide) => guide.leftWidth >= 96)).toBe(true);
+    expect(guides.every((guide) => guide.rightWidth >= 96)).toBe(true);
+  });
+
+  it("snaps an internal divider near 60/40 but remains free between ratios", () => {
+    const guides = portfolioColumnRatioGuides(800);
+
+    expect(snapPortfolioColumnRatio(473, guides)).toEqual({
+      leftWidth: 480,
+      snappedGuide: expect.objectContaining({ label: "60% / 40%" }),
+    });
+    expect(snapPortfolioColumnRatio(445, guides)).toEqual({
+      leftWidth: 445,
+      snappedGuide: null,
+    });
+    expect(formatPortfolioColumnRatio(445, 355)).toBe("56% / 44%");
   });
 
   it("snaps the outer row handles to the nearest durable width mode", () => {

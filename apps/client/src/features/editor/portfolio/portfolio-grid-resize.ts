@@ -4,10 +4,40 @@ export const MIN_PORTFOLIO_COLUMN_WIDTH = 96;
 export const MAX_PORTFOLIO_BLOCK_WIDTH = 1440;
 export const PORTFOLIO_RESIZE_GUIDE_STEP = 128;
 export const PORTFOLIO_RESIZE_SNAP_THRESHOLD = 24;
+export const PORTFOLIO_COLUMN_RATIO_SNAP_THRESHOLD = 12;
+
+const PORTFOLIO_COLUMN_RATIO_TARGETS = [
+  0.1,
+  0.2,
+  0.25,
+  0.3,
+  1 / 3,
+  0.4,
+  0.5,
+  0.6,
+  2 / 3,
+  0.7,
+  0.75,
+  0.8,
+  0.9,
+] as const;
 
 export type PortfolioResizeSnap = {
   width: number;
   mode: PortfolioGridWidthMode | null;
+};
+
+export type PortfolioColumnRatioGuide = {
+  leftRatio: number;
+  rightRatio: number;
+  leftWidth: number;
+  rightWidth: number;
+  label: string;
+};
+
+export type PortfolioColumnRatioSnap = {
+  leftWidth: number;
+  snappedGuide: PortfolioColumnRatioGuide | null;
 };
 
 function uniqueSortedWidths(widths: number[]) {
@@ -72,6 +102,59 @@ export function snapPortfolioBlockWidth(
     modes.find((candidate) => Math.abs(modeWidths[candidate] - width) < 0.5) ??
     null;
   return { width, mode };
+}
+
+export function formatPortfolioColumnRatio(
+  leftWidth: number,
+  rightWidth: number,
+): string {
+  const pairWidth = leftWidth + rightWidth;
+  if (!Number.isFinite(pairWidth) || pairWidth <= 0) return "50% / 50%";
+  const leftPercent = Math.round((leftWidth / pairWidth) * 100);
+  return `${leftPercent}% / ${100 - leftPercent}%`;
+}
+
+export function portfolioColumnRatioGuides(
+  pairWidth: number,
+  minWidth = MIN_PORTFOLIO_COLUMN_WIDTH,
+): PortfolioColumnRatioGuide[] {
+  if (!Number.isFinite(pairWidth) || pairWidth <= minWidth * 2) return [];
+
+  return PORTFOLIO_COLUMN_RATIO_TARGETS.map((leftRatio) => {
+    const leftWidth = pairWidth * leftRatio;
+    const rightWidth = pairWidth - leftWidth;
+    return {
+      leftRatio,
+      rightRatio: 1 - leftRatio,
+      leftWidth,
+      rightWidth,
+      label: formatPortfolioColumnRatio(leftWidth, rightWidth),
+    };
+  }).filter(
+    ({ leftWidth, rightWidth }) =>
+      leftWidth >= minWidth && rightWidth >= minWidth,
+  );
+}
+
+export function snapPortfolioColumnRatio(
+  desiredLeftWidth: number,
+  guides: PortfolioColumnRatioGuide[],
+  threshold = PORTFOLIO_COLUMN_RATIO_SNAP_THRESHOLD,
+): PortfolioColumnRatioSnap {
+  const closest = guides.reduce<PortfolioColumnRatioGuide | null>(
+    (current, guide) => {
+      if (!current) return guide;
+      return Math.abs(guide.leftWidth - desiredLeftWidth) <
+        Math.abs(current.leftWidth - desiredLeftWidth)
+        ? guide
+        : current;
+    },
+    null,
+  );
+  if (closest && Math.abs(closest.leftWidth - desiredLeftWidth) <= threshold) {
+    return { leftWidth: closest.leftWidth, snappedGuide: closest };
+  }
+  return { leftWidth: desiredLeftWidth, snappedGuide: null };
 }
 
 export function resizedColumnWeights(

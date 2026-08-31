@@ -274,6 +274,67 @@ describe("portfolio grid resize through browser pointer events", () => {
     editor.destroy();
   });
 
+  it("shows internal ratio guides and snaps live to 60/40 before release", async () => {
+    const { editor, left, right } = setupProseMirrorGrid();
+    const divider = document.querySelector<HTMLElement>(
+      '.ramzy-grid-resize-handle[data-kind="divider"]',
+    )!;
+
+    act(() => {
+      divider.dispatchEvent(pointerEvent("pointerdown", 500, 15));
+      window.dispatchEvent(pointerEvent("pointermove", 573, 15));
+    });
+    await Promise.resolve();
+
+    expect(
+      left.style.getPropertyValue("--ramzy-grid-preview-column-width"),
+    ).toBe("480px");
+    expect(
+      right.style.getPropertyValue("--ramzy-grid-preview-column-width"),
+    ).toBe("320px");
+    expect(
+      document.querySelectorAll(
+        '.ramzy-block-resize-snap-guide[data-kind="column-ratio"]',
+      ).length,
+    ).toBeGreaterThan(4);
+    const activeGuide = document.querySelector<HTMLElement>(
+      '.ramzy-block-resize-snap-guide[data-kind="column-ratio"][data-active="true"]',
+    );
+    expect(activeGuide?.dataset.ratio).toBe("60% / 40%");
+    expect(activeGuide?.style.left).toBe("580px");
+    expect(
+      document.querySelector<HTMLElement>(
+        '.ramzy-grid-width-badge[data-kind="column-ratio"]',
+      )?.textContent,
+    ).toBe("60% / 40%");
+    const columnAttributes = () => {
+      const rowNode = editor.state.doc.child(0);
+      return Array.from(
+        { length: rowNode.childCount },
+        (_, index) => rowNode.child(index).attrs,
+      );
+    };
+    expect(columnAttributes()).toEqual([
+      expect.objectContaining({ width: null }),
+      expect.objectContaining({ width: null }),
+    ]);
+
+    act(() => {
+      window.dispatchEvent(pointerEvent("pointerup", 573, 15));
+    });
+
+    expect(columnAttributes()).toEqual([
+      expect.objectContaining({ width: 1.2 }),
+      expect.objectContaining({ width: 0.8 }),
+    ]);
+    expect(
+      document.querySelectorAll(
+        '.ramzy-block-resize-snap-guide[data-kind="column-ratio"]',
+      ),
+    ).toHaveLength(0);
+    editor.destroy();
+  });
+
   it("keeps the live outer width after ProseMirror observes the DOM and before release", async () => {
     const { editor, row } = setupProseMirrorGrid();
 

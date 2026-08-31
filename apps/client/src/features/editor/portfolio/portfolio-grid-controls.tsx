@@ -13,11 +13,15 @@ import {
   MAX_PORTFOLIO_BLOCK_WIDTH,
   MIN_PORTFOLIO_COLUMN_WIDTH,
   nearestPortfolioGridWidthMode,
+  formatPortfolioColumnRatio,
+  portfolioColumnRatioGuides,
   portfolioResizeGuideWidths,
   portfolioGridModeLabel,
   resizedColumnPixelWidths,
   resizedColumnWeights,
   snapPortfolioBlockWidth,
+  snapPortfolioColumnRatio,
+  type PortfolioColumnRatioGuide,
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
 import { setPortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
@@ -34,9 +38,11 @@ type BlockGeometry = {
   badge: { left: number; top: number };
 };
 type SnapGuide = {
+  key: string;
   left: number;
-  width: number;
-  side: "left" | "right";
+  width?: number;
+  side?: "left" | "right";
+  ratio?: string;
   active: boolean;
 };
 
@@ -49,6 +55,9 @@ type ColumnResizeSession = {
   columns: HTMLElement[];
   startWidths: number[];
   dividerIndex: number;
+  ratioGuides: PortfolioColumnRatioGuide[];
+  pairLeft: number;
+  pairGap: number;
   delta: number;
   latestWeights: number[];
 };
@@ -197,6 +206,10 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
   const [geometry, setGeometry] = useState<BlockGeometry | null>(null);
   const [widthLabel, setWidthLabel] = useState<string | null>(null);
   const [outerResizing, setOuterResizing] = useState(false);
+  const [columnResizing, setColumnResizing] = useState(false);
+  const [columnDividerIndex, setColumnDividerIndex] = useState<number | null>(
+    null,
+  );
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
   const sessionRef = useRef<ResizeSession | null>(null);
 
@@ -270,21 +283,47 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       if (!session) return;
       session.delta = delta;
       if (session.kind === "column") {
+        const startLeftWidth = session.startWidths[session.dividerIndex];
+        const startRightWidth = session.startWidths[session.dividerIndex + 1];
+        const pairWidth = startLeftWidth + startRightWidth;
+        const boundedLeftWidth = Math.min(
+          pairWidth - MIN_PORTFOLIO_COLUMN_WIDTH,
+          Math.max(MIN_PORTFOLIO_COLUMN_WIDTH, startLeftWidth + session.delta),
+        );
+        const snapped = snapPortfolioColumnRatio(
+          boundedLeftWidth,
+          session.ratioGuides,
+        );
+        const effectiveDelta = snapped.leftWidth - startLeftWidth;
         session.latestWeights = resizedColumnWeights(
           session.startWidths,
           session.dividerIndex,
-          session.delta,
+          effectiveDelta,
         );
         const pixels = resizedColumnPixelWidths(
           session.startWidths,
           session.dividerIndex,
-          session.delta,
+          effectiveDelta,
         );
         setPortfolioGridResizePreview(editor, {
           kind: "columns",
           rowPosition: session.active.position,
           widths: pixels,
         });
+        setWidthLabel(
+          formatPortfolioColumnRatio(
+            pixels[session.dividerIndex],
+            pixels[session.dividerIndex + 1],
+          ),
+        );
+        setSnapGuides(
+          session.ratioGuides.map((guide) => ({
+            key: `ratio-${session.dividerIndex}-${guide.label}`,
+            left: session.pairLeft + guide.leftWidth + session.pairGap / 2,
+            ratio: guide.label,
+            active: snapped.snappedGuide?.label === guide.label,
+          })),
+        );
         setGeometry(measureBlock(session.active.element));
         return;
       }
@@ -325,12 +364,14 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       setSnapGuides(
         session.guideWidths.flatMap((width) => [
           {
+            key: `width-${width}-left`,
             left: center - width / 2,
             width,
             side: "left" as const,
             active: session.snappedWidth === width,
           },
           {
+            key: `width-${width}-right`,
             left: center + width / 2,
             width,
             side: "right" as const,
@@ -360,7 +401,10 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       }
       sessionRef.current = null;
       setOuterResizing(false);
+      setColumnResizing(false);
+      setColumnDividerIndex(null);
       setSnapGuides([]);
+      setWidthLabel(null);
       if (session.kind === "column") {
         if (commit) {
           setColumnWidths(
@@ -372,7 +416,6 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         setPortfolioGridResizePreview(editor, null);
         setGeometry(measureBlock(session.active.element));
       } else {
-        setWidthLabel(null);
         if (commit) {
           setBlockWidth(
             editor,
@@ -523,6 +566,17 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       const startWidths = columns.map(
         (column) => column.getBoundingClientRect().width,
       );
+      const leftRect = columns[dividerIndex]?.getBoundingClientRect();
+      const rightRect = columns[dividerIndex + 1]?.getBoundingClientRect();
+      if (!leftRect || !rightRect) {
+        delete handle.dataset.resizing;
+        return;
+      }
+      const ratioGuides = portfolioColumnRatioGuides(
+        startWidths[dividerIndex] + startWidths[dividerIndex + 1],
+      );
+      setColumnResizing(true);
+      setColumnDividerIndex(dividerIndex);
       sessionRef.current = {
         kind: "column",
         pointerId,
@@ -532,9 +586,29 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         columns,
         startWidths,
         dividerIndex,
+        ratioGuides,
+        pairLeft: leftRect.left,
+        pairGap: Math.max(0, rightRect.left - leftRect.right),
         delta: 0,
         latestWeights: resizedColumnWeights(startWidths, dividerIndex, 0),
       };
+      setSnapGuides(
+        ratioGuides.map((guide) => ({
+          key: `ratio-${dividerIndex}-${guide.label}`,
+          left:
+            leftRect.left +
+            guide.leftWidth +
+            Math.max(0, rightRect.left - leftRect.right) / 2,
+          ratio: guide.label,
+          active: Math.abs(guide.leftWidth - startWidths[dividerIndex]) < 0.5,
+        })),
+      );
+      setWidthLabel(
+        formatPortfolioColumnRatio(
+          startWidths[dividerIndex],
+          startWidths[dividerIndex + 1],
+        ),
+      );
       return;
     }
 
@@ -586,12 +660,14 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     setSnapGuides(
       guideWidths.flatMap((width) => [
         {
+          key: `width-${width}-left`,
           left: center - width / 2,
           width,
           side: "left" as const,
           active: false,
         },
         {
+          key: `width-${width}-right`,
           left: center + width / 2,
           width,
           side: "right" as const,
@@ -622,15 +698,37 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
   };
 
   if (!active || !geometry) return null;
+  const activeDivider =
+    columnDividerIndex !== null ? geometry.dividers[columnDividerIndex] : null;
+  const editorTop = Math.max(0, editor.view.dom.getBoundingClientRect().top);
+  const visibleDividerTop = activeDivider
+    ? Math.max(editorTop, activeDivider.top)
+    : 0;
+  const visibleDividerBottom = activeDivider
+    ? Math.min(window.innerHeight, activeDivider.top + activeDivider.height)
+    : 0;
+  const badgePosition = activeDivider
+    ? {
+        left: activeDivider.left + 49,
+        top: (visibleDividerTop + visibleDividerBottom) / 2,
+        transform: "translateY(-50%)",
+      }
+    : {
+        left: geometry.badge.left,
+        top: geometry.badge.top,
+        transform: "translateX(-50%)",
+      };
   return createPortal(
     <div className="ramzy-grid-resize-layer" aria-hidden="true">
-      {outerResizing &&
+      {(outerResizing || columnResizing) &&
         snapGuides.map((guide) => (
           <div
-            key={`${guide.width}-${guide.side}`}
+            key={guide.key}
             className="ramzy-block-resize-snap-guide"
             data-side={guide.side}
             data-width={guide.width}
+            data-kind={guide.ratio ? "column-ratio" : "outer-width"}
+            data-ratio={guide.ratio}
             data-active={guide.active ? "true" : undefined}
             style={{
               left: guide.left,
@@ -688,11 +786,8 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       {widthLabel && (
         <div
           className="ramzy-grid-width-badge"
-          style={{
-            left: geometry.badge.left,
-            top: geometry.badge.top,
-            transform: "translateX(-50%)",
-          }}
+          data-kind={columnResizing ? "column-ratio" : "outer-width"}
+          style={badgePosition}
         >
           {widthLabel}
         </div>
