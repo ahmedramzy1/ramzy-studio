@@ -352,7 +352,7 @@ div[data-type="columns"][data-width-mode="wide"] {
   div[data-type="columns"][data-custom-width] {
   position: relative;
   left: 50%;
-  width: min(var(--ramzy-columns-custom-width), calc(100vw - 6rem));
+  width: min(var(--ramzy-columns-custom-width), 1440px, calc(100vw - 6rem));
   max-width: none;
   margin-right: 0;
   margin-left: 0;
@@ -367,7 +367,11 @@ div[data-type="columns"][data-width-mode="wide"] {
 .ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
   position: relative !important;
   left: 50% !important;
-  width: min(var(--ramzy-portfolio-block-width), calc(100vw - 6rem)) !important;
+  width: min(
+    var(--ramzy-portfolio-block-width),
+    1440px,
+    calc(100vw - 6rem)
+  ) !important;
   max-width: none !important;
   margin-right: 0 !important;
   margin-left: 0 !important;
@@ -453,16 +457,17 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
   pointer-events: none;
 }
 
-.ramzy-block-resize-guide {
+.ramzy-block-resize-snap-guide {
   position: fixed;
   width: 1px;
-  background: color-mix(
-    in srgb,
-    var(--mantine-color-blue-5, #339af0) 78%,
-    transparent
-  );
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 45%);
+  background: light-dark(rgb(160 166 176 / 28%), rgb(190 196 208 / 22%));
   pointer-events: none;
+}
+
+.ramzy-block-resize-snap-guide[data-active="true"] {
+  width: 2px;
+  background: var(--mantine-color-blue-5, #339af0);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 50%);
 }
 
 .ProseMirror.ramzy-portfolio-editor

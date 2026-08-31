@@ -291,17 +291,17 @@ describe("portfolio grid resize through browser pointer events", () => {
     );
     expect(row.classList.contains("ramzy-block-resize-preview")).toBe(true);
     expect(outerRight.dataset.resizing).toBe("true");
-    expect(document.querySelectorAll(".ramzy-block-resize-guide")).toHaveLength(
-      2,
-    );
+    expect(
+      document.querySelectorAll(".ramzy-block-resize-snap-guide").length,
+    ).toBeGreaterThan(2);
     expect(
       document.querySelector<HTMLElement>(
-        '.ramzy-block-resize-guide[data-side="left"]',
+        '.ramzy-block-resize-snap-guide[data-active="true"][data-side="left"]',
       )?.style.left,
     ).toBe("36px");
     expect(
       document.querySelector<HTMLElement>(
-        '.ramzy-block-resize-guide[data-side="right"]',
+        '.ramzy-block-resize-snap-guide[data-active="true"][data-side="right"]',
       )?.style.left,
     ).toBe("964px");
     expect(editor.getJSON().content?.[0].attrs).toEqual(
@@ -324,9 +324,9 @@ describe("portfolio grid resize through browser pointer events", () => {
     expect(savedRow.classList.contains("ramzy-portfolio-custom-width")).toBe(
       true,
     );
-    expect(document.querySelectorAll(".ramzy-block-resize-guide")).toHaveLength(
-      0,
-    );
+    expect(
+      document.querySelectorAll(".ramzy-block-resize-snap-guide"),
+    ).toHaveLength(0);
     editor.destroy();
   });
 
@@ -348,7 +348,7 @@ describe("portfolio grid resize through browser pointer events", () => {
         ),
       ).toHaveLength(0);
       expect(
-        document.querySelectorAll(".ramzy-block-resize-guide"),
+        document.querySelectorAll(".ramzy-block-resize-snap-guide"),
       ).toHaveLength(0);
 
       act(() => {
@@ -362,18 +362,13 @@ describe("portfolio grid resize through browser pointer events", () => {
       ).toBe("700px");
       expect(block.classList.contains("ramzy-block-resize-preview")).toBe(true);
       expect(
-        document.querySelectorAll(".ramzy-block-resize-guide"),
-      ).toHaveLength(2);
+        document.querySelectorAll(".ramzy-block-resize-snap-guide").length,
+      ).toBeGreaterThan(2);
       expect(
-        document.querySelector<HTMLElement>(
-          '.ramzy-block-resize-guide[data-side="left"]',
-        )?.style.left,
-      ).toBe("150px");
-      expect(
-        document.querySelector<HTMLElement>(
-          '.ramzy-block-resize-guide[data-side="right"]',
-        )?.style.left,
-      ).toBe("850px");
+        document.querySelectorAll(
+          '.ramzy-block-resize-snap-guide[data-active="true"]',
+        ),
+      ).toHaveLength(0);
       expect(editor.getJSON().content?.[0].attrs).toEqual(
         expect.objectContaining({ portfolioWidth: null }),
       );
@@ -396,7 +391,7 @@ describe("portfolio grid resize through browser pointer events", () => {
         savedBlock.style.getPropertyValue("--ramzy-portfolio-block-width"),
       ).toBe("700px");
       expect(
-        document.querySelectorAll(".ramzy-block-resize-guide"),
+        document.querySelectorAll(".ramzy-block-resize-snap-guide"),
       ).toHaveLength(0);
       editor.destroy();
     },
@@ -414,9 +409,9 @@ describe("portfolio grid resize through browser pointer events", () => {
     });
     await Promise.resolve();
     expect(block.classList.contains("ramzy-block-resize-preview")).toBe(true);
-    expect(document.querySelectorAll(".ramzy-block-resize-guide")).toHaveLength(
-      2,
-    );
+    expect(
+      document.querySelectorAll(".ramzy-block-resize-snap-guide").length,
+    ).toBeGreaterThan(2);
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -426,8 +421,64 @@ describe("portfolio grid resize through browser pointer events", () => {
       expect.objectContaining({ portfolioWidth: null }),
     );
     expect(block.classList.contains("ramzy-block-resize-preview")).toBe(false);
-    expect(document.querySelectorAll(".ramzy-block-resize-guide")).toHaveLength(
-      0,
+    expect(
+      document.querySelectorAll(".ramzy-block-resize-snap-guide"),
+    ).toHaveLength(0);
+    editor.destroy();
+  });
+
+  it("snaps a standalone block to the visible canvas grid before release", async () => {
+    vi.stubGlobal("innerWidth", 1800);
+    const { editor, block } = setupProseMirrorBlock("paragraph");
+    const outerRight = document.querySelector<HTMLElement>(
+      '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+    )!;
+
+    act(() => {
+      outerRight.dispatchEvent(pointerEvent("pointerdown", 900, 13));
+      window.dispatchEvent(pointerEvent("pointermove", 1016, 13));
+    });
+    await Promise.resolve();
+
+    expect(block.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe(
+      "1024px",
+    );
+    expect(
+      document.querySelectorAll(
+        '.ramzy-block-resize-snap-guide[data-active="true"]',
+      ),
+    ).toHaveLength(2);
+
+    act(() => {
+      window.dispatchEvent(pointerEvent("pointerup", 1016, 13));
+    });
+    expect(editor.getJSON().content?.[0].attrs).toEqual(
+      expect.objectContaining({ portfolioWidth: 1024 }),
+    );
+    editor.destroy();
+  });
+
+  it("never lets a standalone block exceed the safe full-width boundary", async () => {
+    vi.stubGlobal("innerWidth", 2048);
+    const { editor, block } = setupProseMirrorBlock("photoAlbum");
+    const outerRight = document.querySelector<HTMLElement>(
+      '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+    )!;
+
+    act(() => {
+      outerRight.dispatchEvent(pointerEvent("pointerdown", 900, 14));
+      window.dispatchEvent(pointerEvent("pointermove", 1800, 14));
+    });
+    await Promise.resolve();
+
+    expect(block.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe(
+      "1440px",
+    );
+    act(() => {
+      window.dispatchEvent(pointerEvent("pointerup", 1800, 14));
+    });
+    expect(editor.getJSON().content?.[0].attrs).toEqual(
+      expect.objectContaining({ portfolioWidth: 1440 }),
     );
     editor.destroy();
   });

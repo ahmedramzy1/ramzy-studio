@@ -1,6 +1,78 @@
 export type PortfolioGridWidthMode = "normal" | "wide" | "full";
 
 export const MIN_PORTFOLIO_COLUMN_WIDTH = 96;
+export const MAX_PORTFOLIO_BLOCK_WIDTH = 1440;
+export const PORTFOLIO_RESIZE_GUIDE_STEP = 128;
+export const PORTFOLIO_RESIZE_SNAP_THRESHOLD = 24;
+
+export type PortfolioResizeSnap = {
+  width: number;
+  mode: PortfolioGridWidthMode | null;
+};
+
+function uniqueSortedWidths(widths: number[]) {
+  return Array.from(
+    new Set(widths.filter(Number.isFinite).map((width) => Math.round(width))),
+  ).sort((left, right) => left - right);
+}
+
+export function portfolioResizeGuideWidths(
+  minimumWidth: number,
+  maximumWidth: number,
+  modeWidths: Record<PortfolioGridWidthMode, number>,
+): number[] {
+  if (
+    !Number.isFinite(minimumWidth) ||
+    !Number.isFinite(maximumWidth) ||
+    maximumWidth < minimumWidth
+  ) {
+    return [];
+  }
+
+  const firstGridWidth =
+    Math.ceil(minimumWidth / PORTFOLIO_RESIZE_GUIDE_STEP) *
+    PORTFOLIO_RESIZE_GUIDE_STEP;
+  const gridWidths: number[] = [];
+  for (
+    let width = firstGridWidth;
+    width <= maximumWidth;
+    width += PORTFOLIO_RESIZE_GUIDE_STEP
+  ) {
+    gridWidths.push(width);
+  }
+
+  return uniqueSortedWidths([
+    minimumWidth,
+    ...gridWidths,
+    modeWidths.normal,
+    modeWidths.wide,
+    modeWidths.full,
+    maximumWidth,
+  ]).filter((width) => width >= minimumWidth && width <= maximumWidth);
+}
+
+export function snapPortfolioBlockWidth(
+  desiredWidth: number,
+  guideWidths: number[],
+  modeWidths: Record<PortfolioGridWidthMode, number>,
+  threshold = PORTFOLIO_RESIZE_SNAP_THRESHOLD,
+): PortfolioResizeSnap {
+  const closestWidth = guideWidths.reduce<number | null>((closest, width) => {
+    if (closest === null) return width;
+    return Math.abs(width - desiredWidth) < Math.abs(closest - desiredWidth)
+      ? width
+      : closest;
+  }, null);
+  const width =
+    closestWidth !== null && Math.abs(closestWidth - desiredWidth) <= threshold
+      ? closestWidth
+      : desiredWidth;
+  const modes: PortfolioGridWidthMode[] = ["normal", "wide", "full"];
+  const mode =
+    modes.find((candidate) => Math.abs(modeWidths[candidate] - width) < 0.5) ??
+    null;
+  return { width, mode };
+}
 
 export function resizedColumnWeights(
   widths: number[],

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_PORTFOLIO_BLOCK_WIDTH,
   nearestPortfolioGridWidthMode,
+  portfolioResizeGuideWidths,
   portfolioGridModeLabel,
   resizedColumnPixelWidths,
   resizedColumnWeights,
+  snapPortfolioBlockWidth,
 } from "./portfolio-grid-resize";
 
 describe("portfolio grid resizing", () => {
@@ -31,5 +34,34 @@ describe("portfolio grid resizing", () => {
     expect(nearestPortfolioGridWidthMode(1090, modes)).toBe("wide");
     expect(nearestPortfolioGridWidthMode(1390, modes)).toBe("full");
     expect(portfolioGridModeLabel("normal")).toBe("Centered");
+  });
+
+  it("builds a bounded guide grid that includes every durable width mode", () => {
+    const modes = { normal: 800, wide: 1120, full: 1440 } as const;
+    const guides = portfolioResizeGuideWidths(240, 1440, modes);
+
+    expect(guides).toContain(256);
+    expect(guides).toContain(1024);
+    expect(guides).toContain(1120);
+    expect(guides).toContain(MAX_PORTFOLIO_BLOCK_WIDTH);
+    expect(Math.max(...guides)).toBe(MAX_PORTFOLIO_BLOCK_WIDTH);
+  });
+
+  it("moves magnetically onto a nearby guide but stays free between guides", () => {
+    const modes = { normal: 800, wide: 1120, full: 1440 } as const;
+    const guides = portfolioResizeGuideWidths(240, 1440, modes);
+
+    expect(snapPortfolioBlockWidth(1038, guides, modes)).toEqual({
+      width: 1024,
+      mode: null,
+    });
+    expect(snapPortfolioBlockWidth(1070, guides, modes)).toEqual({
+      width: 1070,
+      mode: null,
+    });
+    expect(snapPortfolioBlockWidth(1100, guides, modes)).toEqual({
+      width: 1120,
+      mode: "wide",
+    });
   });
 });

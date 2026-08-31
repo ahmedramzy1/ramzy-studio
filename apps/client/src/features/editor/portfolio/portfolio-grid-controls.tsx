@@ -10,11 +10,14 @@ import {
 import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/core";
 import {
+  MAX_PORTFOLIO_BLOCK_WIDTH,
   MIN_PORTFOLIO_COLUMN_WIDTH,
   nearestPortfolioGridWidthMode,
+  portfolioResizeGuideWidths,
   portfolioGridModeLabel,
   resizedColumnPixelWidths,
   resizedColumnWeights,
+  snapPortfolioBlockWidth,
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
 import { setPortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
@@ -29,6 +32,12 @@ type BlockGeometry = {
   outer: [HandleGeometry, HandleGeometry];
   dividers: HandleGeometry[];
   badge: { left: number; top: number };
+};
+type SnapGuide = {
+  left: number;
+  width: number;
+  side: "left" | "right";
+  active: boolean;
 };
 
 type ColumnResizeSession = {
@@ -56,7 +65,9 @@ type RowResizeSession = {
   widths: Record<PortfolioGridWidthMode, number>;
   minimumWidth: number;
   maximumWidth: number;
+  guideWidths: number[];
   latestWidth: number;
+  snappedWidth: number | null;
   nextMode: PortfolioGridWidthMode;
 };
 
@@ -186,6 +197,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
   const [geometry, setGeometry] = useState<BlockGeometry | null>(null);
   const [widthLabel, setWidthLabel] = useState<string | null>(null);
   const [outerResizing, setOuterResizing] = useState(false);
+  const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
   const sessionRef = useRef<ResizeSession | null>(null);
 
   useEffect(() => {
@@ -280,11 +292,21 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       const requested =
         session.startWidth +
         (session.side === "right" ? session.delta * 2 : -session.delta * 2);
-      const desired = Math.min(
+      const bounded = Math.min(
         session.maximumWidth,
         Math.max(session.minimumWidth, requested),
       );
+      const snapped = snapPortfolioBlockWidth(
+        bounded,
+        session.guideWidths,
+        session.widths,
+      );
+      const desired = snapped.width;
       session.latestWidth = desired;
+      session.snappedWidth =
+        Math.abs(desired - bounded) > 0.5 || snapped.mode !== null
+          ? desired
+          : null;
       session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
       setPortfolioGridResizePreview(editor, {
         kind: "block",
@@ -293,8 +315,28 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       });
       setWidthLabel(
         session.active.nodeType === "columns"
-          ? `${portfolioGridModeLabel(session.nextMode)} · ${Math.round(desired)} px`
+          ? snapped.mode
+            ? `${portfolioGridModeLabel(snapped.mode)} · ${Math.round(desired)} px`
+            : `${Math.round(desired)} px`
           : `${Math.round(desired)} px`,
+      );
+      const center =
+        session.active.element.getBoundingClientRect().left + desired / 2;
+      setSnapGuides(
+        session.guideWidths.flatMap((width) => [
+          {
+            left: center - width / 2,
+            width,
+            side: "left" as const,
+            active: session.snappedWidth === width,
+          },
+          {
+            left: center + width / 2,
+            width,
+            side: "right" as const,
+            active: session.snappedWidth === width,
+          },
+        ]),
       );
       setGeometry(measureBlock(session.active.element));
     },
@@ -318,6 +360,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       }
       sessionRef.current = null;
       setOuterResizing(false);
+      setSnapGuides([]);
       if (session.kind === "column") {
         if (commit) {
           setColumnWidths(
@@ -511,6 +554,18 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         : 240;
     const nextMode = (active.element.dataset.widthMode ||
       "normal") as PortfolioGridWidthMode;
+    const widths: Record<PortfolioGridWidthMode, number> = {
+      normal: Math.min(editorWidth, MAX_PORTFOLIO_BLOCK_WIDTH),
+      wide: Math.min(1120, Math.max(editorWidth, window.innerWidth - 352)),
+      full: Math.min(MAX_PORTFOLIO_BLOCK_WIDTH, available),
+    };
+    const maximumWidth = Math.max(minimumWidth, widths.full);
+    const guideWidths = portfolioResizeGuideWidths(
+      minimumWidth,
+      maximumWidth,
+      widths,
+    );
+    const center = active.element.getBoundingClientRect().left + startWidth / 2;
     sessionRef.current = {
       kind: "row",
       pointerId,
@@ -520,16 +575,30 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       side: handle.dataset.side === "left" ? "left" : "right",
       startWidth,
       delta: 0,
-      widths: {
-        normal: editorWidth,
-        wide: Math.min(1120, Math.max(editorWidth, window.innerWidth - 352)),
-        full: Math.min(1440, available),
-      },
+      widths,
       minimumWidth,
-      maximumWidth: Math.max(minimumWidth, available),
-      latestWidth: startWidth,
+      maximumWidth,
+      guideWidths,
+      latestWidth: Math.min(maximumWidth, Math.max(minimumWidth, startWidth)),
+      snappedWidth: null,
       nextMode,
     };
+    setSnapGuides(
+      guideWidths.flatMap((width) => [
+        {
+          left: center - width / 2,
+          width,
+          side: "left" as const,
+          active: false,
+        },
+        {
+          left: center + width / 2,
+          width,
+          side: "right" as const,
+          active: false,
+        },
+      ]),
+    );
     setWidthLabel(
       active.nodeType === "columns"
         ? `${portfolioGridModeLabel(nextMode)} · ${Math.round(startWidth)} px`
@@ -556,15 +625,19 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
   return createPortal(
     <div className="ramzy-grid-resize-layer" aria-hidden="true">
       {outerResizing &&
-        geometry.outer.map((guide, index) => (
+        snapGuides.map((guide) => (
           <div
-            key={index === 0 ? "width-guide-left" : "width-guide-right"}
-            className="ramzy-block-resize-guide"
-            data-side={index === 0 ? "left" : "right"}
+            key={`${guide.width}-${guide.side}`}
+            className="ramzy-block-resize-snap-guide"
+            data-side={guide.side}
+            data-width={guide.width}
+            data-active={guide.active ? "true" : undefined}
             style={{
-              left: guide.left + 9,
-              top: guide.top,
-              height: guide.height,
+              left: guide.left,
+              top: Math.max(0, editor.view.dom.getBoundingClientRect().top),
+              height:
+                window.innerHeight -
+                Math.max(0, editor.view.dom.getBoundingClientRect().top),
             }}
           />
         ))}
