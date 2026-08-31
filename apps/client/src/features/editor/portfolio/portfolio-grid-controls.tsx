@@ -634,11 +634,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       full: Math.min(MAX_PORTFOLIO_BLOCK_WIDTH, available),
     };
     const maximumWidth = Math.max(minimumWidth, widths.full);
-    const guideWidths = portfolioResizeGuideWidths(
-      minimumWidth,
-      maximumWidth,
-      widths,
-    );
+    const guideWidths = portfolioResizeGuideWidths(minimumWidth, maximumWidth);
     const center = active.element.getBoundingClientRect().left + startWidth / 2;
     sessionRef.current = {
       kind: "row",

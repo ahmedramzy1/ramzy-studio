@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   MAX_PORTFOLIO_BLOCK_WIDTH,
+  PORTFOLIO_RESIZE_EDGE_STEP,
+  PORTFOLIO_RESIZE_WIDTH_STEP,
   formatPortfolioColumnRatio,
   nearestPortfolioGridWidthMode,
   portfolioColumnRatioGuides,
@@ -31,27 +33,31 @@ describe("portfolio grid resizing", () => {
     ]);
   });
 
-  it("builds useful pair-ratio guides without violating minimum widths", () => {
+  it("builds exact 5% pair-ratio guides without violating minimum widths", () => {
     const guides = portfolioColumnRatioGuides(800, 96);
 
-    expect(guides.map((guide) => guide.label)).toEqual(
-      expect.arrayContaining([
-        "20% / 80%",
-        "25% / 75%",
-        "33% / 67%",
-        "40% / 60%",
-        "50% / 50%",
-        "60% / 40%",
-        "67% / 33%",
-        "75% / 25%",
-        "80% / 20%",
-      ]),
-    );
+    expect(guides.map((guide) => guide.label)).toEqual([
+      "15% / 85%",
+      "20% / 80%",
+      "25% / 75%",
+      "30% / 70%",
+      "35% / 65%",
+      "40% / 60%",
+      "45% / 55%",
+      "50% / 50%",
+      "55% / 45%",
+      "60% / 40%",
+      "65% / 35%",
+      "70% / 30%",
+      "75% / 25%",
+      "80% / 20%",
+      "85% / 15%",
+    ]);
     expect(guides.every((guide) => guide.leftWidth >= 96)).toBe(true);
     expect(guides.every((guide) => guide.rightWidth >= 96)).toBe(true);
   });
 
-  it("snaps an internal divider near 60/40 but remains free between ratios", () => {
+  it("always snaps an internal divider to its nearest 5% ratio", () => {
     const guides = portfolioColumnRatioGuides(800);
 
     expect(snapPortfolioColumnRatio(473, guides)).toEqual({
@@ -59,8 +65,8 @@ describe("portfolio grid resizing", () => {
       snappedGuide: expect.objectContaining({ label: "60% / 40%" }),
     });
     expect(snapPortfolioColumnRatio(445, guides)).toEqual({
-      leftWidth: 445,
-      snappedGuide: null,
+      leftWidth: 440,
+      snappedGuide: expect.objectContaining({ label: "55% / 45%" }),
     });
     expect(formatPortfolioColumnRatio(445, 355)).toBe("56% / 44%");
   });
@@ -73,32 +79,38 @@ describe("portfolio grid resizing", () => {
     expect(portfolioGridModeLabel("normal")).toBe("Centered");
   });
 
-  it("builds a bounded guide grid that includes every durable width mode", () => {
+  it("builds a bounded grid with 16px between symmetric edge positions", () => {
     const modes = { normal: 800, wide: 1120, full: 1440 } as const;
-    const guides = portfolioResizeGuideWidths(240, 1440, modes);
+    const guides = portfolioResizeGuideWidths(240, 1440);
 
     expect(guides).toContain(256);
     expect(guides).toContain(1024);
-    expect(guides).toContain(1120);
     expect(guides).toContain(MAX_PORTFOLIO_BLOCK_WIDTH);
     expect(Math.max(...guides)).toBe(MAX_PORTFOLIO_BLOCK_WIDTH);
+    expect(PORTFOLIO_RESIZE_WIDTH_STEP).toBe(32);
+    expect(PORTFOLIO_RESIZE_EDGE_STEP).toBe(16);
+    expect(
+      guides.every(
+        (width, index) => index === 0 || width - guides[index - 1] === 32,
+      ),
+    ).toBe(true);
   });
 
-  it("moves magnetically onto a nearby guide but stays free between guides", () => {
+  it("always snaps outer resizing to the nearest equal-width step", () => {
     const modes = { normal: 800, wide: 1120, full: 1440 } as const;
-    const guides = portfolioResizeGuideWidths(240, 1440, modes);
+    const guides = portfolioResizeGuideWidths(240, 1440);
 
     expect(snapPortfolioBlockWidth(1038, guides, modes)).toEqual({
       width: 1024,
       mode: null,
     });
     expect(snapPortfolioBlockWidth(1070, guides, modes)).toEqual({
-      width: 1070,
+      width: 1056,
       mode: null,
     });
     expect(snapPortfolioBlockWidth(1100, guides, modes)).toEqual({
-      width: 1120,
-      mode: "wide",
+      width: 1088,
+      mode: null,
     });
   });
 });

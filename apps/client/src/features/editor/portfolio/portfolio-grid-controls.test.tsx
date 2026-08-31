@@ -229,10 +229,10 @@ describe("PortfolioGridControls live pointer preview", () => {
       moveResize(300);
     });
 
-    expect(left.style.getPropertyValue("width")).toBe("500px");
-    expect(right.style.getPropertyValue("width")).toBe("300px");
+    expect(left.style.getPropertyValue("width")).toBe("480px");
+    expect(right.style.getPropertyValue("width")).toBe("320px");
     expect(handle.dataset.resizing).toBe("true");
-    await waitFor(() => expect(handle.style.left).toBe("591px"));
+    await waitFor(() => expect(handle.style.left).toBe("571px"));
   });
 
   it.each([2, 3, 4, 5])(
@@ -350,8 +350,8 @@ describe("PortfolioGridControls live pointer preview", () => {
       startMouseResize(divider, 500);
       moveMouseResize(600);
     });
-    expect(left.style.width).toBe("500px");
-    expect(right.style.width).toBe("300px");
+    expect(left.style.width).toBe("480px");
+    expect(right.style.width).toBe("320px");
     expect(divider.dataset.resizing).toBe("true");
   });
 
@@ -378,7 +378,7 @@ describe("PortfolioGridControls live pointer preview", () => {
   });
 
   it.each([2, 3, 4, 5])(
-    "resizes only the adjacent pair in a %i-column row",
+    "moves only the adjacent pair to the next 5% step in a %i-column row",
     async (columnCount) => {
       const { columns } = setupGrid({ columnCount });
       const handles = await waitFor(() => {
@@ -393,17 +393,19 @@ describe("PortfolioGridControls live pointer preview", () => {
         (column) => column.getBoundingClientRect().width,
       );
 
+      const pairDelta = originalWidths[dividerIndex] * 0.1;
+
       act(() => {
-        startResize(handles[dividerIndex]);
-        moveResize(217);
+        startResize(handles[dividerIndex], 200);
+        moveResize(200 + pairDelta);
       });
 
       columns.forEach((column, index) => {
         const width = Number.parseFloat(column.style.width);
         if (index === dividerIndex) {
-          expect(width).toBeCloseTo(originalWidths[index] + 17, 1);
+          expect(width).toBeCloseTo(originalWidths[index] * 1.1, 1);
         } else if (index === dividerIndex + 1) {
-          expect(width).toBeCloseTo(originalWidths[index] - 17, 1);
+          expect(width).toBeCloseTo(originalWidths[index] * 0.9, 1);
         } else {
           expect(width).toBeCloseTo(originalWidths[index]);
         }
@@ -481,7 +483,7 @@ describe("PortfolioGridControls live pointer preview", () => {
     expect(row.style.width).toBe("928px");
   });
 
-  it("persists the exact outer width so release matches the preview", async () => {
+  it("persists the selected outer step so release matches the preview", async () => {
     const { transaction, row } = setupGrid();
     const handle = await waitFor(() =>
       document.querySelector<HTMLElement>(
@@ -494,14 +496,14 @@ describe("PortfolioGridControls live pointer preview", () => {
       startResize(handle!);
       moveResize(235);
     });
-    expect(row.style.width).toBe("870px");
+    expect(row.style.width).toBe("864px");
     expect(transaction.setNodeMarkup).not.toHaveBeenCalled();
 
     act(() => finishResize(235));
     expect(transaction.setNodeMarkup).toHaveBeenCalledWith(
       0,
       undefined,
-      expect.objectContaining({ customWidth: 870 }),
+      expect.objectContaining({ customWidth: 864 }),
     );
   });
 

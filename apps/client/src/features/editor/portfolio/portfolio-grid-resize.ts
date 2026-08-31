@@ -2,25 +2,14 @@ export type PortfolioGridWidthMode = "normal" | "wide" | "full";
 
 export const MIN_PORTFOLIO_COLUMN_WIDTH = 96;
 export const MAX_PORTFOLIO_BLOCK_WIDTH = 1440;
-export const PORTFOLIO_RESIZE_GUIDE_STEP = 128;
-export const PORTFOLIO_RESIZE_SNAP_THRESHOLD = 24;
-export const PORTFOLIO_COLUMN_RATIO_SNAP_THRESHOLD = 12;
+export const PORTFOLIO_RESIZE_EDGE_STEP = 16;
+export const PORTFOLIO_RESIZE_WIDTH_STEP = PORTFOLIO_RESIZE_EDGE_STEP * 2;
+export const PORTFOLIO_COLUMN_RATIO_STEP_PERCENT = 5;
 
-const PORTFOLIO_COLUMN_RATIO_TARGETS = [
-  0.1,
-  0.2,
-  0.25,
-  0.3,
-  1 / 3,
-  0.4,
-  0.5,
-  0.6,
-  2 / 3,
-  0.7,
-  0.75,
-  0.8,
-  0.9,
-] as const;
+const PORTFOLIO_COLUMN_RATIO_TARGETS = Array.from(
+  { length: 100 / PORTFOLIO_COLUMN_RATIO_STEP_PERCENT - 1 },
+  (_, index) => ((index + 1) * PORTFOLIO_COLUMN_RATIO_STEP_PERCENT) / 100,
+);
 
 export type PortfolioResizeSnap = {
   width: number;
@@ -49,7 +38,6 @@ function uniqueSortedWidths(widths: number[]) {
 export function portfolioResizeGuideWidths(
   minimumWidth: number,
   maximumWidth: number,
-  modeWidths: Record<PortfolioGridWidthMode, number>,
 ): number[] {
   if (
     !Number.isFinite(minimumWidth) ||
@@ -60,32 +48,24 @@ export function portfolioResizeGuideWidths(
   }
 
   const firstGridWidth =
-    Math.ceil(minimumWidth / PORTFOLIO_RESIZE_GUIDE_STEP) *
-    PORTFOLIO_RESIZE_GUIDE_STEP;
+    Math.ceil(minimumWidth / PORTFOLIO_RESIZE_WIDTH_STEP) *
+    PORTFOLIO_RESIZE_WIDTH_STEP;
   const gridWidths: number[] = [];
   for (
     let width = firstGridWidth;
     width <= maximumWidth;
-    width += PORTFOLIO_RESIZE_GUIDE_STEP
+    width += PORTFOLIO_RESIZE_WIDTH_STEP
   ) {
     gridWidths.push(width);
   }
 
-  return uniqueSortedWidths([
-    minimumWidth,
-    ...gridWidths,
-    modeWidths.normal,
-    modeWidths.wide,
-    modeWidths.full,
-    maximumWidth,
-  ]).filter((width) => width >= minimumWidth && width <= maximumWidth);
+  return uniqueSortedWidths(gridWidths);
 }
 
 export function snapPortfolioBlockWidth(
   desiredWidth: number,
   guideWidths: number[],
   modeWidths: Record<PortfolioGridWidthMode, number>,
-  threshold = PORTFOLIO_RESIZE_SNAP_THRESHOLD,
 ): PortfolioResizeSnap {
   const closestWidth = guideWidths.reduce<number | null>((closest, width) => {
     if (closest === null) return width;
@@ -93,10 +73,7 @@ export function snapPortfolioBlockWidth(
       ? width
       : closest;
   }, null);
-  const width =
-    closestWidth !== null && Math.abs(closestWidth - desiredWidth) <= threshold
-      ? closestWidth
-      : desiredWidth;
+  const width = closestWidth ?? desiredWidth;
   const modes: PortfolioGridWidthMode[] = ["normal", "wide", "full"];
   const mode =
     modes.find((candidate) => Math.abs(modeWidths[candidate] - width) < 0.5) ??
@@ -121,8 +98,8 @@ export function portfolioColumnRatioGuides(
   if (!Number.isFinite(pairWidth) || pairWidth <= minWidth * 2) return [];
 
   return PORTFOLIO_COLUMN_RATIO_TARGETS.map((leftRatio) => {
-    const leftWidth = pairWidth * leftRatio;
-    const rightWidth = pairWidth - leftWidth;
+    const leftWidth = Number((pairWidth * leftRatio).toFixed(4));
+    const rightWidth = Number((pairWidth - leftWidth).toFixed(4));
     return {
       leftRatio,
       rightRatio: 1 - leftRatio,
@@ -139,7 +116,6 @@ export function portfolioColumnRatioGuides(
 export function snapPortfolioColumnRatio(
   desiredLeftWidth: number,
   guides: PortfolioColumnRatioGuide[],
-  threshold = PORTFOLIO_COLUMN_RATIO_SNAP_THRESHOLD,
 ): PortfolioColumnRatioSnap {
   const closest = guides.reduce<PortfolioColumnRatioGuide | null>(
     (current, guide) => {
@@ -151,7 +127,7 @@ export function snapPortfolioColumnRatio(
     },
     null,
   );
-  if (closest && Math.abs(closest.leftWidth - desiredLeftWidth) <= threshold) {
+  if (closest) {
     return { leftWidth: closest.leftWidth, snappedGuide: closest };
   }
   return { leftWidth: desiredLeftWidth, snappedGuide: null };

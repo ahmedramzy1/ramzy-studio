@@ -235,7 +235,7 @@ describe("portfolio grid resize through browser pointer events", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps live divider widths after ProseMirror observes the DOM and before release", async () => {
+  it("keeps stepped live divider widths after ProseMirror observes the DOM and before release", async () => {
     const { editor, left, right } = setupProseMirrorGrid();
     const divider = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="divider"]',
@@ -248,10 +248,10 @@ describe("portfolio grid resize through browser pointer events", () => {
     await Promise.resolve();
     expect(
       left.style.getPropertyValue("--ramzy-grid-preview-column-width"),
-    ).toBe("500px");
+    ).toBe("480px");
     expect(
       right.style.getPropertyValue("--ramzy-grid-preview-column-width"),
-    ).toBe("300px");
+    ).toBe("320px");
     expect(left.classList.contains("ramzy-grid-resize-preview-column")).toBe(
       true,
     );
@@ -268,8 +268,8 @@ describe("portfolio grid resize through browser pointer events", () => {
         (_, index) => rowNode.child(index).attrs,
       ),
     ).toEqual([
-      expect.objectContaining({ width: 1.25 }),
-      expect.objectContaining({ width: 0.75 }),
+      expect.objectContaining({ width: 1.2 }),
+      expect.objectContaining({ width: 0.8 }),
     ]);
     editor.destroy();
   });
@@ -420,7 +420,7 @@ describe("portfolio grid resize through browser pointer events", () => {
       await Promise.resolve();
       expect(
         block.style.getPropertyValue("--ramzy-portfolio-block-width"),
-      ).toBe("700px");
+      ).toBe("704px");
       expect(block.classList.contains("ramzy-block-resize-preview")).toBe(true);
       expect(
         document.querySelectorAll(".ramzy-block-resize-snap-guide").length,
@@ -429,7 +429,7 @@ describe("portfolio grid resize through browser pointer events", () => {
         document.querySelectorAll(
           '.ramzy-block-resize-snap-guide[data-active="true"]',
         ),
-      ).toHaveLength(0);
+      ).toHaveLength(2);
       expect(editor.getJSON().content?.[0].attrs).toEqual(
         expect.objectContaining({ portfolioWidth: null }),
       );
@@ -439,7 +439,7 @@ describe("portfolio grid resize through browser pointer events", () => {
       });
 
       expect(editor.getJSON().content?.[0].attrs).toEqual(
-        expect.objectContaining({ portfolioWidth: 700 }),
+        expect.objectContaining({ portfolioWidth: 704 }),
       );
       const savedBlock = editor.view.dom.firstElementChild as HTMLElement;
       expect(savedBlock.classList.contains("ramzy-block-resize-preview")).toBe(
@@ -450,7 +450,7 @@ describe("portfolio grid resize through browser pointer events", () => {
       ).toBe(true);
       expect(
         savedBlock.style.getPropertyValue("--ramzy-portfolio-block-width"),
-      ).toBe("700px");
+      ).toBe("704px");
       expect(
         document.querySelectorAll(".ramzy-block-resize-snap-guide"),
       ).toHaveLength(0);
