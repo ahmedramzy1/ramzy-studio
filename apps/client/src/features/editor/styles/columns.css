@@ -434,8 +434,27 @@ div[data-type="columns"][data-width-mode="wide"] {
   pointer-events: none;
 }
 
+/* Snap guides belong to the canvas plane, not the controls plane. Keep them
+ * behind document blocks so media, text and actions paint naturally over the
+ * grid while the lines remain visible through the surrounding whitespace. */
+.ramzy-grid-resize-guide-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body:has(.ramzy-grid-resize-guide-layer)
+  .ProseMirror.ramzy-portfolio-editor
+  > * {
+  position: relative;
+  z-index: 1;
+}
+
 body:has(.ramzy-dnd-source) .ramzy-grid-resize-layer,
+body:has(.ramzy-dnd-source) .ramzy-grid-resize-guide-layer,
 body.ramzy-portfolio-dnd-active .ramzy-grid-resize-layer,
+body.ramzy-portfolio-dnd-active .ramzy-grid-resize-guide-layer,
 body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-block,
 body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
   display: none;
@@ -520,7 +539,8 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
 }
 
 @media print, (max-width: 680px) {
-  .ramzy-grid-resize-layer {
+  .ramzy-grid-resize-layer,
+  .ramzy-grid-resize-guide-layer {
     display: none !important;
   }
 }

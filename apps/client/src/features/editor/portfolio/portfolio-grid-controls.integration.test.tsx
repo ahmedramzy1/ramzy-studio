@@ -300,6 +300,16 @@ describe("portfolio grid resize through browser pointer events", () => {
     const activeGuide = document.querySelector<HTMLElement>(
       '.ramzy-block-resize-snap-guide[data-kind="column-ratio"][data-active="true"]',
     );
+    const guideLayer = document.querySelector<HTMLElement>(
+      ".ramzy-grid-resize-guide-layer",
+    );
+    const controlsLayer = document.querySelector<HTMLElement>(
+      ".ramzy-grid-resize-layer",
+    );
+    expect(guideLayer).not.toBeNull();
+    expect(guideLayer?.contains(activeGuide)).toBe(true);
+    expect(controlsLayer?.contains(activeGuide)).toBe(false);
+    expect(controlsLayer?.contains(divider)).toBe(true);
     expect(activeGuide?.dataset.ratio).toBe("60% / 40%");
     expect(activeGuide?.style.left).toBe("580px");
     expect(
@@ -332,6 +342,7 @@ describe("portfolio grid resize through browser pointer events", () => {
         '.ramzy-block-resize-snap-guide[data-kind="column-ratio"]',
       ),
     ).toHaveLength(0);
+    expect(document.querySelector(".ramzy-grid-resize-guide-layer")).toBeNull();
     editor.destroy();
   });
 

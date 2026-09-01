@@ -715,57 +715,37 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
         transform: "translateX(-50%)",
       };
   return createPortal(
-    <div className="ramzy-grid-resize-layer" aria-hidden="true">
-      {(outerResizing || columnResizing) &&
-        snapGuides.map((guide) => (
+    <>
+      {(outerResizing || columnResizing) && (
+        <div className="ramzy-grid-resize-guide-layer" aria-hidden="true">
+          {snapGuides.map((guide) => (
+            <div
+              key={guide.key}
+              className="ramzy-block-resize-snap-guide"
+              data-side={guide.side}
+              data-width={guide.width}
+              data-kind={guide.ratio ? "column-ratio" : "outer-width"}
+              data-ratio={guide.ratio}
+              data-active={guide.active ? "true" : undefined}
+              style={{
+                left: guide.left,
+                top: Math.max(0, editor.view.dom.getBoundingClientRect().top),
+                height:
+                  window.innerHeight -
+                  Math.max(0, editor.view.dom.getBoundingClientRect().top),
+              }}
+            />
+          ))}
+        </div>
+      )}
+      <div className="ramzy-grid-resize-layer" aria-hidden="true">
+        {geometry.outer.map((handle, index) => (
           <div
-            key={guide.key}
-            className="ramzy-block-resize-snap-guide"
-            data-side={guide.side}
-            data-width={guide.width}
-            data-kind={guide.ratio ? "column-ratio" : "outer-width"}
-            data-ratio={guide.ratio}
-            data-active={guide.active ? "true" : undefined}
-            style={{
-              left: guide.left,
-              top: Math.max(0, editor.view.dom.getBoundingClientRect().top),
-              height:
-                window.innerHeight -
-                Math.max(0, editor.view.dom.getBoundingClientRect().top),
-            }}
-          />
-        ))}
-      {geometry.outer.map((handle, index) => (
-        <div
-          key={index === 0 ? "outer-left" : "outer-right"}
-          className="ramzy-grid-resize-handle"
-          data-kind="outer"
-          data-side={index === 0 ? "left" : "right"}
-          title="Drag to change block width"
-          onMouseDown={startMouseResize}
-          onPointerDown={startPointerResize}
-          onPointerMove={moveResize}
-          onPointerUp={finishResize}
-          onPointerCancel={cancelResize}
-          style={{ left: handle.left, top: handle.top, height: handle.height }}
-        />
-      ))}
-      {geometry.dividers.map((handle, index) => (
-        <Fragment key={`divider-${index}`}>
-          <div
-            className="ramzy-grid-divider-guide"
-            data-index={index}
-            style={{
-              left: handle.left + 9,
-              top: handle.top,
-              height: handle.height,
-            }}
-          />
-          <div
+            key={index === 0 ? "outer-left" : "outer-right"}
             className="ramzy-grid-resize-handle"
-            data-kind="divider"
-            data-index={index}
-            title="Drag to resize columns"
+            data-kind="outer"
+            data-side={index === 0 ? "left" : "right"}
+            title="Drag to change block width"
             onMouseDown={startMouseResize}
             onPointerDown={startPointerResize}
             onPointerMove={moveResize}
@@ -777,18 +757,47 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
               height: handle.height,
             }}
           />
-        </Fragment>
-      ))}
-      {widthLabel && (
-        <div
-          className="ramzy-grid-width-badge"
-          data-kind={columnResizing ? "column-ratio" : "outer-width"}
-          style={badgePosition}
-        >
-          {widthLabel}
-        </div>
-      )}
-    </div>,
+        ))}
+        {geometry.dividers.map((handle, index) => (
+          <Fragment key={`divider-${index}`}>
+            <div
+              className="ramzy-grid-divider-guide"
+              data-index={index}
+              style={{
+                left: handle.left + 9,
+                top: handle.top,
+                height: handle.height,
+              }}
+            />
+            <div
+              className="ramzy-grid-resize-handle"
+              data-kind="divider"
+              data-index={index}
+              title="Drag to resize columns"
+              onMouseDown={startMouseResize}
+              onPointerDown={startPointerResize}
+              onPointerMove={moveResize}
+              onPointerUp={finishResize}
+              onPointerCancel={cancelResize}
+              style={{
+                left: handle.left,
+                top: handle.top,
+                height: handle.height,
+              }}
+            />
+          </Fragment>
+        ))}
+        {widthLabel && (
+          <div
+            className="ramzy-grid-width-badge"
+            data-kind={columnResizing ? "column-ratio" : "outer-width"}
+            style={badgePosition}
+          >
+            {widthLabel}
+          </div>
+        )}
+      </div>
+    </>,
     document.body,
   );
 }
