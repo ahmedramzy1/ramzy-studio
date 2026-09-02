@@ -35,7 +35,10 @@ import SearchAndReplaceDialog from "@/features/editor/components/search-and-repl
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
-import { PortfolioGenericElementMenu } from "./portfolio-element-menu";
+import {
+  PortfolioCustomElementMenu,
+  PortfolioGenericElementMenu,
+} from "./portfolio-element-menu";
 import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
 import { PortfolioDnd } from "./portfolio-dnd";
 import { PortfolioDndPreview } from "./portfolio-dnd-preview-extension";
@@ -381,6 +384,7 @@ function DirectPortfolioEditor({
           <PortfolioGridControls editor={editor} />
           <PortfolioInsertionControls editor={editor} />
           <PortfolioGenericElementMenu editor={editor} />
+          <PortfolioCustomElementMenu editor={editor} />
         </>
       )}
 

@@ -20,6 +20,9 @@ export default function CodeBlockView(props: NodeViewProps) {
     language || null,
   );
   const [isSelected, setIsSelected] = useState(false);
+  const portfolioMode = editor.view.dom.classList.contains(
+    "ramzy-portfolio-editor",
+  );
 
   useEffect(() => {
     const updateSelection = () => {
@@ -47,41 +50,43 @@ export default function CodeBlockView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper className="codeBlock">
-      <Group
-        justify="flex-end"
-        contentEditable={false}
-        className={classes.menuGroup}
-      >
-        <Select
-          placeholder="auto"
-          checkIconPosition="right"
-          data={extension.options.lowlight.listLanguages().sort()}
-          value={languageValue}
-          onChange={changeLanguage}
-          searchable
-          style={{ maxWidth: "130px" }}
-          classNames={{ input: classes.selectInput }}
-          disabled={!editor.isEditable}
-        />
+      {!portfolioMode && (
+        <Group
+          justify="flex-end"
+          contentEditable={false}
+          className={classes.menuGroup}
+        >
+          <Select
+            placeholder="auto"
+            checkIconPosition="right"
+            data={extension.options.lowlight.listLanguages().sort()}
+            value={languageValue}
+            onChange={changeLanguage}
+            searchable
+            style={{ maxWidth: "130px" }}
+            classNames={{ input: classes.selectInput }}
+            disabled={!editor.isEditable}
+          />
 
-        <CopyButton value={node?.textContent} timeout={2000}>
-          {({ copied, copy }) => (
-            <Tooltip
-              label={copied ? t("Copied") : t("Copy")}
-              withArrow
-              position="right"
-            >
-              <ActionIcon
-                color={copied ? "teal" : "gray"}
-                variant="subtle"
-                onClick={copy}
+          <CopyButton value={node?.textContent} timeout={2000}>
+            {({ copied, copy }) => (
+              <Tooltip
+                label={copied ? t("Copied") : t("Copy")}
+                withArrow
+                position="right"
               >
-                {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
-      </Group>
+                <ActionIcon
+                  color={copied ? "teal" : "gray"}
+                  variant="subtle"
+                  onClick={copy}
+                >
+                  {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Group>
+      )}
 
       <pre
         spellCheck="false"

@@ -81,8 +81,33 @@ export default function EmbedView(props: NodeViewProps) {
     }
   }
 
+  function editEmbedLink() {
+    const url = window.prompt(t("Edit embed link"), src || "")?.trim();
+    if (!url) return;
+    void onSubmit({ url });
+  }
+
   return (
     <NodeViewWrapper data-drag-handle className={classes.embedNodeView}>
+      {editor.isEditable && (
+        <>
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="edit-embed"
+            onClick={editEmbedLink}
+          />
+          {src && (
+            <a
+              hidden
+              data-ramzy-element-action="open-embed"
+              href={sanitizeUrl(src)}
+              target="_blank"
+              rel="noreferrer"
+            />
+          )}
+        </>
+      )}
       {embedUrl ? (
         <div className={classes.embedContainer}>
           <ResizableWrapper

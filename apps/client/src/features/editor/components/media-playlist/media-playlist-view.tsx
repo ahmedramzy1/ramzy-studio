@@ -1,12 +1,4 @@
-import {
-  Button,
-  Group,
-  Loader,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-} from "@mantine/core";
+import { Button, Group, Modal, Stack, Text, TextInput } from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -366,62 +358,29 @@ export default function MediaPlaylistView({
         />
 
         {editable && (
-          <Group gap="xs">
-            <Button
-              size="xs"
-              variant="light"
-              onClick={() => inputRef.current?.click()}
+          <>
+            <button
+              type="button"
+              hidden
+              data-ramzy-element-action="add-media"
               disabled={uploading}
-            >
-              {uploading ? (
-                <Group gap={6} wrap="nowrap">
-                  <Loader size={13} />
-                  <span>Uploading & processing…</span>
-                </Group>
-              ) : kind === "video" ? (
-                "+ Add video(s)"
-              ) : (
-                "+ Add track(s)"
-              )}
-            </Button>
-            {kind === "video" && active && (
-              <>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  loading={thumbnailUploading}
-                  onClick={() => thumbnailInputRef.current?.click()}
-                >
-                  Change thumbnail
-                </Button>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  loading={captionsGenerating}
-                  disabled={!active.attachmentId}
-                  onClick={() => void generateActiveCaptions()}
-                >
-                  Generate captions
-                </Button>
-              </>
-            )}
-            <Button
-              size="xs"
-              variant={node.attrs.autoplay ? "filled" : "subtle"}
-              onClick={() =>
-                updateAttributes({ autoplay: !node.attrs.autoplay })
-              }
-            >
-              Autoplay next
-            </Button>
-            <Button
-              size="xs"
-              variant={node.attrs.loop ? "filled" : "subtle"}
-              onClick={() => updateAttributes({ loop: !node.attrs.loop })}
-            >
-              Loop playlist
-            </Button>
-          </Group>
+              onClick={() => inputRef.current?.click()}
+            />
+            <button
+              type="button"
+              hidden
+              data-ramzy-element-action="change-thumbnail"
+              disabled={!active || thumbnailUploading}
+              onClick={() => thumbnailInputRef.current?.click()}
+            />
+            <button
+              type="button"
+              hidden
+              data-ramzy-element-action="generate-captions"
+              disabled={!active?.attachmentId || captionsGenerating}
+              onClick={() => void generateActiveCaptions()}
+            />
+          </>
         )}
 
         <input

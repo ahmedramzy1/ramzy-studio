@@ -11,6 +11,8 @@ import {
   getPortfolioTopLevelBlock,
   movePortfolioBlockToNewSection,
   movePortfolioBlockToSection,
+  triggerPortfolioElementAction,
+  updatePortfolioTopLevelBlockAttributes,
 } from "./portfolio-element-menu";
 
 function createEditor(content: Record<string, unknown>[]) {
@@ -84,8 +86,7 @@ describe("portfolio element menu commands", () => {
       paragraph("Target content"),
     ]);
     const sourcePosition = editor.state.doc.child(0).nodeSize;
-    const targetPosition =
-      sourcePosition + editor.state.doc.child(1).nodeSize;
+    const targetPosition = sourcePosition + editor.state.doc.child(1).nodeSize;
     editor.commands.setNodeSelection(sourcePosition);
 
     expect(
@@ -111,5 +112,33 @@ describe("portfolio element menu commands", () => {
     expect(movePortfolioBlockToNewSection(editor, "New section")).toBe(true);
     expect(editor.getText()).toContain("New section");
     expect(editor.state.doc.lastChild?.textContent).toBe("Move me");
+  });
+
+  it("updates the selected top-level element attributes", () => {
+    editor = createEditor([heading("Change me")]);
+    editor.commands.setNodeSelection(0);
+
+    expect(updatePortfolioTopLevelBlockAttributes(editor, { level: 2 })).toBe(
+      true,
+    );
+    expect(editor.state.doc.firstChild?.attrs.level).toBe(2);
+  });
+
+  it("routes contextual toolbar actions to the selected node view", () => {
+    editor = createEditor([paragraph("Act on me")]);
+    editor.commands.setNodeSelection(0);
+    const nodeDom = editor.view.nodeDOM(0);
+    expect(nodeDom).toBeInstanceOf(HTMLElement);
+
+    let clicked = false;
+    const action = document.createElement("button");
+    action.dataset.ramzyElementAction = "add-media";
+    action.addEventListener("click", () => {
+      clicked = true;
+    });
+    (nodeDom as HTMLElement).append(action);
+
+    expect(triggerPortfolioElementAction(editor, "add-media")).toBe(true);
+    expect(clicked).toBe(true);
   });
 });

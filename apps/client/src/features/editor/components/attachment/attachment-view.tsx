@@ -1,7 +1,11 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { Group, Text, Paper, ActionIcon, Loader, Tooltip } from "@mantine/core";
 import { getFileUrl } from "@/lib/config.ts";
-import { IconDownload, IconFileTypePdf, IconPaperclip } from "@tabler/icons-react";
+import {
+  IconDownload,
+  IconFileTypePdf,
+  IconPaperclip,
+} from "@tabler/icons-react";
 import { useHover } from "@mantine/hooks";
 import { formatBytes } from "@/lib";
 import { useTranslation } from "react-i18next";
@@ -12,8 +16,12 @@ export default function AttachmentView(props: NodeViewProps) {
   const { editor, node, getPos, selected } = props;
   const { url, name, size, mime, attachmentId, placeholder } = node.attrs;
   const { hovered, ref } = useHover();
+  const portfolioMode = editor.view.dom.classList.contains(
+    "ramzy-portfolio-editor",
+  );
 
-  const isPdf = mime === "application/pdf" || name?.toLowerCase().endsWith(".pdf");
+  const isPdf =
+    mime === "application/pdf" || name?.toLowerCase().endsWith(".pdf");
 
   const handleEmbedAsPdf = useCallback(() => {
     const pos = getPos();
@@ -55,20 +63,38 @@ export default function AttachmentView(props: NodeViewProps) {
               <IconPaperclip size={20} style={{ flexShrink: 0 }} />
             )}
 
-            <Text component="span" size="md" truncate="end" style={{ minWidth: 0 }}>
+            <Text
+              component="span"
+              size="md"
+              truncate="end"
+              style={{ minWidth: 0 }}
+            >
               {!url && placeholder ? t("Uploading {{name}}", { name }) : name}
             </Text>
 
-            <Text component="span" size="sm" c="dimmed" style={{ flexShrink: 0 }}>
+            <Text
+              component="span"
+              size="sm"
+              c="dimmed"
+              style={{ flexShrink: 0 }}
+            >
               {formatBytes(size)}
             </Text>
           </Group>
 
-          {url && (selected || hovered) && (
+          {url && !portfolioMode && (selected || hovered) && (
             <Group gap={4} wrap="nowrap" style={{ flexShrink: 0 }}>
               {isPdf && editor.isEditable && (
-                <Tooltip label={t("Embed as PDF")} position="top" withinPortal={false}>
-                  <ActionIcon variant="default" aria-label={t("Embed as PDF")} onClick={handleEmbedAsPdf}>
+                <Tooltip
+                  label={t("Embed as PDF")}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    variant="default"
+                    aria-label={t("Embed as PDF")}
+                    onClick={handleEmbedAsPdf}
+                  >
                     <IconFileTypePdf size={18} />
                   </ActionIcon>
                 </Tooltip>
@@ -79,6 +105,26 @@ export default function AttachmentView(props: NodeViewProps) {
                 </ActionIcon>
               </a>
             </Group>
+          )}
+
+          {url && portfolioMode && (
+            <>
+              {isPdf && (
+                <button
+                  type="button"
+                  hidden
+                  data-ramzy-element-action="embed-as-pdf"
+                  onClick={handleEmbedAsPdf}
+                />
+              )}
+              <a
+                hidden
+                data-ramzy-element-action="download-file"
+                href={getFileUrl(url)}
+                target="_blank"
+                rel="noreferrer"
+              />
+            </>
           )}
         </Group>
       </Paper>
