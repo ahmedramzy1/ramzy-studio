@@ -97,6 +97,9 @@ describe("portfolio insertion controls", () => {
     expect(
       container.querySelectorAll(".ramzy-boundary-insert-control"),
     ).toHaveLength(1);
+    expect(
+      container.querySelector('[aria-label="Element actions"]'),
+    ).toBeNull();
   });
 
   it("preserves generic boundary insertion away from grids", async () => {

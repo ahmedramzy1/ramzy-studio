@@ -7,6 +7,11 @@ import { IconTrash } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { Editor } from "@tiptap/core";
 import { isEditorReady } from "@docmost/editor-ext";
+import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 interface SubpagesMenuProps {
   editor: Editor;
@@ -21,6 +26,7 @@ interface ShouldShowProps {
 export const SubpagesMenu = React.memo(
   ({ editor }: SubpagesMenuProps): JSX.Element => {
     const { t } = useTranslation();
+    const portfolioMode = hasPortfolioElementMenu(editor);
 
     const shouldShow = useCallback(
       ({ state }: ShouldShowProps) => {
@@ -33,18 +39,26 @@ export const SubpagesMenu = React.memo(
       [editor]
     );
 
-    const getReferenceClientRect = useCallback(() => {
-      if (!isEditorReady(editor)) return new DOMRect();
+    const getReferencedVirtualElement = useCallback(() => {
+      if (!isEditorReady(editor)) return;
       const { selection } = editor.state;
       const predicate = (node: PMNode) => node.type.name === "subpages";
       const parent = findParentNode(predicate)(selection);
 
       if (parent) {
         const dom = editor.view.nodeDOM(parent?.pos) as HTMLElement;
-        return dom.getBoundingClientRect();
+        const rect = dom.getBoundingClientRect();
+        return {
+          getBoundingClientRect: () => rect,
+          getClientRects: () => [rect],
+        };
       }
 
-      return posToDOMRect(editor.view, selection.from, selection.to);
+      const rect = posToDOMRect(editor.view, selection.from, selection.to);
+      return {
+        getBoundingClientRect: () => rect,
+        getClientRects: () => [rect],
+      };
     }, [editor]);
 
     const deleteNode = useCallback(() => {
@@ -62,19 +76,26 @@ export const SubpagesMenu = React.memo(
         editor={editor}
         pluginKey={`subpages-menu`}
         updateDelay={0}
+        getReferencedVirtualElement={getReferencedVirtualElement}
+        options={{ placement: portfolioMode ? "bottom" : "top", offset: 8 }}
         shouldShow={shouldShow}
       >
-        <Tooltip position="top" label={t("Delete")}>
-          <ActionIcon
-            onClick={deleteNode}
-            variant="default"
-            size="lg"
-            color="red"
-            aria-label={t("Delete")}
-          >
-            <IconTrash size={18} />
-          </ActionIcon>
-        </Tooltip>
+        <div className={classes.toolbar}>
+          {!portfolioMode && (
+            <Tooltip position="top" label={t("Delete")}>
+              <ActionIcon
+                onClick={deleteNode}
+                variant="default"
+                size="lg"
+                color="red"
+                aria-label={t("Delete")}
+              >
+                <IconTrash size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {portfolioMode && <PortfolioElementActions editor={editor} />}
+        </div>
       </BaseBubbleMenu>
     );
   }

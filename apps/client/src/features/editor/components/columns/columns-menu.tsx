@@ -27,6 +27,10 @@ import type {
 } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 type LayoutPreset = {
   layout: ColumnsLayout;
@@ -95,6 +99,7 @@ function getPresetsForCount(count: number): LayoutPreset[] {
 
 export function ColumnsMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const portfolioMode = hasPortfolioElementMenu(editor);
   const [isCountOpen, setIsCountOpen] = useState(false);
   const [isAlignOpen, setIsAlignOpen] = useState(false);
   const [isGapOpen, setIsGapOpen] = useState(false);
@@ -532,16 +537,23 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
           </ActionIcon>
         </Tooltip>
 
-        <Tooltip position="top" label={t("Delete")} withinPortal={false}>
-          <ActionIcon
-            onClick={handleDelete}
-            size="lg"
-            aria-label={t("Delete")}
-            variant="subtle"
-          >
-            <IconTrash size={18} />
-          </ActionIcon>
-        </Tooltip>
+        {!portfolioMode && (
+          <Tooltip position="top" label={t("Delete")} withinPortal={false}>
+            <ActionIcon
+              onClick={handleDelete}
+              size="lg"
+              aria-label={t("Delete")}
+              variant="subtle"
+            >
+              <IconTrash size={18} />
+            </ActionIcon>
+          </Tooltip>
+        )}
+        {portfolioMode && (
+          <>
+            <PortfolioElementActions editor={editor} />
+          </>
+        )}
       </div>
     </BaseBubbleMenu>
   );

@@ -23,9 +23,14 @@ import { getFileUrl } from "@/lib/config.ts";
 import { uploadImageAction } from "@/features/editor/components/image/upload-image-action.tsx";
 import { useAltTextControl } from "@/features/editor/components/common/use-alt-text-control.tsx";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 export function ImageMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const portfolioMode = hasPortfolioElementMenu(editor);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editorState = useEditorState({
@@ -165,7 +170,7 @@ export function ImageMenu({ editor }: EditorMenuProps) {
       updateDelay={0}
       getReferencedVirtualElement={getReferencedVirtualElement}
       options={{
-        placement: "top",
+        placement: portfolioMode ? "bottom" : "top",
         offset: 8,
         flip: false,
       }}
@@ -260,16 +265,24 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip position="top" label={t("Delete")} withinPortal={false}>
-            <ActionIcon
-              onClick={handleDelete}
-              size="lg"
-              aria-label={t("Delete")}
-              variant="subtle"
-            >
-              <IconTrash size={18} />
-            </ActionIcon>
-          </Tooltip>
+          {!portfolioMode && (
+            <Tooltip position="top" label={t("Delete")} withinPortal={false}>
+              <ActionIcon
+                onClick={handleDelete}
+                size="lg"
+                aria-label={t("Delete")}
+                variant="subtle"
+              >
+                <IconTrash size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {portfolioMode && (
+            <>
+              <div className={classes.divider} />
+              <PortfolioElementActions editor={editor} />
+            </>
+          )}
         </div>
       )}
 

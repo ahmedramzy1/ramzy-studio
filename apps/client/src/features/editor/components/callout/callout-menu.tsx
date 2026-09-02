@@ -20,9 +20,14 @@ import { CalloutType, isEditorReady, isTextSelected } from "@docmost/editor-ext"
 import { useTranslation } from "react-i18next";
 import EmojiPicker from "@/components/ui/emoji-picker.tsx";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 export function CalloutMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const portfolioMode = hasPortfolioElementMenu(editor);
 
   const shouldShow = useCallback(
     ({ state }: ShouldShowProps) => {
@@ -211,6 +216,12 @@ export function CalloutMenu({ editor }: EditorMenuProps) {
             variant: "subtle",
           }}
         />
+        {portfolioMode && (
+          <>
+            <div className={classes.divider} />
+            <PortfolioElementActions editor={editor} />
+          </>
+        )}
       </div>
     </BaseBubbleMenu>
   );

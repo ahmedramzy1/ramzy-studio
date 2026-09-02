@@ -14,9 +14,14 @@ import {
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 export function PdfMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const portfolioMode = hasPortfolioElementMenu(editor);
 
   const editorState = useEditorState({
     editor,
@@ -45,9 +50,9 @@ export function PdfMenu({ editor }: EditorMenuProps) {
       const dom = editor.view.nodeDOM(selection.from) as HTMLElement | null;
       if (!dom) return false;
 
-      return !!dom.querySelector("[data-pdf-error]");
+      return portfolioMode || !!dom.querySelector("[data-pdf-error]");
     },
-    [editor],
+    [editor, portfolioMode],
   );
 
   const getReferencedVirtualElement = useCallback(() => {
@@ -109,7 +114,7 @@ export function PdfMenu({ editor }: EditorMenuProps) {
       updateDelay={0}
       getReferencedVirtualElement={getReferencedVirtualElement}
       options={{
-        placement: "top",
+        placement: portfolioMode ? "bottom" : "top",
         offset: 8,
         flip: false,
       }}
@@ -127,16 +132,24 @@ export function PdfMenu({ editor }: EditorMenuProps) {
           </ActionIcon>
         </Tooltip>
 
-        <Tooltip position="top" label={t("Delete")} withinPortal={false}>
-          <ActionIcon
-            onClick={handleDelete}
-            size="lg"
-            aria-label={t("Delete")}
-            variant="subtle"
-          >
-            <IconTrash size={18} />
-          </ActionIcon>
-        </Tooltip>
+        {!portfolioMode && (
+          <Tooltip position="top" label={t("Delete")} withinPortal={false}>
+            <ActionIcon
+              onClick={handleDelete}
+              size="lg"
+              aria-label={t("Delete")}
+              variant="subtle"
+            >
+              <IconTrash size={18} />
+            </ActionIcon>
+          </Tooltip>
+        )}
+        {portfolioMode && (
+          <>
+            <div className={classes.divider} />
+            <PortfolioElementActions editor={editor} />
+          </>
+        )}
       </div>
     </BaseBubbleMenu>
   );

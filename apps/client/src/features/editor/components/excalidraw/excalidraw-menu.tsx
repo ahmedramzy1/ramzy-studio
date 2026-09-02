@@ -38,6 +38,10 @@ import { useHandleLibrary } from "@excalidraw/excalidraw";
 import { localStorageLibraryAdapter } from "@/features/editor/components/excalidraw/excalidraw-utils.ts";
 import { useAltTextControl } from "@/features/editor/components/common/use-alt-text-control.tsx";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 const ExcalidrawComponent = lazy(() =>
   import("@excalidraw/excalidraw").then((module) => ({
@@ -47,6 +51,7 @@ const ExcalidrawComponent = lazy(() =>
 
 export function ExcalidrawMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const portfolioMode = hasPortfolioElementMenu(editor);
   const [opened, { open, close }] = useDisclosure(false);
   const [excalidrawAPI, setExcalidrawAPI] =
     useState<ExcalidrawImperativeAPI>(null);
@@ -297,7 +302,7 @@ export function ExcalidrawMenu({ editor }: EditorMenuProps) {
         updateDelay={0}
         getReferencedVirtualElement={getReferencedVirtualElement}
         options={{
-          placement: "top",
+          placement: portfolioMode ? "bottom" : "top",
           offset: 8,
           flip: false,
         }}
@@ -382,16 +387,24 @@ export function ExcalidrawMenu({ editor }: EditorMenuProps) {
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip position="top" label={t("Delete")} withinPortal={false}>
-            <ActionIcon
-              onClick={handleDelete}
-              size="lg"
-              aria-label={t("Delete")}
-              variant="subtle"
-            >
-              <IconTrash size={18} />
-            </ActionIcon>
-          </Tooltip>
+          {!portfolioMode && (
+            <Tooltip position="top" label={t("Delete")} withinPortal={false}>
+              <ActionIcon
+                onClick={handleDelete}
+                size="lg"
+                aria-label={t("Delete")}
+                variant="subtle"
+              >
+                <IconTrash size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {portfolioMode && (
+            <>
+              <div className={classes.divider} />
+              <PortfolioElementActions editor={editor} />
+            </>
+          )}
           </div>
         )}
       </BaseBubbleMenu>

@@ -2,20 +2,12 @@ import type { Editor } from "@tiptap/core";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { portfolioColumnInsertionPoints } from "./portfolio-column-insertion";
 
-interface SectionChoice {
-  position: number;
-  end: number;
-  title: string;
-}
-
 interface BlockControl {
   position: number;
-  size: number;
   top: number;
   bottom: number;
   insertionTop: number;
   followsColumns: boolean;
-  isSectionHeading: boolean;
   isEmptyTextBlock: boolean;
   usesDedicatedHandle: boolean;
 }
@@ -26,10 +18,6 @@ interface ColumnControl {
   emptyParagraphPosition: number | null;
   left: number;
   top: number;
-}
-
-interface OpenMenu extends BlockControl {
-  view: "root" | "sections";
 }
 
 export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
@@ -45,8 +33,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   >(null);
   const [hasTrailingEmptyTextBlock, setHasTrailingEmptyTextBlock] =
     useState(false);
-  const [sections, setSections] = useState<SectionChoice[]>([]);
-  const [openMenu, setOpenMenu] = useState<OpenMenu | null>(null);
 
   const measure = useCallback(() => {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -57,22 +43,9 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       const overlayRect = overlay.getBoundingClientRect();
       const nextBlocks: BlockControl[] = [];
       const nextColumns: ColumnControl[] = [];
-      const nextSections: SectionChoice[] = [];
       let previousTopLevelType: string | null = null;
-      const docNodes: Array<{
-        position: number;
-        type: string;
-        level?: number;
-        text: string;
-      }> = [];
 
       editor.state.doc.forEach((node, offset) => {
-        docNodes.push({
-          position: offset,
-          type: node.type.name,
-          level: node.attrs.level,
-          text: node.textContent,
-        });
         const dom = editor.view.nodeDOM(offset);
         if (dom instanceof HTMLElement) {
           const rect = dom.getBoundingClientRect();
@@ -80,15 +53,12 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
           const previous = nextBlocks[nextBlocks.length - 1];
           nextBlocks.push({
             position: offset,
-            size: node.nodeSize,
             top,
             bottom: rect.bottom - overlayRect.top,
             insertionTop: previous
               ? (previous.bottom + top) / 2 - 14
               : top - 38,
             followsColumns: previousTopLevelType === "columns",
-            isSectionHeading:
-              node.type.name === "heading" && node.attrs.level === 1,
             isEmptyTextBlock: node.isTextblock && node.textContent.length === 0,
             usesDedicatedHandle: [
               "video",
@@ -128,21 +98,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         previousTopLevelType = node.type.name;
       });
 
-      docNodes.forEach((entry, index) => {
-        if (entry.type !== "heading" || entry.level !== 1) return;
-        const nextHeading = docNodes
-          .slice(index + 1)
-          .find(
-            (candidate) =>
-              candidate.type === "heading" && candidate.level === 1,
-          );
-        nextSections.push({
-          position: entry.position,
-          end: nextHeading?.position ?? editor.state.doc.content.size,
-          title: entry.text.trim() || "Untitled section",
-        });
-      });
-
       const last = nextBlocks[nextBlocks.length - 1];
       const empty = editor.isEmpty;
       const first = nextBlocks[0];
@@ -160,7 +115,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
 
       setBlocks(nextBlocks);
       setColumns(nextColumns);
-      setSections(nextSections);
       setLastTop(finalTop);
       setIsDocumentEmpty(empty);
       setEditingBlockPosition(
@@ -201,22 +155,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
     };
   }, [editor, measure]);
 
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = (event: MouseEvent) => {
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest("[data-ramzy-block-menu]")
-      ) {
-        return;
-      }
-      setOpenMenu(null);
-    };
-    window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, [openMenu]);
-
   function insertAt(position: number) {
     if (editor.isDestroyed || !editor.isEditable) return;
     editor
@@ -251,65 +189,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       return;
     }
     insertAt(control.insertionPosition);
-  }
-
-  function deleteBlock(control: BlockControl) {
-    const node = editor.state.doc.nodeAt(control.position);
-    if (!node) return;
-    const section = control.isSectionHeading
-      ? sections.find((candidate) => candidate.position === control.position)
-      : null;
-    const tr = editor.state.tr.delete(
-      control.position,
-      section?.end ?? control.position + node.nodeSize,
-    );
-    if (tr.doc.childCount === 0) {
-      tr.insert(0, editor.schema.nodes.paragraph.create());
-    }
-    editor.view.dispatch(tr);
-    editor.commands.focus();
-    setOpenMenu(null);
-  }
-
-  function moveToExistingSection(
-    control: BlockControl,
-    section: SectionChoice,
-  ) {
-    const node = editor.state.doc.nodeAt(control.position);
-    if (!node || control.isSectionHeading) return;
-    const originalSize = node.nodeSize;
-    let target = section.end;
-    const tr = editor.state.tr.delete(
-      control.position,
-      control.position + originalSize,
-    );
-    if (control.position < target) target -= originalSize;
-    target = Math.max(0, Math.min(target, tr.doc.content.size));
-    tr.insert(target, node);
-    editor.view.dispatch(tr.scrollIntoView());
-    editor.commands.focus();
-    setOpenMenu(null);
-  }
-
-  function moveToNewSection(control: BlockControl) {
-    const node = editor.state.doc.nodeAt(control.position);
-    if (!node || control.isSectionHeading) return;
-    const title = window.prompt("Name the new section", "New section")?.trim();
-    if (!title) return;
-    const tr = editor.state.tr.delete(
-      control.position,
-      control.position + node.nodeSize,
-    );
-    const heading = editor.schema.nodes.heading.create(
-      { level: 1 },
-      editor.schema.text(title),
-    );
-    const end = tr.doc.content.size;
-    tr.insert(end, heading);
-    tr.insert(end + heading.nodeSize, node);
-    editor.view.dispatch(tr.scrollIntoView());
-    editor.commands.focus();
-    setOpenMenu(null);
   }
 
   const controlButtonStyle: React.CSSProperties = {
@@ -363,41 +242,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
                 </span>
               </button>
             ) : null}
-            <div
-              className="ramzy-inline-block-controls"
-              style={{
-                position: "absolute",
-                left: block.usesDedicatedHandle ? -76 : -54,
-                right: -34,
-                top: block.top,
-                height: 28,
-                pointerEvents: "none",
-              }}
-            >
-              <button
-                type="button"
-                style={{
-                  ...controlButtonStyle,
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                }}
-                aria-label="Element actions"
-                title="Element actions"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() =>
-                  setOpenMenu((current) =>
-                    current?.position === block.position
-                      ? null
-                      : { ...block, view: "root" },
-                  )
-                }
-              >
-                <span aria-hidden style={{ fontSize: 13, letterSpacing: -1 }}>
-                  •••
-                </span>
-              </button>
-            </div>
           </React.Fragment>
         ))}
 
@@ -474,96 +318,11 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         </div>
       ) : null}
 
-      {openMenu ? (
-        <div
-          data-ramzy-block-menu
-          role="menu"
-          style={{
-            position: "absolute",
-            left: 0,
-            top: openMenu.top + 34,
-            width: 230,
-            padding: 6,
-            border: "1px solid var(--mantine-color-default-border)",
-            borderRadius: 8,
-            background: "var(--mantine-color-body)",
-            boxShadow: "0 10px 28px rgba(0,0,0,.16)",
-            pointerEvents: "auto",
-          }}
-        >
-          {openMenu.view === "root" ? (
-            <>
-              {!openMenu.isSectionHeading ? (
-                <button
-                  type="button"
-                  className="ramzy-block-menu-item"
-                  onClick={() => setOpenMenu({ ...openMenu, view: "sections" })}
-                >
-                  <span aria-hidden>§</span>
-                  <span>Move to section</span>
-                  <span aria-hidden style={{ marginLeft: "auto" }}>
-                    ›
-                  </span>
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="ramzy-block-menu-item ramzy-block-menu-danger"
-                onClick={() => deleteBlock(openMenu)}
-              >
-                <span aria-hidden>⌫</span>
-                <span>Delete</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="ramzy-block-menu-item"
-                onClick={() => setOpenMenu({ ...openMenu, view: "root" })}
-              >
-                <span aria-hidden>‹</span>
-                <strong>Move to section</strong>
-              </button>
-              <div className="ramzy-block-menu-separator" />
-              <button
-                type="button"
-                className="ramzy-block-menu-item"
-                onClick={() => moveToNewSection(openMenu)}
-              >
-                <span aria-hidden>+</span>
-                <span>New section…</span>
-              </button>
-              {sections.map((section) => (
-                <button
-                  key={`${section.position}-${section.title}`}
-                  type="button"
-                  className="ramzy-block-menu-item"
-                  onClick={() => moveToExistingSection(openMenu, section)}
-                >
-                  <span aria-hidden>§</span>
-                  <span
-                    style={{ overflow: "hidden", textOverflow: "ellipsis" }}
-                  >
-                    {section.title}
-                  </span>
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      ) : null}
-
       <style>{`
-        .ramzy-inline-block-controls,.ramzy-boundary-insert-control{opacity:.22;transition:opacity 120ms ease}
-        .ramzy-inline-block-controls:hover,.ramzy-inline-block-controls:focus-within{opacity:1}
+        .ramzy-boundary-insert-control{opacity:.22;transition:opacity 120ms ease}
         .ramzy-boundary-insert-control:hover,.ramzy-boundary-insert-control:focus-visible{opacity:1;color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
-        .ramzy-inline-block-controls button:hover,.ramzy-final-insert-row button:first-child:hover{color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
+        .ramzy-final-insert-row button:first-child:hover{color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
         .ramzy-final-insert-row:hover .ramzy-final-insert-prompt,.ramzy-final-insert-row:focus-within .ramzy-final-insert-prompt{opacity:1!important}
-        .ramzy-block-menu-item{width:100%;min-height:34px;border:0;border-radius:6px;background:transparent;color:var(--mantine-color-text);display:flex;align-items:center;gap:10px;padding:6px 9px;text-align:left;cursor:pointer}
-        .ramzy-block-menu-item:hover{background:var(--mantine-color-default-hover)}
-        .ramzy-block-menu-danger{color:var(--mantine-color-red-7)}
-        .ramzy-block-menu-separator{height:1px;background:var(--mantine-color-default-border);margin:5px 3px}
       `}</style>
     </div>
   );

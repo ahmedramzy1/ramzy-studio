@@ -24,6 +24,7 @@ import TableMenu from "@/features/editor/components/table/table-menu";
 import { TableHandlesLayer } from "@/features/editor/components/table/handle/table-handles-layer";
 import ImageMenu from "@/features/editor/components/image/image-menu";
 import VideoMenu from "@/features/editor/components/video/video-menu";
+import AudioMenu from "@/features/editor/components/audio/audio-menu";
 import PdfMenu from "@/features/editor/components/pdf/pdf-menu";
 import CalloutMenu from "@/features/editor/components/callout/callout-menu";
 import SubpagesMenu from "@/features/editor/components/subpages/subpages-menu";
@@ -34,6 +35,7 @@ import SearchAndReplaceDialog from "@/features/editor/components/search-and-repl
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
+import { PortfolioGenericElementMenu } from "./portfolio-element-menu";
 import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
 import { PortfolioDnd } from "./portfolio-dnd";
 import { PortfolioDndPreview } from "./portfolio-dnd-preview-extension";
@@ -378,6 +380,7 @@ function DirectPortfolioEditor({
           <PortfolioDnd editor={editor} />
           <PortfolioGridControls editor={editor} />
           <PortfolioInsertionControls editor={editor} />
+          <PortfolioGenericElementMenu editor={editor} />
         </>
       )}
 
@@ -393,6 +396,7 @@ function DirectPortfolioEditor({
           <TableHandlesLayer editor={editor} />
           <ImageMenu editor={editor} />
           <VideoMenu editor={editor} />
+          <AudioMenu editor={editor} />
           <PdfMenu editor={editor} />
           <CalloutMenu editor={editor} />
           <SubpagesMenu editor={editor} />
