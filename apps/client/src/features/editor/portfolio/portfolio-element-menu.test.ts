@@ -8,7 +8,9 @@ import Text from "@tiptap/extension-text";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   deletePortfolioTopLevelBlock,
+  duplicatePortfolioTopLevelBlock,
   getPortfolioTopLevelBlock,
+  movePortfolioTopLevelBlock,
   movePortfolioBlockToNewSection,
   movePortfolioBlockToSection,
   triggerPortfolioElementAction,
@@ -40,6 +42,10 @@ function paragraph(text: string) {
     type: "paragraph",
     content: [{ type: "text", text }],
   };
+}
+
+function topLevelTexts(editor: Editor) {
+  return editor.state.doc.content.content.map((node) => node.textContent);
 }
 
 describe("portfolio element menu commands", () => {
@@ -122,6 +128,68 @@ describe("portfolio element menu commands", () => {
       true,
     );
     expect(editor.state.doc.firstChild?.attrs.level).toBe(2);
+  });
+
+  it("duplicates a normal element directly after itself", () => {
+    editor = createEditor([paragraph("First"), paragraph("Second")]);
+    editor.commands.setNodeSelection(0);
+
+    expect(duplicatePortfolioTopLevelBlock(editor)).toBe(true);
+    expect(topLevelTexts(editor)).toEqual(["First", "First", "Second"]);
+  });
+
+  it("duplicates an entire section rather than only its heading", () => {
+    editor = createEditor([
+      heading("First section"),
+      paragraph("Section content"),
+      heading("Second section"),
+    ]);
+    editor.commands.setNodeSelection(0);
+
+    expect(duplicatePortfolioTopLevelBlock(editor)).toBe(true);
+    expect(topLevelTexts(editor)).toEqual([
+      "First section",
+      "Section content",
+      "First section",
+      "Section content",
+      "Second section",
+    ]);
+  });
+
+  it("moves normal elements up and down", () => {
+    editor = createEditor([
+      paragraph("First"),
+      paragraph("Second"),
+      paragraph("Third"),
+    ]);
+    const secondPosition = editor.state.doc.child(0).nodeSize;
+    editor.commands.setNodeSelection(secondPosition);
+
+    expect(movePortfolioTopLevelBlock(editor, "down")).toBe(true);
+    expect(topLevelTexts(editor)).toEqual(["First", "Third", "Second"]);
+
+    expect(movePortfolioTopLevelBlock(editor, "up")).toBe(true);
+    expect(topLevelTexts(editor)).toEqual(["First", "Second", "Third"]);
+  });
+
+  it("moves an entire section as one unit", () => {
+    editor = createEditor([
+      heading("First section"),
+      paragraph("First content"),
+      heading("Second section"),
+      paragraph("Second content"),
+    ]);
+    const secondSectionPosition =
+      editor.state.doc.child(0).nodeSize + editor.state.doc.child(1).nodeSize;
+    editor.commands.setNodeSelection(secondSectionPosition);
+
+    expect(movePortfolioTopLevelBlock(editor, "up")).toBe(true);
+    expect(topLevelTexts(editor)).toEqual([
+      "Second section",
+      "Second content",
+      "First section",
+      "First content",
+    ]);
   });
 
   it("routes contextual toolbar actions to the selected node view", () => {

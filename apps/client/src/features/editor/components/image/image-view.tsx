@@ -10,7 +10,17 @@ import { BlockDragHandle } from "@/features/editor/components/common/block-drag-
 export default function ImageView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { editor, node, selected } = props;
-  const { src, width, align, alt, aspectRatio, placeholder } = node.attrs;
+  const {
+    src,
+    width,
+    align,
+    alt,
+    aspectRatio,
+    placeholder,
+    caption,
+    link,
+    fit,
+  } = node.attrs;
   const alignClass = useMemo(() => {
     if (align === "left") return "alignLeft";
     if (align === "right") return "alignRight";
@@ -43,9 +53,24 @@ export default function ImageView(props: NodeViewProps) {
           width,
         }}
       >
-        {src && (
-          <Image radius="md" fit="contain" src={getFileUrl(src)} alt={alt} />
-        )}
+        {src &&
+          (link && !editor.isEditable ? (
+            <a href={link} target="_blank" rel="noreferrer">
+              <Image
+                radius="md"
+                fit={fit === "cover" ? "cover" : "contain"}
+                src={getFileUrl(src)}
+                alt={alt}
+              />
+            </a>
+          ) : (
+            <Image
+              radius="md"
+              fit={fit === "cover" ? "cover" : "contain"}
+              src={getFileUrl(src)}
+              alt={alt}
+            />
+          ))}
         {!src && previewSrc && (
           <Group pos="relative" h="100%" w="100%">
             <Image
@@ -68,6 +93,11 @@ export default function ImageView(props: NodeViewProps) {
           </Group>
         )}
       </div>
+      {caption && (
+        <Text size="sm" c="dimmed" ta="center" mt={6}>
+          {caption}
+        </Text>
+      )}
     </NodeViewWrapper>
   );
 }

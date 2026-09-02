@@ -1,8 +1,4 @@
-import {
-  NodeViewContent,
-  NodeViewProps,
-  NodeViewWrapper,
-} from "@tiptap/react";
+import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { ActionIcon, Menu, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -25,6 +21,9 @@ export default function TransclusionView(props: NodeViewProps) {
     setOpenMenus((n) => Math.max(0, n + (open ? 1 : -1)));
 
   const isEditable = editor.isEditable;
+  const portfolioMode = editor.view.dom.classList.contains(
+    "ramzy-portfolio-editor",
+  );
   // @ts-ignore - editor.storage.pageId is set by the host editor (page-editor.tsx onCreate)
   const sourcePageId: string | undefined = editor.storage?.pageId;
   const transclusionId: string | null = node.attrs.id ?? null;
@@ -66,7 +65,23 @@ export default function TransclusionView(props: NodeViewProps) {
       data-menu-open={openMenus > 0 ? "true" : "false"}
       data-id={transclusionId ?? undefined}
     >
-      {isEditable && (
+      {isEditable && portfolioMode && (
+        <>
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="copy-synced-block"
+            onClick={() => void handleCopy()}
+          />
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="unsync-block"
+            onClick={handleUnsync}
+          />
+        </>
+      )}
+      {isEditable && !portfolioMode && (
         <div
           className={classes.transclusionControls}
           contentEditable={false}

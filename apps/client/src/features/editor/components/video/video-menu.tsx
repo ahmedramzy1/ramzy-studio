@@ -25,6 +25,7 @@ import {
   IconDownload,
   IconArrowsHorizontal,
   IconPhotoEdit,
+  IconRefresh,
   IconSubtitles,
   IconTextCaption,
   IconTrash,
@@ -35,7 +36,11 @@ import { useAltTextControl } from "@/features/editor/components/common/use-alt-t
 import classes from "../common/toolbar-menu.module.css";
 import { normalizeVideoCaption, VIDEO_WIDTH_PRESETS } from "./video-layout";
 import { uploadFile } from "@/features/page/services/page-service.ts";
-import { generateVideoCaptions } from "@/features/editor/components/media/media-ingest.ts";
+import {
+  generateVideoCaptions,
+  ingestVideoFile,
+} from "@/features/editor/components/media/media-ingest.ts";
+import { isVideoFile } from "@/features/editor/components/media/media-file-utils";
 import {
   hasPortfolioElementMenu,
   PortfolioElementActions,
@@ -48,7 +53,9 @@ export function VideoMenu({ editor }: EditorMenuProps) {
   const [captionDraft, setCaptionDraft] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [captionsGenerating, setCaptionsGenerating] = useState(false);
+  const [videoReplacing, setVideoReplacing] = useState(false);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   const editorState = useEditorState({
     editor,
@@ -199,6 +206,37 @@ export function VideoMenu({ editor }: EditorMenuProps) {
       setCaptionsGenerating(false);
     }
   }, [captionsGenerating, editor, editorState]);
+
+  const replaceVideo = useCallback(
+    async (file?: File) => {
+      if (!file || !isVideoFile(file) || videoReplacing) return;
+      // @ts-ignore portfolio editor storage owns the canonical linked page id.
+      const pageId = editor.storage?.pageId as string | undefined;
+      if (!pageId) return;
+      setVideoReplacing(true);
+      try {
+        const item = await ingestVideoFile(file, pageId);
+        editor
+          .chain()
+          .focus(undefined, { scrollIntoView: false })
+          .updateAttributes("video", {
+            src: item.src,
+            attachmentId: item.attachmentId,
+            size: file.size,
+            poster: item.poster || "",
+            posterAttachmentId: item.posterAttachmentId,
+            width: item.width,
+            height: item.height,
+            aspectRatio: item.aspectRatio,
+            placeholder: null,
+          })
+          .run();
+      } finally {
+        setVideoReplacing(false);
+      }
+    },
+    [editor, videoReplacing],
+  );
 
   const setWidth = useCallback(
     (width: number) => {
@@ -384,44 +422,124 @@ export function VideoMenu({ editor }: EditorMenuProps) {
 
           <Tooltip
             position="top"
-            label={
-              thumbnailUploading
-                ? t("Uploading thumbnail…")
-                : t("Change thumbnail")
-            }
+            label={videoReplacing ? "Replacing video…" : "Replace video"}
             withinPortal={false}
           >
             <ActionIcon
-              onClick={() => thumbnailInputRef.current?.click()}
+              onClick={() => replaceInputRef.current?.click()}
               size="lg"
-              aria-label={t("Change thumbnail")}
+              aria-label="Replace video"
               variant="subtle"
-              loading={thumbnailUploading}
+              loading={videoReplacing}
             >
-              <IconPhotoEdit size={18} />
+              <IconRefresh size={18} />
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip
-            position="top"
-            label={
-              captionsGenerating
-                ? t("Generating captions…")
-                : t("Generate captions")
-            }
+          <Menu
             withinPortal={false}
+            position="bottom-start"
+            shadow="md"
+            width={190}
           >
-            <ActionIcon
-              onClick={() => void generateCaptions()}
-              size="lg"
-              aria-label={t("Generate captions")}
-              variant="subtle"
-              loading={captionsGenerating}
-              disabled={!editorState?.attachmentId}
-            >
-              <IconSubtitles size={18} />
-            </ActionIcon>
-          </Tooltip>
+            <Menu.Target>
+              <Tooltip
+                position="top"
+                label={
+                  thumbnailUploading
+                    ? t("Uploading thumbnail…")
+                    : t("Thumbnail")
+                }
+                withinPortal={false}
+              >
+                <ActionIcon
+                  size="lg"
+                  aria-label={t("Thumbnail")}
+                  variant="subtle"
+                  loading={thumbnailUploading}
+                >
+                  <IconPhotoEdit size={18} />
+                </ActionIcon>
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item onClick={() => thumbnailInputRef.current?.click()}>
+                Change thumbnail
+              </Menu.Item>
+              <Menu.Item
+                color="red"
+                onClick={() =>
+                  editor
+                    .chain()
+                    .focus(undefined, { scrollIntoView: false })
+                    .updateAttributes("video", {
+                      poster: "",
+                      posterAttachmentId: null,
+                    })
+                    .run()
+                }
+              >
+                Remove thumbnail
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+
+          <Menu
+            withinPortal={false}
+            position="bottom-start"
+            shadow="md"
+            width={240}
+          >
+            <Menu.Target>
+              <Tooltip
+                position="top"
+                label={
+                  captionsGenerating ? t("Generating captions…") : t("Captions")
+                }
+                withinPortal={false}
+              >
+                <ActionIcon
+                  size="lg"
+                  aria-label={t("Captions")}
+                  variant="subtle"
+                  loading={captionsGenerating}
+                >
+                  <IconSubtitles size={18} />
+                </ActionIcon>
+              </Tooltip>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                disabled={!editorState?.attachmentId}
+                onClick={() => void generateCaptions()}
+              >
+                Generate captions…
+              </Menu.Item>
+              {editorState?.captions.length ? <Menu.Divider /> : null}
+              {editorState?.captions.map(
+                (track: { key: string; label?: string; language?: string }) => (
+                  <Menu.Item
+                    key={track.key}
+                    color="red"
+                    onClick={() =>
+                      editor
+                        .chain()
+                        .focus(undefined, { scrollIntoView: false })
+                        .updateAttributes("video", {
+                          captions: editorState.captions.filter(
+                            (candidate: { key?: string }) =>
+                              candidate.key !== track.key,
+                          ),
+                        })
+                        .run()
+                    }
+                  >
+                    Remove {track.label || track.language || "caption track"}
+                  </Menu.Item>
+                ),
+              )}
+            </Menu.Dropdown>
+          </Menu>
 
           <input
             ref={thumbnailInputRef}
@@ -430,6 +548,16 @@ export function VideoMenu({ editor }: EditorMenuProps) {
             hidden
             onChange={(event) => {
               void uploadThumbnail(event.currentTarget.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
+          <input
+            ref={replaceInputRef}
+            type="file"
+            accept="video/*"
+            hidden
+            onChange={(event) => {
+              void replaceVideo(event.currentTarget.files?.[0]);
               event.currentTarget.value = "";
             }}
           />

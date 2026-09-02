@@ -1,7 +1,7 @@
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { PortfolioPhotoAlbum, PortfolioPhotoGrid } from "@docmost/editor-ext";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { uploadFile } from "@/features/page/services/page-service.ts";
 import { getFileUrl } from "@/lib/config.ts";
@@ -118,6 +118,44 @@ function PhotoCollectionView({
   const active =
     images.find((image) => image.key === node.attrs.activeKey) || images[0];
   const rows = useMemo(() => autoRows(images), [images]);
+  const gap = Number(node.attrs.gap ?? 10);
+  const aspectRatio =
+    node.attrs.aspect === "square"
+      ? "1 / 1"
+      : node.attrs.aspect === "landscape"
+        ? "4 / 3"
+        : node.attrs.aspect === "portrait"
+          ? "3 / 4"
+          : undefined;
+
+  useEffect(() => {
+    if (
+      kind !== "album" ||
+      !node.attrs.autoplay ||
+      images.length < 2 ||
+      editable
+    )
+      return;
+    const delay = Math.max(2, Number(node.attrs.interval || 5)) * 1000;
+    const timer = window.setInterval(() => {
+      const currentIndex = Math.max(
+        0,
+        images.findIndex((image) => image.key === active?.key),
+      );
+      updateAttributes({
+        activeKey: images[(currentIndex + 1) % images.length].key,
+      });
+    }, delay);
+    return () => window.clearInterval(timer);
+  }, [
+    active?.key,
+    editable,
+    images,
+    kind,
+    node.attrs.autoplay,
+    node.attrs.interval,
+    updateAttributes,
+  ]);
 
   function setImages(next: PhotoItem[]) {
     const activeKey = next.some((image) => image.key === node.attrs.activeKey)
@@ -180,7 +218,7 @@ function PhotoCollectionView({
         onClick={() =>
           kind === "album"
             ? updateAttributes({ activeKey: image.key })
-            : setViewer(image)
+            : node.attrs.lightbox !== false && setViewer(image)
         }
         style={{
           width: "100%",
@@ -195,6 +233,7 @@ function PhotoCollectionView({
           overflow: "hidden",
           background: "var(--mantine-color-default-hover)",
           cursor: "pointer",
+          aspectRatio,
         }}
       >
         <img
@@ -206,7 +245,7 @@ function PhotoCollectionView({
             minHeight: compact ? 76 : 160,
             maxHeight: compact ? 96 : 420,
             display: "block",
-            objectFit: "cover",
+            objectFit: node.attrs.fit === "contain" ? "contain" : "cover",
           }}
         />
       </button>
@@ -319,43 +358,58 @@ function PhotoCollectionView({
           />
         )}
 
-        {kind === "grid" && images.length > 0 && (
-          <div style={{ display: "grid", gap: 10, padding: editable ? 14 : 0 }}>
-            {rows.map((row, rowIndex) => (
-              <div
-                key={rowIndex}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))`,
-                  gap: 10,
-                }}
-              >
-                {row.map((image) => photoTile(image, images.indexOf(image)))}
-              </div>
-            ))}
-          </div>
-        )}
+        {kind === "grid" &&
+          images.length > 0 &&
+          (node.attrs.columns > 0 ? (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${Math.min(Number(node.attrs.columns), images.length)}, minmax(0, 1fr))`,
+                gap,
+                padding: editable ? 14 : 0,
+              }}
+            >
+              {images.map((image) => photoTile(image, images.indexOf(image)))}
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap, padding: editable ? 14 : 0 }}>
+              {rows.map((row, rowIndex) => (
+                <div
+                  key={rowIndex}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))`,
+                    gap,
+                  }}
+                >
+                  {row.map((image) => photoTile(image, images.indexOf(image)))}
+                </div>
+              ))}
+            </div>
+          ))}
 
         {kind === "album" && active && (
           <div
             style={{
               display: "grid",
               gridTemplateColumns:
-                images.length > 1 ? "minmax(0,1fr) 132px" : "1fr",
-              gap: 10,
+                images.length > 1 && node.attrs.thumbnailPosition !== "bottom"
+                  ? "minmax(0,1fr) 132px"
+                  : "1fr",
+              gap,
               padding: editable ? 14 : 0,
             }}
           >
             <button
               type="button"
-              onClick={() => setViewer(active)}
+              onClick={() => node.attrs.lightbox !== false && setViewer(active)}
               style={{
                 padding: 0,
                 border: 0,
                 borderRadius: 8,
                 overflow: "hidden",
                 background: "#111",
-                cursor: "zoom-in",
+                cursor: node.attrs.lightbox === false ? "default" : "zoom-in",
               }}
             >
               <img
@@ -366,7 +420,7 @@ function PhotoCollectionView({
                   height: "min(62vh, 620px)",
                   minHeight: 320,
                   display: "block",
-                  objectFit: "contain",
+                  objectFit: node.attrs.fit === "cover" ? "cover" : "contain",
                 }}
               />
             </button>
@@ -374,10 +428,25 @@ function PhotoCollectionView({
               <div
                 style={{
                   maxHeight: "min(62vh, 620px)",
-                  overflowY: "auto",
+                  overflowY:
+                    node.attrs.thumbnailPosition === "bottom"
+                      ? "hidden"
+                      : "auto",
+                  overflowX:
+                    node.attrs.thumbnailPosition === "bottom"
+                      ? "auto"
+                      : "hidden",
                   display: "grid",
+                  gridTemplateColumns:
+                    node.attrs.thumbnailPosition === "bottom"
+                      ? "repeat(auto-fit, minmax(96px, 132px))"
+                      : undefined,
                   alignContent: "start",
-                  gap: 8,
+                  gap,
+                  gridColumn:
+                    node.attrs.thumbnailPosition === "bottom"
+                      ? "1 / -1"
+                      : undefined,
                 }}
               >
                 {images.map((image) =>

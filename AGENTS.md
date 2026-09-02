@@ -15,3 +15,16 @@ Verify this repository's remote feature-branch head before acting. For runtime-a
 
 Keep Studio PR #20 draft/open/unmerged unless explicitly instructed otherwise. Do not deploy without explicit instruction. Update the canonical website hub—especially `11-current-state.md`—before closing substantial cross-repository work.
 
+## Required implementation handoff
+
+Every completed implementation handoff to Ahmed must end with an exact,
+copy-paste-ready PowerShell command block for running or verifying the change on
+his Windows checkout. Use PowerShell-native syntax such as
+`Set-Location 'C:\Users\ahmed\Documents\ramzy-studio'`; never give Command
+Prompt-only syntax such as `cd /d`. Include the branch switch, fetch/pull, any
+required dependency install, and the correct local run or validation command.
+Do not make Ahmed ask for these commands.
+
+Report source commit, runtime artifact commit, website pin, CI, PR, merge, and
+deployment state separately. Never imply that a pushed branch is merged or
+deployed.

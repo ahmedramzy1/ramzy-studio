@@ -61,6 +61,9 @@ function TransclusionReferenceBody({
   const sourcePageId: string | null = node.attrs.sourcePageId ?? null;
   const transclusionId: string | null = node.attrs.transclusionId ?? null;
   const isEditable = editor.isEditable;
+  const portfolioMode = editor.view.dom.classList.contains(
+    "ramzy-portfolio-editor",
+  );
 
   const { result, refresh } = useTransclusionLookup(
     sourcePageId,
@@ -122,7 +125,32 @@ function TransclusionReferenceBody({
 
   return (
     <>
-      {isEditable && (
+      {isEditable && portfolioMode && (
+        <>
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="refresh-synced-block"
+            onClick={() => void handleRefresh()}
+          />
+          {sourcePageHref && (
+            <a
+              hidden
+              data-ramzy-element-action="open-synced-source"
+              href={sourcePageHref}
+              target="_blank"
+              rel="noreferrer"
+            />
+          )}
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="unsync-block"
+            onClick={() => void handleUnsync()}
+          />
+        </>
+      )}
+      {isEditable && !portfolioMode && (
         <div
           className={classes.includeControls}
           contentEditable={false}

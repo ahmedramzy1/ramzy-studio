@@ -40,6 +40,9 @@ export interface MediaPlaylistAttributes {
   activeKey?: string;
   autoplay?: boolean;
   loop?: boolean;
+  shuffle?: boolean;
+  showQueue?: boolean;
+  queueLayout?: 'detailed' | 'compact';
 }
 
 export interface MediaPlaylistOptions {
@@ -130,6 +133,32 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
           'data-loop': attributes.loop ? 'true' : 'false',
         }),
       },
+      shuffle: {
+        default: false,
+        parseHTML: (element) => element.getAttribute('data-shuffle') === 'true',
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          'data-shuffle': attributes.shuffle ? 'true' : 'false',
+        }),
+      },
+      showQueue: {
+        default: true,
+        parseHTML: (element) =>
+          element.getAttribute('data-show-queue') !== 'false',
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          'data-show-queue': attributes.showQueue === false ? 'false' : 'true',
+        }),
+      },
+      queueLayout: {
+        default: 'detailed',
+        parseHTML: (element) =>
+          element.getAttribute('data-queue-layout') === 'compact'
+            ? 'compact'
+            : 'detailed',
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          'data-queue-layout':
+            attributes.queueLayout === 'compact' ? 'compact' : 'detailed',
+        }),
+      },
     };
   },
 
@@ -162,6 +191,10 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
               activeKey: attrs.activeKey || '',
               autoplay: attrs.autoplay || false,
               loop: attrs.loop || false,
+              shuffle: attrs.shuffle || false,
+              showQueue: attrs.showQueue !== false,
+              queueLayout:
+                attrs.queueLayout === 'compact' ? 'compact' : 'detailed',
             },
           }),
     };

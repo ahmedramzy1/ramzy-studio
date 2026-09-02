@@ -1,4 +1,12 @@
-import { Button, Group, Modal, Stack, Text, TextInput } from "@mantine/core";
+import {
+  Button,
+  Group,
+  Modal,
+  Stack,
+  Text,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,7 +15,10 @@ import { getFileUrl } from "@/lib/config.ts";
 import RamzyAudioPlayer from "@/features/editor/components/audio/ramzy-audio-player.tsx";
 import RamzyVideoPlayer from "@/features/editor/components/video/ramzy-video-player.tsx";
 import RamzyPlaylist from "./ramzy-playlist";
-import { ingestMediaBatch } from "@/features/editor/components/media/media-ingest.ts";
+import {
+  createMediaKey,
+  ingestMediaBatch,
+} from "@/features/editor/components/media/media-ingest.ts";
 import { generateVideoCaptions } from "@/features/editor/components/media/media-ingest.ts";
 import { uploadFile } from "@/features/page/services/page-service.ts";
 import {
@@ -30,7 +41,8 @@ export default function MediaPlaylistView({
   selected,
 }: NodeViewProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const artworkInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
   const editable = editor.isEditable;
   const kind = node.attrs.kind === "video" ? "video" : "audio";
   const items = useMemo<MediaPlaylistItem[]>(
@@ -50,6 +62,25 @@ export default function MediaPlaylistView({
   );
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [captionsGenerating, setCaptionsGenerating] = useState(false);
+  const [artworkCandidateKey, setArtworkCandidateKey] = useState<string | null>(
+    null,
+  );
+  const [replaceCandidateKey, setReplaceCandidateKey] = useState<string | null>(
+    null,
+  );
+  const [detailsCandidateKey, setDetailsCandidateKey] = useState<string | null>(
+    null,
+  );
+  const [captionsCandidateKey, setCaptionsCandidateKey] = useState<
+    string | null
+  >(null);
+  const [details, setDetails] = useState({
+    title: "",
+    subtitle: "",
+    artist: "",
+    album: "",
+    description: "",
+  });
 
   useEffect(() => {
     if (items.some((item) => item.key === localActiveKey)) return;
@@ -89,6 +120,13 @@ export default function MediaPlaylistView({
 
   const playNext = (force = false) => {
     if (!force && !node.attrs.autoplay) return;
+    if (node.attrs.shuffle && items.length > 1) {
+      const alternatives = items.filter((item) => item.key !== active?.key);
+      const candidate =
+        alternatives[Math.floor(Math.random() * alternatives.length)];
+      if (candidate) play(candidate.key);
+      return;
+    }
     const key = stepPlaylistKey(
       items,
       active?.key || localActiveKey,
@@ -119,9 +157,8 @@ export default function MediaPlaylistView({
     setRemoveCandidateKey(null);
   };
 
-  const replaceActiveThumbnail = async (file?: File) => {
-    if (!active || !file?.type.startsWith("image/") || thumbnailUploading)
-      return;
+  const replaceItemArtwork = async (key: string, file?: File) => {
+    if (!file?.type.startsWith("image/") || thumbnailUploading) return;
     // @ts-ignore portfolio editor storage owns the canonical linked page id.
     const pageId = editor.storage?.pageId as string | undefined;
     if (!pageId) return;
@@ -130,22 +167,31 @@ export default function MediaPlaylistView({
       const attachment = await uploadFile(file, pageId);
       setItems(
         items.map((item) =>
-          item.key === active.key
-            ? {
-                ...item,
-                poster: `/api/files/${attachment.id}/${attachment.fileName}`,
-                posterAttachmentId: attachment.id,
-              }
+          item.key === key
+            ? kind === "video"
+              ? {
+                  ...item,
+                  poster: `/api/files/${attachment.id}/${attachment.fileName}`,
+                  posterAttachmentId: attachment.id,
+                }
+              : {
+                  ...item,
+                  artwork: `/api/files/${attachment.id}/${attachment.fileName}`,
+                  artworkAttachmentId: attachment.id,
+                  artworkSource: "custom" as const,
+                }
             : item,
         ),
       );
     } finally {
       setThumbnailUploading(false);
+      setArtworkCandidateKey(null);
     }
   };
 
-  const generateActiveCaptions = async () => {
-    if (!active?.attachmentId || captionsGenerating) return;
+  const generateItemCaptions = async (key: string) => {
+    const candidate = items.find((item) => item.key === key);
+    if (!candidate?.attachmentId || captionsGenerating) return;
     // @ts-ignore portfolio editor storage owns the canonical linked page id.
     const pageId = editor.storage?.pageId as string | undefined;
     if (!pageId) return;
@@ -157,13 +203,13 @@ export default function MediaPlaylistView({
     setCaptionsGenerating(true);
     try {
       const track = await generateVideoCaptions(
-        active.attachmentId,
+        candidate.attachmentId,
         pageId,
         language,
       );
       setItems(
         items.map((item) =>
-          item.key === active.key
+          item.key === key
             ? { ...item, captions: [...(item.captions || []), track] }
             : item,
         ),
@@ -171,6 +217,94 @@ export default function MediaPlaylistView({
     } finally {
       setCaptionsGenerating(false);
     }
+  };
+
+  const replaceItemMedia = async (key: string, file?: File) => {
+    if (!file || uploading) return;
+    // @ts-ignore portfolio editor storage owns the canonical linked page id.
+    const pageId = editor.storage?.pageId as string | undefined;
+    if (!pageId || !filterMediaFiles([file], kind).length) return;
+    const current = items.find((item) => item.key === key);
+    if (!current) return;
+    setUploading(true);
+    try {
+      const result = await ingestMediaBatch([file], kind, pageId);
+      const replacement = result.successful[0];
+      if (!replacement) return;
+      setItems(
+        items.map((item) =>
+          item.key === key
+            ? {
+                ...replacement,
+                key,
+                title: current.title || replacement.title,
+                subtitle: current.subtitle || replacement.subtitle,
+                description: current.description || replacement.description,
+              }
+            : item,
+        ),
+        key,
+      );
+    } finally {
+      setUploading(false);
+      setReplaceCandidateKey(null);
+    }
+  };
+
+  const openDetails = (key: string) => {
+    const item = items.find((candidate) => candidate.key === key);
+    if (!item) return;
+    setDetails({
+      title: item.title || "",
+      subtitle: item.subtitle || "",
+      artist: item.artist || "",
+      album: item.album || "",
+      description: item.description || "",
+    });
+    setDetailsCandidateKey(key);
+  };
+
+  const saveDetails = () => {
+    if (!detailsCandidateKey) return;
+    setItems(
+      items.map((item) =>
+        item.key === detailsCandidateKey ? { ...item, ...details } : item,
+      ),
+    );
+    setDetailsCandidateKey(null);
+  };
+
+  const duplicateItem = (key: string) => {
+    const index = items.findIndex((item) => item.key === key);
+    if (index < 0) return;
+    const duplicate = {
+      ...items[index],
+      key: createMediaKey(kind),
+      title: `${items[index].title} copy`,
+      dateAdded: new Date().toISOString(),
+    };
+    const next = [...items];
+    next.splice(index + 1, 0, duplicate);
+    setItems(next, duplicate.key);
+  };
+
+  const moveItemToEdge = (key: string, edge: "start" | "end") => {
+    const index = items.findIndex((item) => item.key === key);
+    if (index < 0) return;
+    const next = [...items];
+    const [item] = next.splice(index, 1);
+    next.splice(edge === "start" ? 0 : next.length, 0, item);
+    setItems(next, key);
+  };
+
+  const downloadItem = (key: string) => {
+    const item = items.find((candidate) => candidate.key === key);
+    if (!item?.src) return;
+    const anchor = document.createElement("a");
+    anchor.href = getFileUrl(item.src);
+    anchor.download = item.title || kind;
+    anchor.rel = "noopener";
+    anchor.click();
   };
 
   const uploadFiles = async (files: FileList | File[]) => {
@@ -344,18 +478,39 @@ export default function MediaPlaylistView({
           </div>
         )}
 
-        <RamzyPlaylist
-          items={queueItems}
-          activeKey={active?.key}
-          playingKey={playKey}
-          editable={editable}
-          onSelect={select}
-          onPlay={play}
-          onMove={move}
-          onReorder={reorder}
-          onRemove={setRemoveCandidateKey}
-          maxHeight={kind === "video" ? 390 : 420}
-        />
+        {node.attrs.showQueue !== false && (
+          <RamzyPlaylist
+            items={queueItems}
+            activeKey={active?.key}
+            playingKey={playKey}
+            editable={editable}
+            kind={kind}
+            layout={
+              node.attrs.queueLayout === "compact" ? "compact" : "detailed"
+            }
+            onSelect={select}
+            onPlay={play}
+            onMove={move}
+            onReorder={reorder}
+            onRemove={setRemoveCandidateKey}
+            onEditDetails={openDetails}
+            onReplaceMedia={(key) => {
+              setReplaceCandidateKey(key);
+              replaceInputRef.current?.click();
+            }}
+            onChangeArtwork={(key) => {
+              setArtworkCandidateKey(key);
+              artworkInputRef.current?.click();
+            }}
+            onGenerateCaptions={(key) => void generateItemCaptions(key)}
+            onManageCaptions={setCaptionsCandidateKey}
+            onDownload={downloadItem}
+            onDuplicate={duplicateItem}
+            onMoveToStart={(key) => moveItemToEdge(key, "start")}
+            onMoveToEnd={(key) => moveItemToEdge(key, "end")}
+            maxHeight={kind === "video" ? 390 : 420}
+          />
+        )}
 
         {editable && (
           <>
@@ -365,20 +520,6 @@ export default function MediaPlaylistView({
               data-ramzy-element-action="add-media"
               disabled={uploading}
               onClick={() => inputRef.current?.click()}
-            />
-            <button
-              type="button"
-              hidden
-              data-ramzy-element-action="change-thumbnail"
-              disabled={!active || thumbnailUploading}
-              onClick={() => thumbnailInputRef.current?.click()}
-            />
-            <button
-              type="button"
-              hidden
-              data-ramzy-element-action="generate-captions"
-              disabled={!active?.attachmentId || captionsGenerating}
-              onClick={() => void generateActiveCaptions()}
             />
           </>
         )}
@@ -397,15 +538,173 @@ export default function MediaPlaylistView({
         />
 
         <input
-          ref={thumbnailInputRef}
+          ref={artworkInputRef}
           type="file"
           accept="image/*"
           style={{ display: "none" }}
           onChange={(event) => {
-            void replaceActiveThumbnail(event.currentTarget.files?.[0]);
+            if (artworkCandidateKey) {
+              void replaceItemArtwork(
+                artworkCandidateKey,
+                event.currentTarget.files?.[0],
+              );
+            }
             event.currentTarget.value = "";
           }}
         />
+
+        <input
+          ref={replaceInputRef}
+          type="file"
+          accept={mediaAccept(kind)}
+          style={{ display: "none" }}
+          onChange={(event) => {
+            if (replaceCandidateKey) {
+              void replaceItemMedia(
+                replaceCandidateKey,
+                event.currentTarget.files?.[0],
+              );
+            }
+            event.currentTarget.value = "";
+          }}
+        />
+
+        <Modal
+          opened={!!detailsCandidateKey}
+          onClose={() => setDetailsCandidateKey(null)}
+          title={kind === "video" ? "Edit video details" : "Edit track details"}
+          centered
+          size="md"
+        >
+          <Stack gap="sm">
+            <TextInput
+              label="Title"
+              value={details.title}
+              onChange={(event) =>
+                setDetails((current) => ({
+                  ...current,
+                  title: event.currentTarget.value,
+                }))
+              }
+            />
+            {kind === "audio" && (
+              <>
+                <TextInput
+                  label="Artist"
+                  value={details.artist}
+                  onChange={(event) =>
+                    setDetails((current) => ({
+                      ...current,
+                      artist: event.currentTarget.value,
+                    }))
+                  }
+                />
+                <TextInput
+                  label="Album"
+                  value={details.album}
+                  onChange={(event) =>
+                    setDetails((current) => ({
+                      ...current,
+                      album: event.currentTarget.value,
+                    }))
+                  }
+                />
+              </>
+            )}
+            <TextInput
+              label="Subtitle"
+              value={details.subtitle}
+              onChange={(event) =>
+                setDetails((current) => ({
+                  ...current,
+                  subtitle: event.currentTarget.value,
+                }))
+              }
+            />
+            <Textarea
+              label="Description"
+              minRows={3}
+              value={details.description}
+              onChange={(event) =>
+                setDetails((current) => ({
+                  ...current,
+                  description: event.currentTarget.value,
+                }))
+              }
+            />
+            <Group justify="flex-end" gap="xs">
+              <Button
+                variant="default"
+                onClick={() => setDetailsCandidateKey(null)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={saveDetails}>Save details</Button>
+            </Group>
+          </Stack>
+        </Modal>
+
+        <Modal
+          opened={!!captionsCandidateKey}
+          onClose={() => setCaptionsCandidateKey(null)}
+          title="Manage captions"
+          centered
+          size="md"
+        >
+          <Stack gap="sm">
+            {(
+              items.find((item) => item.key === captionsCandidateKey)
+                ?.captions || []
+            ).map((track) => (
+              <Group key={track.key} justify="space-between" wrap="nowrap">
+                <div>
+                  <Text size="sm" fw={600}>
+                    {track.label}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {track.language}
+                  </Text>
+                </div>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="red"
+                  onClick={() => {
+                    if (!captionsCandidateKey) return;
+                    setItems(
+                      items.map((item) =>
+                        item.key === captionsCandidateKey
+                          ? {
+                              ...item,
+                              captions: (item.captions || []).filter(
+                                (candidate) => candidate.key !== track.key,
+                              ),
+                            }
+                          : item,
+                      ),
+                    );
+                  }}
+                >
+                  Remove
+                </Button>
+              </Group>
+            ))}
+            {!items.find((item) => item.key === captionsCandidateKey)?.captions
+              ?.length && (
+              <Text size="sm" c="dimmed">
+                No caption tracks yet.
+              </Text>
+            )}
+            <Group justify="flex-end">
+              <Button
+                variant="default"
+                onClick={() => setCaptionsCandidateKey(null)}
+              >
+                Done
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
 
         <Modal
           opened={!!removeCandidateKey}
