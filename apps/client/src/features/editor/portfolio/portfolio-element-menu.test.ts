@@ -101,7 +101,7 @@ describe("portfolio element menu commands", () => {
       "paragraph",
       "paragraph",
     ]);
-    expect(editor.getJSON().content?.at(-1)?.content?.[0]?.text).toBe("Move me");
+    expect(editor.state.doc.lastChild?.textContent).toBe("Move me");
   });
 
   it("moves an element into a newly named section", () => {
@@ -110,6 +110,6 @@ describe("portfolio element menu commands", () => {
 
     expect(movePortfolioBlockToNewSection(editor, "New section")).toBe(true);
     expect(editor.getText()).toContain("New section");
-    expect(editor.getJSON().content?.at(-1)?.content?.[0]?.text).toBe("Move me");
+    expect(editor.state.doc.lastChild?.textContent).toBe("Move me");
   });
 });
