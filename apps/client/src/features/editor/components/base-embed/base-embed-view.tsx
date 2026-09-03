@@ -11,6 +11,8 @@ import { Feature } from "@/ee/features";
 import { IconDots, IconTable, IconX } from "@tabler/icons-react";
 import { usePageQuery } from "@/features/page/queries/page-query";
 import classes from "./base-embed.module.css";
+import { useParams } from "react-router-dom";
+import { buildPageUrl } from "@/features/page/page.utils";
 
 const SIDE_GUTTER = 8;
 
@@ -57,11 +59,18 @@ export function BaseEmbedView({ node, editor, deleteNode }: NodeViewProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hasBases = useHasFeature(Feature.BASES);
   const [menuOpen, setMenuOpen] = useState(false);
+  const portfolioMode = editor.view.dom.classList.contains(
+    "ramzy-portfolio-editor",
+  );
+  const { spaceSlug } = useParams();
   // Suppress the query while the slash command awaits the server-assigned
   // pageId; useBaseQuery would otherwise fire with an empty key.
-  const { data: base, isLoading, isError } = useBaseQuery(
-    pendingKey ? "" : pageId ?? "",
-  );
+  const {
+    data: base,
+    isLoading,
+    isError,
+    refetch,
+  } = useBaseQuery(pendingKey ? "" : (pageId ?? ""));
   const { data: page } = usePageQuery({ pageId: pageId ?? undefined });
 
   useEffect(() => {
@@ -132,7 +141,9 @@ export function BaseEmbedView({ node, editor, deleteNode }: NodeViewProps) {
       <BaseView
         pageId={pageId}
         embedded
-        editable={hasBases && editor.isEditable && (base?.permissions?.canEdit ?? false)}
+        editable={
+          hasBases && editor.isEditable && (base?.permissions?.canEdit ?? false)
+        }
       />
     );
   }
@@ -142,7 +153,26 @@ export function BaseEmbedView({ node, editor, deleteNode }: NodeViewProps) {
       className={classes.handleGutter}
       data-menu-open={menuOpen ? "true" : "false"}
     >
-      {showControls && (
+      {showControls && portfolioMode && (
+        <>
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="refresh-base"
+            onClick={() => void refetch()}
+          />
+          {page?.slugId && (
+            <a
+              hidden
+              data-ramzy-element-action="open-base"
+              href={buildPageUrl(spaceSlug, page.slugId, page.title)}
+              target="_blank"
+              rel="noreferrer"
+            />
+          )}
+        </>
+      )}
+      {showControls && !portfolioMode && (
         <div
           className={classes.controls}
           contentEditable={false}

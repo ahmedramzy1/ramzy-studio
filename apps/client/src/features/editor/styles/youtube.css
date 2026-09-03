@@ -1,27 +1,27 @@
 .ProseMirror {
-    div[data-youtube-video] {
-        cursor: default;
+  div[data-youtube-video] {
+    cursor: default;
 
-        iframe {
-            display: block;
-            outline: 0 solid transparent;
-            border-radius: var(--mantine-radius-md);
-            width: 100%;
-            cursor: auto;
-            pointer-events: auto;
-        }
-
-        &.ProseMirror-selectednode iframe {
-            outline: 1px solid var(--mantine-color-blue-6);
-            transition: outline 0.15s;
-        }
-
-        &.ProseMirror-selectednode {
-            background-color: transparent;
-        }
-
-        @media print {
-            display: none;
-        }
+    iframe {
+      display: block;
+      outline: 0 solid transparent;
+      border-radius: var(--mantine-radius-md);
+      max-width: 100%;
+      cursor: auto;
+      pointer-events: auto;
     }
+
+    &.ProseMirror-selectednode iframe {
+      outline: 1px solid var(--mantine-color-blue-6);
+      transition: outline 0.15s;
+    }
+
+    &.ProseMirror-selectednode {
+      background-color: transparent;
+    }
+
+    @media print {
+      display: none;
+    }
+  }
 }

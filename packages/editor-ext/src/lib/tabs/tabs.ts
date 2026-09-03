@@ -1,15 +1,12 @@
-import {
-  Fragment,
-  Node as PMNode,
-} from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
-import { Node as TiptapNode, mergeAttributes } from "@tiptap/core";
+import { Fragment, Node as PMNode } from '@tiptap/pm/model';
+import { TextSelection } from '@tiptap/pm/state';
+import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 
 export interface TabsOptions {
   HTMLAttributes: Record<string, unknown>;
 }
 
-declare module "@tiptap/core" {
+declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     tabs: {
       insertTabs: (count?: number) => ReturnType;
@@ -19,7 +16,11 @@ declare module "@tiptap/core" {
 
 let tabsViewSequence = 0;
 
-function childPosition(parent: PMNode, parentPos: number, index: number): number {
+function childPosition(
+  parent: PMNode,
+  parentPos: number,
+  index: number,
+): number {
   let position = parentPos + 1;
 
   for (let childIndex = 0; childIndex < index; childIndex += 1) {
@@ -30,9 +31,9 @@ function childPosition(parent: PMNode, parentPos: number, index: number): number
 }
 
 export const Tabs = TiptapNode.create<TabsOptions>({
-  name: "tabs",
-  group: "block",
-  content: "tabPanel+",
+  name: 'tabs',
+  group: 'block',
+  content: 'tabPanel+',
   defining: true,
   isolating: true,
 
@@ -52,9 +53,9 @@ export const Tabs = TiptapNode.create<TabsOptions>({
 
   renderHTML({ HTMLAttributes }) {
     return [
-      "div",
+      'div',
       mergeAttributes(
-        { "data-type": this.name },
+        { 'data-type': this.name },
         this.options.HTMLAttributes,
         HTMLAttributes,
       ),
@@ -108,36 +109,40 @@ export const Tabs = TiptapNode.create<TabsOptions>({
       let activeIndex = 0;
       const viewId = `ramzy-tabs-${++tabsViewSequence}`;
 
-      const dom = document.createElement("div");
-      dom.setAttribute("data-type", "tabs");
-      dom.style.border = "1px solid var(--mantine-color-default-border)";
-      dom.style.borderRadius = "8px";
-      dom.style.overflow = "hidden";
-      dom.style.margin = "12px 0";
-      dom.style.background = "var(--mantine-color-body)";
+      const dom = document.createElement('div');
+      dom.setAttribute('data-type', 'tabs');
+      dom.style.border = '1px solid var(--mantine-color-default-border)';
+      dom.style.borderRadius = '8px';
+      dom.style.overflow = 'hidden';
+      dom.style.margin = '12px 0';
+      dom.style.background = 'var(--mantine-color-body)';
 
-      const tabList = document.createElement("div");
-      tabList.setAttribute("data-tabs-list", "");
-      tabList.setAttribute("contenteditable", "false");
-      tabList.style.display = "flex";
-      tabList.style.alignItems = "center";
-      tabList.style.gap = "4px";
-      tabList.style.padding = "6px";
-      tabList.style.overflowX = "auto";
+      const tabList = document.createElement('div');
+      tabList.setAttribute('data-tabs-list', '');
+      tabList.setAttribute('contenteditable', 'false');
+      tabList.style.display = 'flex';
+      tabList.style.alignItems = 'center';
+      tabList.style.gap = '4px';
+      tabList.style.padding = '6px';
+      tabList.style.overflowX = 'auto';
       tabList.style.borderBottom =
-        "1px solid var(--mantine-color-default-border)";
-      tabList.style.background = "var(--mantine-color-default-hover)";
+        '1px solid var(--mantine-color-default-border)';
+      tabList.style.background = 'var(--mantine-color-default-hover)';
 
-      const contentDOM = document.createElement("div");
-      contentDOM.setAttribute("data-tabs-content", "");
-      contentDOM.style.padding = "16px";
-      contentDOM.style.minHeight = "72px";
+      const contentDOM = document.createElement('div');
+      contentDOM.setAttribute('data-tabs-content', '');
+      contentDOM.style.padding = '16px';
+      contentDOM.style.minHeight = '72px';
 
-      dom.append(tabList, contentDOM);
+      const actionContainer = document.createElement('div');
+      actionContainer.setAttribute('contenteditable', 'false');
+      actionContainer.hidden = true;
+
+      dom.append(tabList, contentDOM, actionContainer);
 
       const resolveParentPos = () => {
         const position = getPos();
-        return typeof position === "number" ? position : null;
+        return typeof position === 'number' ? position : null;
       };
 
       const syncPanels = () => {
@@ -145,29 +150,29 @@ export const Tabs = TiptapNode.create<TabsOptions>({
 
         panelElements.forEach((panel, index) => {
           const active = index === activeIndex;
-          panel.style.display = active ? "block" : "none";
-          panel.setAttribute("role", "tabpanel");
-          panel.setAttribute("aria-hidden", active ? "false" : "true");
+          panel.style.display = active ? 'block' : 'none';
+          panel.setAttribute('role', 'tabpanel');
+          panel.setAttribute('aria-hidden', active ? 'false' : 'true');
           panel.id = `${viewId}-panel-${index}`;
-          panel.setAttribute("aria-labelledby", `${viewId}-tab-${index}`);
+          panel.setAttribute('aria-labelledby', `${viewId}-tab-${index}`);
         });
       };
 
       const syncHeaderStates = () => {
         const headers = Array.from(
-          tabList.querySelectorAll<HTMLElement>("[data-tab-index]"),
+          tabList.querySelectorAll<HTMLElement>('[data-tab-index]'),
         );
 
         headers.forEach((header) => {
           const index = Number(header.dataset.tabIndex);
           const active = index === activeIndex;
           header.style.background = active
-            ? "var(--mantine-color-body)"
-            : "transparent";
+            ? 'var(--mantine-color-body)'
+            : 'transparent';
           header.style.boxShadow = active
-            ? "0 0 0 1px var(--mantine-color-default-border)"
-            : "none";
-          header.setAttribute("aria-selected", active ? "true" : "false");
+            ? '0 0 0 1px var(--mantine-color-default-border)'
+            : 'none';
+          header.setAttribute('aria-selected', active ? 'true' : 'false');
         });
       };
 
@@ -267,52 +272,123 @@ export const Tabs = TiptapNode.create<TabsOptions>({
         });
       };
 
+      const duplicatePanel = (index: number) => {
+        if (!editor.isEditable || index >= currentNode.childCount) return;
+        const parentPos = resolveParentPos();
+        if (parentPos === null) return;
+        const panel = currentNode.child(index);
+        const insertPos =
+          childPosition(currentNode, parentPos, index) + panel.nodeSize;
+        const duplicate = panel.type.create(
+          {
+            ...panel.attrs,
+            label: `${panel.attrs.label || `Tab ${index + 1}`} copy`,
+          },
+          panel.content,
+          panel.marks,
+        );
+        editor.view.dispatch(editor.state.tr.insert(insertPos, duplicate));
+        activeIndex = index + 1;
+        requestAnimationFrame(() => activateTab(activeIndex));
+      };
+
+      const movePanel = (index: number, direction: -1 | 1) => {
+        const targetIndex = index + direction;
+        if (
+          !editor.isEditable ||
+          index >= currentNode.childCount ||
+          targetIndex < 0 ||
+          targetIndex >= currentNode.childCount
+        )
+          return;
+        const parentPos = resolveParentPos();
+        if (parentPos === null) return;
+        const panel = currentNode.child(index);
+        const sibling = currentNode.child(targetIndex);
+        const from = childPosition(currentNode, parentPos, index);
+        const to = from + panel.nodeSize;
+        const transaction = editor.state.tr.delete(from, to);
+        const target =
+          direction === -1
+            ? childPosition(currentNode, parentPos, targetIndex)
+            : from + sibling.nodeSize;
+        transaction.insert(target, panel);
+        editor.view.dispatch(transaction);
+        activeIndex = targetIndex;
+        requestAnimationFrame(() => activateTab(activeIndex));
+      };
+
+      const renameActivePanel = () => {
+        if (activeIndex >= currentNode.childCount) return;
+        const panel = currentNode.child(activeIndex);
+        const label = window.prompt(
+          'Rename tab',
+          String(panel.attrs.label || `Tab ${activeIndex + 1}`),
+        );
+        if (label !== null) updatePanelLabel(activeIndex, label);
+      };
+
+      const registerAction = (action: string, handler: () => void) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.ramzyElementAction = action;
+        button.addEventListener('click', handler);
+        actionContainer.appendChild(button);
+      };
+
+      registerAction('add-tab', addPanel);
+      registerAction('rename-tab', renameActivePanel);
+      registerAction('duplicate-tab', () => duplicatePanel(activeIndex));
+      registerAction('move-tab-left', () => movePanel(activeIndex, -1));
+      registerAction('move-tab-right', () => movePanel(activeIndex, 1));
+      registerAction('remove-tab', () => removePanel(activeIndex));
+
       const renderHeaders = () => {
         tabList.replaceChildren();
 
         currentNode.forEach((panel, _offset, index) => {
-          const header = document.createElement("div");
+          const header = document.createElement('div');
           header.dataset.tabIndex = String(index);
-          header.setAttribute("role", "tab");
+          header.setAttribute('role', 'tab');
           header.id = `${viewId}-tab-${index}`;
-          header.setAttribute("aria-controls", `${viewId}-panel-${index}`);
-          header.style.display = "flex";
-          header.style.alignItems = "center";
-          header.style.gap = "2px";
-          header.style.padding = "3px";
-          header.style.borderRadius = "6px";
-          header.style.flex = "0 0 auto";
+          header.setAttribute('aria-controls', `${viewId}-panel-${index}`);
+          header.style.display = 'flex';
+          header.style.alignItems = 'center';
+          header.style.gap = '2px';
+          header.style.padding = '3px';
+          header.style.borderRadius = '6px';
+          header.style.flex = '0 0 auto';
 
           const label = String(panel.attrs.label || `Tab ${index + 1}`);
 
           if (editor.isEditable) {
-            const input = document.createElement("input");
-            input.type = "text";
+            const input = document.createElement('input');
+            input.type = 'text';
             input.value = label;
-            input.setAttribute("aria-label", `Tab ${index + 1} label`);
+            input.setAttribute('aria-label', `Tab ${index + 1} label`);
             input.spellcheck = false;
             input.style.width = `${Math.max(64, Math.min(180, label.length * 8 + 24))}px`;
-            input.style.border = "0";
-            input.style.outline = "0";
-            input.style.background = "transparent";
-            input.style.color = "var(--mantine-color-text)";
-            input.style.font = "inherit";
-            input.style.fontSize = "13px";
-            input.style.fontWeight = "500";
-            input.style.padding = "4px 6px";
+            input.style.border = '0';
+            input.style.outline = '0';
+            input.style.background = 'transparent';
+            input.style.color = 'var(--mantine-color-text)';
+            input.style.font = 'inherit';
+            input.style.fontSize = '13px';
+            input.style.fontWeight = '500';
+            input.style.padding = '4px 6px';
 
-            input.addEventListener("focus", () => activateTab(index));
-            input.addEventListener("input", () => {
+            input.addEventListener('focus', () => activateTab(index));
+            input.addEventListener('input', () => {
               input.style.width = `${Math.max(
                 64,
                 Math.min(180, input.value.length * 8 + 24),
               )}px`;
             });
-            input.addEventListener("change", () =>
+            input.addEventListener('change', () =>
               updatePanelLabel(index, input.value),
             );
-            input.addEventListener("keydown", (event) => {
-              if (event.key === "Enter") {
+            input.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter') {
                 event.preventDefault();
                 input.blur();
                 focusPanel(index);
@@ -322,18 +398,18 @@ export const Tabs = TiptapNode.create<TabsOptions>({
             header.appendChild(input);
 
             if (currentNode.childCount > 1) {
-              const removeButton = document.createElement("button");
-              removeButton.type = "button";
-              removeButton.textContent = "×";
-              removeButton.setAttribute("aria-label", `Remove ${label}`);
-              removeButton.style.border = "0";
-              removeButton.style.background = "transparent";
-              removeButton.style.color = "var(--mantine-color-dimmed)";
-              removeButton.style.cursor = "pointer";
-              removeButton.style.fontSize = "16px";
-              removeButton.style.lineHeight = "1";
-              removeButton.style.padding = "2px 5px";
-              removeButton.addEventListener("click", (event) => {
+              const removeButton = document.createElement('button');
+              removeButton.type = 'button';
+              removeButton.textContent = '×';
+              removeButton.setAttribute('aria-label', `Remove ${label}`);
+              removeButton.style.border = '0';
+              removeButton.style.background = 'transparent';
+              removeButton.style.color = 'var(--mantine-color-dimmed)';
+              removeButton.style.cursor = 'pointer';
+              removeButton.style.fontSize = '16px';
+              removeButton.style.lineHeight = '1';
+              removeButton.style.padding = '2px 5px';
+              removeButton.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 removePanel(index);
@@ -341,38 +417,38 @@ export const Tabs = TiptapNode.create<TabsOptions>({
               header.appendChild(removeButton);
             }
           } else {
-            const button = document.createElement("button");
-            button.type = "button";
+            const button = document.createElement('button');
+            button.type = 'button';
             button.textContent = label;
-            button.style.border = "0";
-            button.style.background = "transparent";
-            button.style.color = "var(--mantine-color-text)";
-            button.style.cursor = "pointer";
-            button.style.font = "inherit";
-            button.style.fontSize = "13px";
-            button.style.fontWeight = "500";
-            button.style.padding = "4px 8px";
-            button.addEventListener("click", () => activateTab(index));
+            button.style.border = '0';
+            button.style.background = 'transparent';
+            button.style.color = 'var(--mantine-color-text)';
+            button.style.cursor = 'pointer';
+            button.style.font = 'inherit';
+            button.style.fontSize = '13px';
+            button.style.fontWeight = '500';
+            button.style.padding = '4px 8px';
+            button.addEventListener('click', () => activateTab(index));
             header.appendChild(button);
           }
 
-          header.addEventListener("mousedown", () => activateTab(index));
+          header.addEventListener('mousedown', () => activateTab(index));
           tabList.appendChild(header);
         });
 
         if (editor.isEditable) {
-          const addButton = document.createElement("button");
-          addButton.type = "button";
-          addButton.textContent = "+";
-          addButton.setAttribute("aria-label", "Add tab");
-          addButton.style.border = "0";
-          addButton.style.background = "transparent";
-          addButton.style.color = "var(--mantine-color-dimmed)";
-          addButton.style.cursor = "pointer";
-          addButton.style.fontSize = "18px";
-          addButton.style.lineHeight = "1";
-          addButton.style.padding = "4px 8px";
-          addButton.addEventListener("click", (event) => {
+          const addButton = document.createElement('button');
+          addButton.type = 'button';
+          addButton.textContent = '+';
+          addButton.setAttribute('aria-label', 'Add tab');
+          addButton.style.border = '0';
+          addButton.style.background = 'transparent';
+          addButton.style.color = 'var(--mantine-color-dimmed)';
+          addButton.style.cursor = 'pointer';
+          addButton.style.fontSize = '18px';
+          addButton.style.lineHeight = '1';
+          addButton.style.padding = '4px 8px';
+          addButton.addEventListener('click', (event) => {
             event.preventDefault();
             event.stopPropagation();
             addPanel();
@@ -404,7 +480,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
 
       const observer = new MutationObserver(() => syncPanels());
       observer.observe(contentDOM, { childList: true });
-      editor.on("selectionUpdate", syncActiveFromSelection);
+      editor.on('selectionUpdate', syncActiveFromSelection);
 
       renderHeaders();
 
@@ -422,12 +498,14 @@ export const Tabs = TiptapNode.create<TabsOptions>({
           renderHeaders();
           return true;
         },
-        stopEvent: (event) => tabList.contains(event.target as globalThis.Node),
+        stopEvent: (event) =>
+          tabList.contains(event.target as globalThis.Node) ||
+          actionContainer.contains(event.target as globalThis.Node),
         ignoreMutation: (mutation) =>
           tabList.contains(mutation.target as globalThis.Node),
         destroy: () => {
           observer.disconnect();
-          editor.off("selectionUpdate", syncActiveFromSelection);
+          editor.off('selectionUpdate', syncActiveFromSelection);
         },
       };
     };

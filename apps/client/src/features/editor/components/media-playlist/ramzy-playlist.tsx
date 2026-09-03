@@ -3,7 +3,27 @@
 // Ported from ahmedramzy.com v8.0.0 and adapted to Studio's persisted items.
 
 import React, { useState } from "react";
-import { dsTheme, FONT, R, SIGNAL, type DsMode } from "../media/v8-media-tokens";
+import { Menu } from "@mantine/core";
+import {
+  IconArrowBarToDown,
+  IconArrowBarToUp,
+  IconCopy,
+  IconDownload,
+  IconDots,
+  IconEdit,
+  IconFileMusic,
+  IconPhotoEdit,
+  IconRefresh,
+  IconSubtitles,
+  IconTrash,
+} from "@tabler/icons-react";
+import {
+  dsTheme,
+  FONT,
+  R,
+  SIGNAL,
+  type DsMode,
+} from "../media/v8-media-tokens";
 
 export interface RamzyPlaylistItemView {
   key: string;
@@ -28,11 +48,22 @@ export interface RamzyPlaylistProps {
   maxHeight?: number;
   emptyLabel?: string;
   editable?: boolean;
+  kind?: "audio" | "video";
+  layout?: "detailed" | "compact";
   onSelect?: (key: string) => void;
   onPlay?: (key: string) => void;
   onMove?: (key: string, direction: -1 | 1) => void;
   onReorder?: (fromKey: string, toKey: string) => void;
   onRemove?: (key: string) => void;
+  onEditDetails?: (key: string) => void;
+  onReplaceMedia?: (key: string) => void;
+  onChangeArtwork?: (key: string) => void;
+  onGenerateCaptions?: (key: string) => void;
+  onManageCaptions?: (key: string) => void;
+  onDownload?: (key: string) => void;
+  onDuplicate?: (key: string) => void;
+  onMoveToStart?: (key: string) => void;
+  onMoveToEnd?: (key: string) => void;
   onRetry?: (key: string) => void;
   style?: React.CSSProperties;
 }
@@ -60,7 +91,13 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
-function Icon({ name, size = 18 }: { name: "play" | "grip" | "remove"; size?: number }) {
+function Icon({
+  name,
+  size = 18,
+}: {
+  name: "play" | "grip" | "remove";
+  size?: number;
+}) {
   const common = {
     width: size,
     height: size,
@@ -70,9 +107,34 @@ function Icon({ name, size = 18 }: { name: "play" | "grip" | "remove"; size?: nu
     "aria-hidden": true,
     style: { pointerEvents: "none" },
   } as const;
-  if (name === "play") return <svg {...common}><path d="M8 5.2 19 12 8 18.8V5.2Z" fill="currentColor" /></svg>;
-  if (name === "grip") return <svg {...common}><circle cx="9" cy="7" r="1.2" fill="currentColor" /><circle cx="15" cy="7" r="1.2" fill="currentColor" /><circle cx="9" cy="12" r="1.2" fill="currentColor" /><circle cx="15" cy="12" r="1.2" fill="currentColor" /><circle cx="9" cy="17" r="1.2" fill="currentColor" /><circle cx="15" cy="17" r="1.2" fill="currentColor" /></svg>;
-  return <svg {...common}><path d="M5 7h14M9 7V5h6v2m-8 0 .8 12h8.4L17 7M10 10v6m4-6v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (name === "play")
+    return (
+      <svg {...common}>
+        <path d="M8 5.2 19 12 8 18.8V5.2Z" fill="currentColor" />
+      </svg>
+    );
+  if (name === "grip")
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="7" r="1.2" fill="currentColor" />
+        <circle cx="15" cy="7" r="1.2" fill="currentColor" />
+        <circle cx="9" cy="12" r="1.2" fill="currentColor" />
+        <circle cx="15" cy="12" r="1.2" fill="currentColor" />
+        <circle cx="9" cy="17" r="1.2" fill="currentColor" />
+        <circle cx="15" cy="17" r="1.2" fill="currentColor" />
+      </svg>
+    );
+  return (
+    <svg {...common}>
+      <path
+        d="M5 7h14M9 7V5h6v2m-8 0 .8 12h8.4L17 7M10 10v6m4-6v6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export default function RamzyPlaylist({
@@ -83,45 +145,102 @@ export default function RamzyPlaylist({
   maxHeight = 390,
   emptyLabel = "No items yet.",
   editable = false,
+  kind = "audio",
+  layout = "detailed",
   onSelect,
   onPlay,
   onMove,
   onReorder,
   onRemove,
+  onEditDetails,
+  onReplaceMedia,
+  onChangeArtwork,
+  onGenerateCaptions,
+  onManageCaptions,
+  onDownload,
+  onDuplicate,
+  onMoveToStart,
+  onMoveToEnd,
   onRetry,
   style,
 }: RamzyPlaylistProps) {
   const c = dsTheme(mode);
+  const compact = layout === "compact";
+  const editableColumns = compact
+    ? "32px 44px minmax(0,1fr) 38px"
+    : "32px 54px minmax(0,1fr) 118px 78px 38px";
+  const readonlyColumns = compact
+    ? "44px minmax(0,1fr)"
+    : "54px minmax(0,1fr) 118px 78px";
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
 
   if (!items.length) {
     return (
-      <div style={{ padding: "24px 18px", fontFamily: FONT.body, fontSize: 14, color: c.textTertiary, borderTop: `1px solid ${c.borderSubtle}`, textAlign: "center", ...style }}>
+      <div
+        style={{
+          padding: "24px 18px",
+          fontFamily: FONT.body,
+          fontSize: 14,
+          color: c.textTertiary,
+          borderTop: `1px solid ${c.borderSubtle}`,
+          textAlign: "center",
+          ...style,
+        }}
+      >
         {emptyLabel}
       </div>
     );
   }
 
   return (
-    <div data-ramzy-playlist="true" style={{ borderTop: `1px solid ${c.borderDefault}`, background: c.bgSurface, overflow: "hidden", ...style }}>
-      <div aria-hidden="true" style={{ display: "grid", gridTemplateColumns: editable ? "32px 54px minmax(0,1fr) 118px 78px 38px" : "54px minmax(0,1fr) 118px 78px", gap: 12, alignItems: "center", padding: editable ? "10px 14px 8px 8px" : "10px 14px 8px", fontFamily: FONT.mono, fontSize: 10, letterSpacing: ".06em", textTransform: "uppercase", color: c.textTertiary, borderBottom: `1px solid ${c.borderSubtle}` }}>
+    <div
+      data-ramzy-playlist="true"
+      style={{
+        borderTop: `1px solid ${c.borderDefault}`,
+        background: c.bgSurface,
+        overflow: "hidden",
+        ...style,
+      }}
+    >
+      <div
+        aria-hidden="true"
+        style={{
+          display: "grid",
+          gridTemplateColumns: editable ? editableColumns : readonlyColumns,
+          gap: 12,
+          alignItems: "center",
+          padding: editable ? "10px 14px 8px 8px" : "10px 14px 8px",
+          fontFamily: FONT.mono,
+          fontSize: 10,
+          letterSpacing: ".06em",
+          textTransform: "uppercase",
+          color: c.textTertiary,
+          borderBottom: `1px solid ${c.borderSubtle}`,
+        }}
+      >
         {editable && <span />}
         <span />
         <span>Title</span>
-        <span>Date added</span>
-        <span style={{ textAlign: "right" }}>Duration</span>
+        {!compact && <span>Date added</span>}
+        {!compact && <span style={{ textAlign: "right" }}>Duration</span>}
         {editable && <span />}
       </div>
 
-      <div style={{ maxHeight, overflowY: "auto", overscrollBehavior: "contain" }}>
+      <div
+        style={{ maxHeight, overflowY: "auto", overscrollBehavior: "contain" }}
+      >
         {items.map((item, index) => {
           const active = item.key === activeKey;
           const playing = item.key === playingKey;
-          const dropTarget = overKey === item.key && draggedKey && draggedKey !== item.key;
+          const dropTarget =
+            overKey === item.key && draggedKey && draggedKey !== item.key;
           const pending = !!item.uploadStatus && item.uploadStatus !== "ready";
           const failed = item.uploadStatus === "failed";
-          const progress = Math.max(0, Math.min(100, Math.round(item.uploadProgress ?? 0)));
+          const progress = Math.max(
+            0,
+            Math.min(100, Math.round(item.uploadProgress ?? 0)),
+          );
 
           return (
             <div
@@ -129,8 +248,12 @@ export default function RamzyPlaylist({
               role="button"
               tabIndex={0}
               aria-current={active ? "true" : undefined}
-              onClick={() => { if (!pending) onSelect?.(item.key); }}
-              onDoubleClick={() => { if (!pending) onPlay?.(item.key); }}
+              onClick={() => {
+                if (!pending) onSelect?.(item.key);
+              }}
+              onDoubleClick={() => {
+                if (!pending) onPlay?.(item.key);
+              }}
               onKeyDown={(event) => {
                 if (pending) return;
                 if (event.key === "Enter") {
@@ -142,13 +265,25 @@ export default function RamzyPlaylist({
                 }
               }}
               onDragOver={(event) => {
-                if (!editable || pending || !draggedKey || draggedKey === item.key) return;
+                if (
+                  !editable ||
+                  pending ||
+                  !draggedKey ||
+                  draggedKey === item.key
+                )
+                  return;
                 event.preventDefault();
                 event.stopPropagation();
                 setOverKey(item.key);
               }}
               onDrop={(event) => {
-                if (!editable || pending || !draggedKey || draggedKey === item.key) return;
+                if (
+                  !editable ||
+                  pending ||
+                  !draggedKey ||
+                  draggedKey === item.key
+                )
+                  return;
                 event.preventDefault();
                 event.stopPropagation();
                 onReorder?.(draggedKey, item.key);
@@ -157,13 +292,20 @@ export default function RamzyPlaylist({
               }}
               style={{
                 display: "grid",
-                gridTemplateColumns: editable ? "32px 54px minmax(0,1fr) 118px 78px 38px" : "54px minmax(0,1fr) 118px 78px",
+                gridTemplateColumns: editable
+                  ? editableColumns
+                  : readonlyColumns,
                 gap: 12,
                 alignItems: "center",
-                minHeight: 72,
+                minHeight: compact ? 58 : 72,
                 padding: editable ? "8px 14px 8px 8px" : "8px 14px",
-                borderBottom: index === items.length - 1 ? 0 : `1px solid ${c.borderSubtle}`,
-                borderTop: dropTarget ? `2px solid ${SIGNAL}` : "2px solid transparent",
+                borderBottom:
+                  index === items.length - 1
+                    ? 0
+                    : `1px solid ${c.borderSubtle}`,
+                borderTop: dropTarget
+                  ? `2px solid ${SIGNAL}`
+                  : "2px solid transparent",
                 background: active ? c.signalBg : "transparent",
                 cursor: pending ? "default" : "pointer",
                 opacity: failed ? 0.82 : 1,
@@ -189,55 +331,349 @@ export default function RamzyPlaylist({
                     setDraggedKey(null);
                     setOverKey(null);
                   }}
-                  style={{ width: 28, height: 40, border: 0, borderRadius: 6, background: "transparent", color: c.textTertiary, display: "flex", alignItems: "center", justifyContent: "center", cursor: pending ? "default" : "grab", opacity: pending ? 0.35 : 1, padding: 0 }}
+                  style={{
+                    width: 28,
+                    height: 40,
+                    border: 0,
+                    borderRadius: 6,
+                    background: "transparent",
+                    color: c.textTertiary,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: pending ? "default" : "grab",
+                    opacity: pending ? 0.35 : 1,
+                    padding: 0,
+                  }}
                 >
                   <Icon name="grip" />
                 </button>
               )}
 
-              <div style={{ width: 54, height: 54, borderRadius: R.sm, overflow: "hidden", background: c.bgSubtle, display: "flex", alignItems: "center", justifyContent: "center", color: active ? SIGNAL : c.textTertiary, position: "relative", flex: "0 0 auto" }}>
-                {item.artwork ? <img src={item.artwork} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: pending ? 0.58 : 1, filter: pending ? "blur(1px)" : "none" }} /> : <Icon name="play" size={20} />}
-                {pending && <div style={{ position: "absolute", inset: 0, background: mode === "light" ? "rgba(255,255,255,.28)" : "rgba(0,0,0,.24)" }} />}
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.35)", color: "#fff", opacity: playing ? 1 : 0 }}><Icon name="play" size={20} /></div>
+              <div
+                style={{
+                  width: compact ? 44 : 54,
+                  height: compact ? 44 : 54,
+                  borderRadius: R.sm,
+                  overflow: "hidden",
+                  background: c.bgSubtle,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: active ? SIGNAL : c.textTertiary,
+                  position: "relative",
+                  flex: "0 0 auto",
+                }}
+              >
+                {item.artwork ? (
+                  <img
+                    src={item.artwork}
+                    alt=""
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      opacity: pending ? 0.58 : 1,
+                      filter: pending ? "blur(1px)" : "none",
+                    }}
+                  />
+                ) : (
+                  <Icon name="play" size={20} />
+                )}
+                {pending && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background:
+                        mode === "light"
+                          ? "rgba(255,255,255,.28)"
+                          : "rgba(0,0,0,.24)",
+                    }}
+                  />
+                )}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(0,0,0,.35)",
+                    color: "#fff",
+                    opacity: playing ? 1 : 0,
+                  }}
+                >
+                  <Icon name="play" size={20} />
+                </div>
               </div>
 
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 7, fontFamily: FONT.body, fontSize: 14, fontWeight: active ? 680 : 600, lineHeight: 1.3, color: active ? c.signalText : c.textPrimary, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
-                  {playing && <span style={{ width: 7, height: 7, borderRadius: 99, background: SIGNAL, flex: "0 0 auto" }} />}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    fontFamily: FONT.body,
+                    fontSize: 14,
+                    fontWeight: active ? 680 : 600,
+                    lineHeight: 1.3,
+                    color: active ? c.signalText : c.textPrimary,
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  <span
+                    style={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                  >
+                    {item.title}
+                  </span>
+                  {playing && (
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 99,
+                        background: SIGNAL,
+                        flex: "0 0 auto",
+                      }}
+                    />
+                  )}
                 </div>
-                <div style={{ marginTop: 4, display: "flex", gap: 7, alignItems: "center", fontFamily: FONT.body, fontSize: 12, color: c.textTertiary, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                <div
+                  style={{
+                    marginTop: 4,
+                    display: "flex",
+                    gap: 7,
+                    alignItems: "center",
+                    fontFamily: FONT.body,
+                    fontSize: 12,
+                    color: c.textTertiary,
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   {item.sourceLabel && <span>{item.sourceLabel}</span>}
-                  {item.sourceLabel && item.subtitle && <span style={{ opacity: 0.5 }}>•</span>}
-                  {item.subtitle && <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.subtitle}</span>}
+                  {item.sourceLabel && item.subtitle && (
+                    <span style={{ opacity: 0.5 }}>•</span>
+                  )}
+                  {item.subtitle && (
+                    <span
+                      style={{ overflow: "hidden", textOverflow: "ellipsis" }}
+                    >
+                      {item.subtitle}
+                    </span>
+                  )}
                 </div>
                 {item.uploadStatus && item.uploadStatus !== "ready" && (
-                  <div style={{ marginTop: 7, display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ height: 4, flex: 1, maxWidth: 250, borderRadius: 99, overflow: "hidden", background: c.borderSubtle }}><div style={{ height: "100%", width: `${progress}%`, borderRadius: 99, background: failed ? c.errorText : SIGNAL, transition: "width 120ms linear" }} /></div>
-                    <span style={{ fontFamily: FONT.mono, fontSize: 10, color: failed ? c.errorText : c.textTertiary, whiteSpace: "nowrap" }}>{failed ? item.uploadError || "Failed" : item.uploadStatusLabel || (item.uploadStatus === "processing" ? "Processing…" : item.uploadStatus === "queued" ? "Queued" : `Uploading ${progress}%`)}</span>
-                    {failed && onRetry && <button type="button" onClick={(event) => { event.stopPropagation(); onRetry(item.key); }} style={{ height: 24, padding: "0 7px", border: `1px solid ${c.borderDefault}`, borderRadius: 5, background: c.bgElevated, color: c.textSecondary, fontFamily: FONT.body, fontSize: 10, cursor: "pointer" }}>Retry</button>}
+                  <div
+                    style={{
+                      marginTop: 7,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: 4,
+                        flex: 1,
+                        maxWidth: 250,
+                        borderRadius: 99,
+                        overflow: "hidden",
+                        background: c.borderSubtle,
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${progress}%`,
+                          borderRadius: 99,
+                          background: failed ? c.errorText : SIGNAL,
+                          transition: "width 120ms linear",
+                        }}
+                      />
+                    </div>
+                    <span
+                      style={{
+                        fontFamily: FONT.mono,
+                        fontSize: 10,
+                        color: failed ? c.errorText : c.textTertiary,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {failed
+                        ? item.uploadError || "Failed"
+                        : item.uploadStatusLabel ||
+                          (item.uploadStatus === "processing"
+                            ? "Processing…"
+                            : item.uploadStatus === "queued"
+                              ? "Queued"
+                              : `Uploading ${progress}%`)}
+                    </span>
+                    {failed && onRetry && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRetry(item.key);
+                        }}
+                        style={{
+                          height: 24,
+                          padding: "0 7px",
+                          border: `1px solid ${c.borderDefault}`,
+                          borderRadius: 5,
+                          background: c.bgElevated,
+                          color: c.textSecondary,
+                          fontFamily: FONT.body,
+                          fontSize: 10,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Retry
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
 
-              <div style={{ fontFamily: FONT.body, fontSize: 12, color: c.textTertiary, whiteSpace: "nowrap" }}>{formatDate(item.dateAdded)}</div>
-              <div style={{ textAlign: "right", fontFamily: FONT.mono, fontSize: 11, color: c.textTertiary, fontVariantNumeric: "tabular-nums" }}>{formatDuration(item.durationSeconds, item.durationLabel)}</div>
+              {!compact && (
+                <div
+                  style={{
+                    fontFamily: FONT.body,
+                    fontSize: 12,
+                    color: c.textTertiary,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {formatDate(item.dateAdded)}
+                </div>
+              )}
+              {!compact && (
+                <div
+                  style={{
+                    textAlign: "right",
+                    fontFamily: FONT.mono,
+                    fontSize: 11,
+                    color: c.textTertiary,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {formatDuration(item.durationSeconds, item.durationLabel)}
+                </div>
+              )}
 
               {editable && (!pending || failed) && (
-                <button
-                  type="button"
-                  aria-label={`Remove ${item.title}`}
-                  title="Remove"
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (window.confirm(`Remove ${item.title} from this playlist?`)) onRemove?.(item.key);
-                  }}
-                  style={{ width: 34, height: 34, border: 0, borderRadius: 6, background: "transparent", color: c.textTertiary, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
+                <Menu
+                  withinPortal={false}
+                  position="bottom-end"
+                  shadow="md"
+                  width={220}
                 >
-                  <Icon name="remove" size={17} />
-                </button>
+                  <Menu.Target>
+                    <button
+                      type="button"
+                      aria-label={`Actions for ${item.title}`}
+                      title="Item actions"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => event.stopPropagation()}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        border: 0,
+                        borderRadius: 6,
+                        background: "transparent",
+                        color: c.textTertiary,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      <IconDots size={18} />
+                    </button>
+                  </Menu.Target>
+                  <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
+                    <Menu.Item
+                      leftSection={<IconEdit size={16} />}
+                      onClick={() => onEditDetails?.(item.key)}
+                    >
+                      Edit details
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconRefresh size={16} />}
+                      onClick={() => onReplaceMedia?.(item.key)}
+                    >
+                      Replace {kind}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={
+                        kind === "video" ? (
+                          <IconPhotoEdit size={16} />
+                        ) : (
+                          <IconFileMusic size={16} />
+                        )
+                      }
+                      onClick={() => onChangeArtwork?.(item.key)}
+                    >
+                      {kind === "video" ? "Change thumbnail" : "Change artwork"}
+                    </Menu.Item>
+                    {kind === "video" && (
+                      <>
+                        <Menu.Item
+                          leftSection={<IconSubtitles size={16} />}
+                          onClick={() => onGenerateCaptions?.(item.key)}
+                        >
+                          Generate captions
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconSubtitles size={16} />}
+                          onClick={() => onManageCaptions?.(item.key)}
+                        >
+                          Manage captions
+                        </Menu.Item>
+                      </>
+                    )}
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconDownload size={16} />}
+                      onClick={() => onDownload?.(item.key)}
+                    >
+                      Download
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconCopy size={16} />}
+                      onClick={() => onDuplicate?.(item.key)}
+                    >
+                      Duplicate item
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconArrowBarToUp size={16} />}
+                      disabled={index === 0}
+                      onClick={() => onMoveToStart?.(item.key)}
+                    >
+                      Move to top
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconArrowBarToDown size={16} />}
+                      disabled={index === items.length - 1}
+                      onClick={() => onMoveToEnd?.(item.key)}
+                    >
+                      Move to bottom
+                    </Menu.Item>
+                    <Menu.Divider />
+                    <Menu.Item
+                      color="red"
+                      leftSection={<IconTrash size={16} />}
+                      onClick={() => onRemove?.(item.key)}
+                    >
+                      Remove from playlist
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               )}
             </div>
           );

@@ -205,14 +205,28 @@ export interface PortfolioOutlineOptions {
   levels?: number[];
 }
 
+export interface RamzyStudioPortfolioHeaderActions {
+  openHistory: () => void;
+  addSection: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
 export interface RamzyStudioPortfolioEditorProps {
   pageId: string;
   session: RamzyPortfolioSession;
   initialContent?: RamzyPortfolioDocument | null;
   editable?: boolean;
   onCreate?: (editor: unknown) => void;
+  onEditorChange?: (editor: unknown | null) => void;
   onUpdate?: (content: RamzyPortfolioDocument, editor: unknown) => void;
-  onSessionExpired?: () => void;
+  onHeaderActionsChange?: (actions: RamzyStudioPortfolioHeaderActions | null) => void;
+  onSessionExpired?: () =>
+    | Promise<RamzyPortfolioSession | void>
+    | RamzyPortfolioSession
+    | void;
   onSaveStateChange?: (state: RamzyPortfolioSaveState, error?: string) => void;
 }
 

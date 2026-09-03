@@ -97,6 +97,24 @@ Initial Portfolio Mode includes:
 
 Docmost wiki/database commands such as Bases, Kanban, Subpages, current date/time and synced wiki blocks are not part of the primary portfolio authoring menu unless a portfolio use-case is proven.
 
+## Selected-element action model
+
+Portfolio Mode follows a Confluence-style selection model:
+
+- Selecting any top-level element shows one floating toolbar below that element.
+- The toolbar begins with the element's useful, type-specific actions and ends with one shared `…` menu.
+- The shared `…` menu owns universal block actions: duplicate, copy, cut, move up/down, move to section, copy link to element, and delete.
+- Legacy right-edge `…` controls must not remain as a second block menu in Portfolio Mode.
+- Destructive actions require clear wording and confirmation where accidental loss is plausible.
+
+Nested collections have two action scopes that must not be mixed:
+
+- The collection toolbar controls the collection itself: add items, playback behaviour, layout, visibility, and the shared block menu.
+- Each video or audio row inside a playlist owns an item-level `…` menu for its metadata, media replacement, thumbnail or artwork, captions, download, duplication, reordering, and removal.
+- Thumbnail, artwork, captions, and any other single-item property must never appear as a playlist-wide toolbar action.
+
+This ownership rule also applies to future nested elements such as gallery items, tabs, database records, and column children: collection actions stay outside; item actions stay attached to the item.
+
 ## Missing world-class portfolio primitives
 
 These are candidates for Ramzy-specific nodes after core parity is stable:

@@ -71,8 +71,9 @@ export default function RamzyVolumeControl({
 
   function setFromPointer(event: React.PointerEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
-    if (!rect.width) return;
-    onChange(clamp((event.clientX - rect.left) / rect.width));
+    const usableWidth = rect.width - 12;
+    if (usableWidth <= 0) return;
+    onChange(clamp((event.clientX - rect.left - 6) / usableWidth));
   }
 
   return (
@@ -165,7 +166,7 @@ export default function RamzyVolumeControl({
       >
         <div style={{ position: "absolute", left: 6, right: 6, top: 14, height: 4, borderRadius: 99, background: track }} />
         <div style={{ position: "absolute", left: 6, top: 14, width: `calc(${effective * 100}% - ${effective * 12}px)`, maxWidth: "calc(100% - 12px)", height: 4, borderRadius: 99, background: fill }} />
-        <div style={{ position: "absolute", left: `${effective * 100}%`, transform: "translateX(-50%)", top: 10, width: 12, height: 12, borderRadius: 99, background: fill, boxShadow: inverse ? "0 1px 5px rgba(0,0,0,.35)" : "0 1px 4px rgba(29,29,27,.18)" }} />
+        <div style={{ position: "absolute", left: `calc(6px + ${effective * 100}% - ${effective * 12}px)`, transform: "translateX(-50%)", top: 10, width: 12, height: 12, borderRadius: 99, background: fill, boxShadow: inverse ? "0 1px 5px rgba(0,0,0,.35)" : "0 1px 4px rgba(29,29,27,.18)" }} />
       </div>
 
       <style>{`

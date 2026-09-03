@@ -1,4 +1,5 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
+import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { Group, Loader, Text } from "@mantine/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getFileUrl } from "@/lib/config.ts";
@@ -26,11 +27,17 @@ export default function AudioView(props: NodeViewProps) {
   } = node.attrs;
   const [replacing, setReplacing] = useState(false);
   const [dropActive, setDropActive] = useState(false);
+  const [activated, setActivated] = useState(
+    () => typeof IntersectionObserver === "undefined",
+  );
+  const activationRef = useRef<HTMLDivElement>(null);
   const dragDepth = useRef(0);
   const backfillAttempted = useRef("");
 
   const safeSrc = useMemo(() => {
-    if (!src || !isInternalFileUrl(src)) return null;
+    if (!src) return null;
+    if (String(src).startsWith("data:audio/")) return src;
+    if (!isInternalFileUrl(src)) return null;
     return getFileUrl(src);
   }, [src]);
 
@@ -46,12 +53,42 @@ export default function AudioView(props: NodeViewProps) {
   }, [placeholder, editor]);
 
   const title = storedTitle || placeholder?.name || t("Audio");
-  const safeArtwork = artwork && isInternalFileUrl(artwork)
-    ? getFileUrl(artwork)
+  const safeArtwork = artwork
+    ? String(artwork).startsWith("data:image/")
+      ? artwork
+      : isInternalFileUrl(artwork)
+        ? getFileUrl(artwork)
+        : undefined
     : undefined;
 
   useEffect(() => {
-    if (!editor.isEditable || !safeSrc || placeholder) return;
+    if (!safeSrc || activated || !activationRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setActivated(true);
+        observer.disconnect();
+      },
+      {
+        // Start the protected waveform/player work before the block reaches
+        // the viewport without mounting every audio player in a long document.
+        rootMargin: "600px 0px",
+      },
+    );
+
+    observer.observe(activationRef.current);
+    return () => observer.disconnect();
+  }, [activated, safeSrc]);
+
+  useEffect(() => {
+    if (
+      !activated ||
+      !editor.isEditable ||
+      !safeSrc ||
+      String(src).startsWith("data:") ||
+      placeholder
+    ) return;
     if (artwork || artist || album) return;
     if (backfillAttempted.current === src) return;
     // @ts-ignore
@@ -75,7 +112,7 @@ export default function AudioView(props: NodeViewProps) {
       if (enrichment.durationSeconds) next.durationSeconds = enrichment.durationSeconds;
       if (Object.keys(next).length) updateAttributes(next);
     });
-  }, [album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
+  }, [activated, album, artist, artwork, editor, placeholder, safeSrc, src, updateAttributes]);
 
   const replaceFromDrop = async (file: File) => {
     if (!editor.isEditable || replacing || !isAudioFile(file)) return;
@@ -108,7 +145,7 @@ export default function AudioView(props: NodeViewProps) {
 
   return (
     <NodeViewWrapper
-      data-drag-handle
+      style={{ position: "relative" }}
       onDragEnter={(event) => {
         if (!editor.isEditable || !event.dataTransfer?.types.includes("Files")) return;
         event.preventDefault();
@@ -133,7 +170,9 @@ export default function AudioView(props: NodeViewProps) {
         void replaceFromDrop(file);
       }}
     >
+      {editor.isEditable && <BlockDragHandle label="Drag audio block" />}
       <div
+        ref={activationRef}
         className={`${classes.audioWrapper} ${!safeSrc && placeholder ? classes.skeleton : ""}`}
         style={{
           outline: dropActive ? "2px solid #3B5BFF" : undefined,
@@ -141,7 +180,19 @@ export default function AudioView(props: NodeViewProps) {
           borderRadius: dropActive ? 8 : undefined,
         }}
       >
-        {safeSrc && (
+        {safeSrc && !activated && (
+          <Group
+            justify="center"
+            wrap="nowrap"
+            gap="xs"
+            px="md"
+            style={{ width: "100%", minHeight: 96 }}
+          >
+            <Loader size={18} />
+            <Text size="sm" c="dimmed">Preparing audio…</Text>
+          </Group>
+        )}
+        {safeSrc && activated && (
           <div style={{ position: "relative", width: "100%" }}>
             <RamzyAudioPlayer
               src={safeSrc}

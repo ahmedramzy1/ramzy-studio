@@ -81,6 +81,7 @@
     "csv-stringify": "6.8.0",
     "fast-bm25": "0.0.5",
     "fastify-ip": "2.0.0",
+    "ffmpeg-static": "5.2.0",
     "fs-extra": "11.3.4",
     "happy-dom": "20.8.9",
     "ioredis": "5.10.1",

@@ -86,6 +86,124 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   padding: 0;
 }
 
+/* Keep the editable canvas tall enough to remain the active drop surface when
+ * a short document's last row is pulled downward into a new road. */
+.ProseMirror.ramzy-portfolio-editor[contenteditable="true"] {
+  min-height: max(240px, calc(100dvh - 12rem));
+}
+
+/* Reserve one clear authoring strip for the per-column insertion controls.
+ * The next top-level block must start below those controls, not behind them. */
+.ProseMirror.ramzy-portfolio-editor[contenteditable="true"]
+  > div[data-type="columns"]
+  + * {
+  margin-top: 4rem;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source {
+  opacity: 0.34;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+
+.ramzy-dnd-native-preview {
+  max-height: 520px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--mantine-color-blue-5) 50%, white);
+  border-radius: var(--mantine-radius-sm, 4px);
+  background: color-mix(
+    in srgb,
+    var(--mantine-color-body, #fff) 88%,
+    transparent
+  );
+  box-shadow: 0 10px 28px rgb(0 0 0 / 16%);
+  opacity: 0.72;
+  transform: rotate(-1.5deg) translateY(-2px);
+  transform-origin: 16% 12%;
+  overflow: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.ramzy-dnd-column-slot,
+.ramzy-dnd-row-slot,
+.ramzy-dnd-preview-single-row::before {
+  box-sizing: border-box;
+  position: relative;
+  display: block;
+  border: 2px dashed var(--mantine-color-blue-5, #339af0);
+  border-radius: var(--mantine-radius-sm, 4px);
+  background: color-mix(
+    in srgb,
+    var(--mantine-color-blue-0, #e7f5ff) 22%,
+    transparent
+  );
+  animation: ramzy-dnd-slot-in 140ms ease-out;
+}
+
+.ramzy-dnd-column-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: max(64px, min(var(--ramzy-dnd-source-height), 520px));
+}
+
+.ramzy-dnd-row-slot {
+  width: 100%;
+  height: max(56px, min(var(--ramzy-dnd-source-height), 520px));
+  margin: 1rem 0;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-source-column-vacated {
+  display: none;
+}
+
+.ProseMirror.ramzy-portfolio-editor .ramzy-dnd-preview-single-row {
+  position: relative;
+  width: calc(50% - var(--ramzy-columns-gap, 2rem) / 2) !important;
+  max-width: none !important;
+  overflow: visible !important;
+  transition:
+    width 150ms ease,
+    margin 150ms ease;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  .ramzy-dnd-preview-single-row[data-ramzy-drop-edge="left"] {
+  margin-left: auto !important;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  .ramzy-dnd-preview-single-row[data-ramzy-drop-edge="right"] {
+  margin-right: auto !important;
+}
+
+.ramzy-dnd-preview-single-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 100%;
+  min-height: 64px;
+}
+
+.ramzy-dnd-preview-single-row[data-ramzy-drop-edge="left"]::before {
+  right: calc(100% + var(--ramzy-columns-gap, 2rem));
+}
+
+.ramzy-dnd-preview-single-row[data-ramzy-drop-edge="right"]::before {
+  left: calc(100% + var(--ramzy-columns-gap, 2rem));
+}
+
+@keyframes ramzy-dnd-slot-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .ProseMirror.ramzy-portfolio-editor
   div[data-type="columns"][data-gap="compact"] {
   --ramzy-columns-gap: 1rem;
@@ -96,8 +214,7 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   --ramzy-columns-gap: 2rem;
 }
 
-.ProseMirror.ramzy-portfolio-editor
-  div[data-type="columns"][data-gap="wide"] {
+.ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-gap="wide"] {
   --ramzy-columns-gap: 3rem;
 }
 
@@ -160,16 +277,6 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
   flex: 2;
 }
 
-.ProseMirror.ramzy-portfolio-editor[contenteditable="true"]
-  div[data-type="columns"].has-focus
-  > div[data-type="column"]
-  + div[data-type="column"] {
-  border-left: 1px dashed
-    light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
-  padding-left: calc(var(--ramzy-columns-gap) - 1px);
-  margin-left: calc(var(--ramzy-columns-gap) * -1);
-}
-
 .ProseMirror.ramzy-portfolio-editor div[data-type="column"] > :first-child {
   margin-top: 0;
 }
@@ -219,10 +326,63 @@ div[data-type="columns"][data-width-mode="wide"] {
 /* The portfolio editor already occupies the canonical content canvas, so wide
  * mode means the available host width rather than compensating for Docmost's
  * old 3rem document padding. */
-.ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-width-mode="wide"] {
-  margin-left: 0;
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-width-mode="wide"] {
+  position: relative;
+  left: 50%;
+  width: min(1120px, calc(100vw - 22rem));
+  max-width: none;
   margin-right: 0;
-  width: 100%;
+  margin-left: 0;
+  transform: translateX(-50%);
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-width-mode="full"] {
+  position: relative;
+  left: 50%;
+  width: min(1440px, calc(100vw - 6rem));
+  max-width: none;
+  transform: translateX(-50%);
+}
+
+/* A resize gesture keeps its exact released desktop width. Width presets still
+ * provide useful reset points and clear this custom value when selected. */
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="columns"][data-custom-width] {
+  position: relative;
+  left: 50%;
+  width: min(var(--ramzy-columns-custom-width), 1440px, calc(100vw - 6rem));
+  max-width: none;
+  margin-right: 0;
+  margin-left: 0;
+  transform: translateX(-50%);
+}
+
+/* Exact widths are shared by standalone top-level blocks and grid rows.
+ * Saved widths and live previews are ProseMirror-owned decorations, so React
+ * node views and ordinary document nodes follow the same layout contract. */
+.ProseMirror.ramzy-portfolio-editor > .ramzy-portfolio-custom-width,
+.ProseMirror.ramzy-portfolio-editor > .ramzy-block-resize-preview,
+.ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
+  position: relative !important;
+  left: 50% !important;
+  width: min(
+    var(--ramzy-portfolio-block-width),
+    1440px,
+    calc(100vw - 6rem)
+  ) !important;
+  max-width: none !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  transform: translateX(-50%) !important;
+  box-sizing: border-box;
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="column"].ramzy-grid-resize-preview-column {
+  flex: 0 0 var(--ramzy-grid-preview-column-width) !important;
+  width: var(--ramzy-grid-preview-column-width) !important;
 }
 
 @media (max-width: $mantine-breakpoint-sm) {
@@ -232,10 +392,156 @@ div[data-type="columns"][data-width-mode="wide"] {
     width: calc(100% + 2rem);
   }
 
-  .ProseMirror.ramzy-portfolio-editor div[data-type="columns"][data-width-mode="wide"] {
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-width-mode="wide"] {
+    left: auto;
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    transform: none;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-width-mode="full"] {
+    left: auto;
+    width: 100%;
+    transform: none;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-custom-width] {
+    left: auto;
+    width: 100%;
+    transform: none;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor > .ramzy-portfolio-custom-width,
+  .ProseMirror.ramzy-portfolio-editor > .ramzy-block-resize-preview,
+  .ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
+    left: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    transform: none !important;
+  }
+}
+
+.ramzy-grid-resize-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+/* Snap guides belong to the canvas plane, not the controls plane. Keep them
+ * behind document blocks so media, text and actions paint naturally over the
+ * grid while the lines remain visible through the surrounding whitespace. */
+.ramzy-grid-resize-guide-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body:has(.ramzy-grid-resize-guide-layer)
+  .ProseMirror.ramzy-portfolio-editor
+  > * {
+  position: relative;
+  z-index: 1;
+}
+
+body:has(.ramzy-dnd-source) .ramzy-grid-resize-layer,
+body:has(.ramzy-dnd-source) .ramzy-grid-resize-guide-layer,
+body.ramzy-portfolio-dnd-active .ramzy-grid-resize-layer,
+body.ramzy-portfolio-dnd-active .ramzy-grid-resize-guide-layer,
+body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-block,
+body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
+  display: none;
+}
+
+.ramzy-grid-resize-handle {
+  position: fixed;
+  width: 18px;
+  pointer-events: auto;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ramzy-grid-divider-guide {
+  position: fixed;
+  width: 0;
+  border-left: 1px dashed
+    light-dark(var(--mantine-color-gray-3), var(--mantine-color-gray-7));
+  pointer-events: none;
+}
+
+.ramzy-block-resize-snap-guide {
+  position: fixed;
+  width: 1px;
+  background: light-dark(rgb(160 166 176 / 28%), rgb(190 196 208 / 22%));
+  pointer-events: none;
+}
+
+.ramzy-block-resize-snap-guide[data-active="true"] {
+  width: 2px;
+  background: var(--mantine-color-blue-5, #339af0);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 50%);
+}
+
+.ProseMirror.ramzy-portfolio-editor
+  div[data-type="column"]
+  .ramzy-photo-collection-title {
+  padding-left: 2.5rem !important;
+}
+
+.ramzy-grid-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: min(72px, 45%);
+  min-height: 36px;
+  border-radius: 999px;
+  background: var(--mantine-color-blue-5, #339af0);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 80%);
+  opacity: 0.72;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 120ms ease,
+    height 120ms ease;
+}
+
+.ramzy-grid-resize-handle:hover::after,
+.ramzy-grid-resize-handle[data-resizing="true"]::after {
+  height: min(104px, 66%);
+  opacity: 1;
+}
+
+.ramzy-grid-resize-handle[data-kind="outer"]::after {
+  width: 4px;
+}
+
+.ramzy-grid-width-badge {
+  position: fixed;
+  z-index: 9999;
+  padding: 4px 8px;
+  border: 1px solid rgb(0 0 0 / 9%);
+  border-radius: 6px;
+  background: var(--mantine-color-body, #fff);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 12%);
+  color: var(--mantine-color-text, #202124);
+  font:
+    600 11px/1.2 system-ui,
+    sans-serif;
+  pointer-events: none;
+}
+
+@media print, (max-width: 680px) {
+  .ramzy-grid-resize-layer,
+  .ramzy-grid-resize-guide-layer {
+    display: none !important;
   }
 }
 
@@ -249,9 +555,16 @@ div[data-type="columns"][data-width-mode="wide"] {
     padding-left: 1rem;
   }
 
-  div[data-type="columns"][data-width-mode="wide"] {
+  div[data-type="columns"][data-width-mode="wide"],
+  .ProseMirror.ramzy-portfolio-editor
+    div[data-type="columns"][data-custom-width],
+  .ProseMirror.ramzy-portfolio-editor > .ramzy-portfolio-custom-width,
+  .ProseMirror.ramzy-portfolio-editor > [data-portfolio-width] {
+    left: auto;
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    max-width: 100%;
+    transform: none;
   }
 }

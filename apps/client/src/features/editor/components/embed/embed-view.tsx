@@ -1,5 +1,5 @@
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import clsx from "clsx";
 import {
   ActionIcon,
@@ -33,7 +33,14 @@ const schema = z.object({
 export default function EmbedView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { node, selected, updateAttributes, editor } = props;
-  const { src, provider, width: nodeWidth, height: nodeHeight } = node.attrs;
+  const {
+    src,
+    provider,
+    width: nodeWidth,
+    height: nodeHeight,
+    align,
+  } = node.attrs;
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const embedUrl = useMemo(() => {
     if (src) {
@@ -81,10 +88,51 @@ export default function EmbedView(props: NodeViewProps) {
     }
   }
 
+  function editEmbedLink() {
+    const url = window.prompt(t("Edit embed link"), src || "")?.trim();
+    if (!url) return;
+    void onSubmit({ url });
+  }
+
   return (
     <NodeViewWrapper data-drag-handle className={classes.embedNodeView}>
+      {editor.isEditable && (
+        <>
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="edit-embed"
+            onClick={editEmbedLink}
+          />
+          {src && (
+            <a
+              hidden
+              data-ramzy-element-action="open-embed"
+              href={sanitizeUrl(src)}
+              target="_blank"
+              rel="noreferrer"
+            />
+          )}
+          <button
+            type="button"
+            hidden
+            data-ramzy-element-action="refresh-embed"
+            onClick={() => setRefreshNonce((value) => value + 1)}
+          />
+        </>
+      )}
       {embedUrl ? (
-        <div className={classes.embedContainer}>
+        <div
+          className={classes.embedContainer}
+          style={{
+            justifyContent:
+              align === "left"
+                ? "flex-start"
+                : align === "right"
+                  ? "flex-end"
+                  : "center",
+          }}
+        >
           <ResizableWrapper
             initialWidth={nodeWidth || 800}
             initialHeight={nodeHeight || 600}
@@ -100,6 +148,7 @@ export default function EmbedView(props: NodeViewProps) {
             })}
           >
             <iframe
+              key={refreshNonce}
               className={classes.embedIframe}
               src={sanitizeUrl(embedUrl)}
               allow="encrypted-media; clipboard-read; clipboard-write; picture-in-picture;"

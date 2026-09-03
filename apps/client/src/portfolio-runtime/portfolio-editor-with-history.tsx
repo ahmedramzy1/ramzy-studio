@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Editor, JSONContent } from "@tiptap/core";
 import {
   RamzyStudioPortfolioEditor as BasePortfolioEditor,
   type RamzyPortfolioSaveState,
-  type RamzyStudioPortfolioEditorProps,
+  type RamzyStudioPortfolioEditorProps as BaseRamzyStudioPortfolioEditorProps,
 } from "@/features/editor/portfolio/portfolio-editor";
 import {
   getPageHistoryById,
@@ -11,7 +11,21 @@ import {
 } from "@/features/page-history/services/page-history-service";
 import type { IPageHistory } from "@/features/page-history/types/page.types";
 
-export type { RamzyStudioPortfolioEditorProps } from "@/features/editor/portfolio/portfolio-editor";
+export interface RamzyStudioPortfolioHeaderActions {
+  openHistory: () => void;
+  addSection: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+export interface RamzyStudioPortfolioEditorProps
+  extends BaseRamzyStudioPortfolioEditorProps {
+  onHeaderActionsChange?: (
+    actions: RamzyStudioPortfolioHeaderActions | null,
+  ) => void;
+}
 
 function documentText(content: JSONContent | null | undefined): string {
   if (!content) return "";
@@ -75,6 +89,22 @@ export function RamzyStudioPortfolioEditor(
   const editorReady = Boolean(
     editor && !editor.isDestroyed && editor.isEditable,
   );
+
+  const addSection = useCallback(() => {
+    if (!editor || editor.isDestroyed || !editor.isEditable) return;
+    editor
+      .chain()
+      .focus("end")
+      .insertContent([
+        {
+          type: "heading",
+          attrs: { level: 1 },
+          content: [{ type: "text", text: "New section" }],
+        },
+        { type: "paragraph" },
+      ])
+      .run();
+  }, [editor]);
 
   const handleCreate = useCallback(
     (nextEditor: Editor) => {
@@ -174,6 +204,27 @@ export function RamzyStudioPortfolioEditor(
     }
   }, [loadHistoryDetail, props.onSessionExpired, props.pageId]);
 
+  useEffect(() => {
+    if (!editorReady || !editor) {
+      props.onHeaderActionsChange?.(null);
+      return;
+    }
+
+    const actions: RamzyStudioPortfolioHeaderActions = {
+      openHistory: () => void openHistory(),
+      addSection,
+      undo: () => editor.chain().focus().undo().run(),
+      redo: () => editor.chain().focus().redo().run(),
+      canUndo: true,
+      canRedo: true,
+    };
+
+    props.onHeaderActionsChange?.(actions);
+    return () => {
+      props.onHeaderActionsChange?.(null);
+    };
+  }, [addSection, editor, editorReady, openHistory, props.onHeaderActionsChange]);
+
   const restoreSelected = useCallback(() => {
     if (!selectedHistory?.content) {
       setHistoryError("Select a history version with restorable content first.");
@@ -229,51 +280,22 @@ export function RamzyStudioPortfolioEditor(
 
   return (
     <div style={{ position: "relative" }}>
-      {props.editable !== false && (
+      {restoreFeedback && (
         <div
+          role={restoreFeedback.kind === "error" ? "alert" : "status"}
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: 10,
             marginBottom: 8,
+            fontSize: 12,
+            color:
+              restoreFeedback.kind === "error"
+                ? "var(--mantine-color-red-6)"
+                : restoreFeedback.kind === "success"
+                  ? "var(--mantine-color-green-7)"
+                  : "inherit",
+            opacity: restoreFeedback.kind === "saving" ? 0.68 : 0.9,
           }}
         >
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={openHistory}
-            style={{
-              border: "1px solid var(--mantine-color-default-border)",
-              borderRadius: "var(--mantine-radius-sm)",
-              background: "transparent",
-              color: "inherit",
-              padding: "0.25rem 0.5rem",
-              font: "inherit",
-              fontSize: "var(--mantine-font-size-xs)",
-              lineHeight: 1.4,
-              cursor: "pointer",
-            }}
-          >
-            History
-          </button>
-          {restoreFeedback && (
-            <span
-              role={restoreFeedback.kind === "error" ? "alert" : "status"}
-              style={{
-                fontSize: 12,
-                color:
-                  restoreFeedback.kind === "error"
-                    ? "var(--mantine-color-red-6)"
-                    : restoreFeedback.kind === "success"
-                      ? "var(--mantine-color-green-7)"
-                      : "inherit",
-                opacity: restoreFeedback.kind === "saving" ? 0.68 : 0.9,
-              }}
-            >
-              {restoreFeedback.message}
-            </span>
-          )}
+          {restoreFeedback.message}
         </div>
       )}
 

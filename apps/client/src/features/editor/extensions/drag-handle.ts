@@ -36,6 +36,12 @@ export interface GlobalDragHandleOptions {
   customNodes: string[];
 
   atomNodes: string[];
+
+  /**
+   * Keeps the hover handle positioning while allowing a specialised surface
+   * to own the actual drag lifecycle (for example Pragmatic Drag and Drop).
+   */
+  nativeDrag: boolean;
 }
 function absoluteRect(node: Element) {
   const data = node.getBoundingClientRect();
@@ -111,8 +117,7 @@ function nodeDOMAtCoords(
       // elements whose closest editor is this host view.
       if (elem.closest(".ProseMirror") !== view.dom) return false;
       return (
-        elem.parentElement?.matches?.(".ProseMirror") ||
-        elem.matches(selectors)
+        elem.parentElement?.matches?.(".ProseMirror") || elem.matches(selectors)
       );
     });
   if (found && atomSelectors.length > 0) {
@@ -228,10 +233,7 @@ export function DragHandlePlugin(
         ]);
         for (let d = $sel.depth; d > 0; d--) {
           if (customTypes.has($sel.node(d).type.name)) {
-            selection = NodeSelection.create(
-              view.state.doc,
-              $sel.before(d),
-            );
+            selection = NodeSelection.create(view.state.doc, $sel.before(d));
             break;
           }
         }
@@ -279,8 +281,9 @@ export function DragHandlePlugin(
     event.dataTransfer.setData("text/plain", text);
     event.dataTransfer.effectAllowed = "move";
 
-    const previewTemplate =
-      node.querySelector<HTMLElement>("[data-drag-preview]");
+    const previewTemplate = node.querySelector<HTMLElement>(
+      "[data-drag-preview]",
+    );
     if (previewTemplate) {
       const preview = previewTemplate.cloneNode(true) as HTMLElement;
       preview.removeAttribute("hidden");
@@ -305,6 +308,7 @@ export function DragHandlePlugin(
   function hideDragHandle() {
     if (dragHandleElement) {
       dragHandleElement.classList.add("hide");
+      delete dragHandleElement.dataset.ramzyNodePosition;
     }
   }
 
@@ -334,7 +338,7 @@ export function DragHandlePlugin(
         ? document.querySelector<HTMLElement>(options.dragHandleSelector)
         : null;
       dragHandleElement = handleBySelector ?? document.createElement("div");
-      dragHandleElement.draggable = true;
+      dragHandleElement.draggable = options.nativeDrag;
       dragHandleElement.dataset.dragHandle = "";
       dragHandleElement.classList.add("drag-handle");
 
@@ -342,11 +346,13 @@ export function DragHandlePlugin(
         handleDragStart(e, view);
       }
 
-      dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
+      if (options.nativeDrag) {
+        dragHandleElement.addEventListener("dragstart", onDragHandleDragStart);
+      }
 
       function onDragHandleDrag(e: DragEvent) {
         hideDragHandle();
-        let scrollY = window.scrollY;
+        const scrollY = window.scrollY;
         if (e.clientY < options.scrollThreshold) {
           window.scrollTo({ top: scrollY - 30, behavior: "smooth" });
         } else if (window.innerHeight - e.clientY < options.scrollThreshold) {
@@ -354,7 +360,9 @@ export function DragHandlePlugin(
         }
       }
 
-      dragHandleElement.addEventListener("drag", onDragHandleDrag);
+      if (options.nativeDrag) {
+        dragHandleElement.addEventListener("drag", onDragHandleDrag);
+      }
 
       hideDragHandle();
 
@@ -371,11 +379,13 @@ export function DragHandlePlugin(
           if (!handleBySelector) {
             dragHandleElement?.remove?.();
           }
-          dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
-          dragHandleElement?.removeEventListener(
-            "dragstart",
-            onDragHandleDragStart,
-          );
+          if (options.nativeDrag) {
+            dragHandleElement?.removeEventListener("drag", onDragHandleDrag);
+            dragHandleElement?.removeEventListener(
+              "dragstart",
+              onDragHandleDragStart,
+            );
+          }
           dragHandleElement = null;
           view?.dom?.parentElement?.removeEventListener(
             "mouseout",
@@ -414,7 +424,23 @@ export function DragHandlePlugin(
             return;
           }
 
+          const nodeView = node.closest(".react-renderer") ?? node;
+          if (nodeView.querySelector("[data-ramzy-block-drag-handle]")) {
+            hideDragHandle();
+            return;
+          }
+
           const isCustomNode = isCustomNodeDOM(node, options);
+
+          let activeNodePosition = nodePosAtDOM(node, view, options);
+          if (activeNodePosition == null || activeNodePosition < 0) {
+            hideDragHandle();
+            return;
+          }
+          activeNodePosition = calcNodePos(activeNodePosition, view);
+          if (!dragHandleElement) return;
+          dragHandleElement.dataset.ramzyNodePosition =
+            String(activeNodePosition);
 
           // Custom nodes pin the handle to the inner NodeViewWrapper's top-left:
           // the natural anchor sits in transient/empty space outside the visible block.
@@ -428,7 +454,6 @@ export function DragHandlePlugin(
               (rendererOuter.firstElementChild as HTMLElement | null) ??
               rendererOuter;
             const innerRect = absoluteRect(inner);
-            if (!dragHandleElement) return;
             dragHandleElement.style.left = `${innerRect.left + 4}px`;
             dragHandleElement.style.top = `${innerRect.top + 4}px`;
             showDragHandle();
@@ -458,8 +483,6 @@ export function DragHandlePlugin(
             rect.left -= options.dragHandleWidth;
           }
           rect.width = options.dragHandleWidth;
-
-          if (!dragHandleElement) return;
 
           dragHandleElement.style.left = `${rect.left - rect.width}px`;
           dragHandleElement.style.top = `${rect.top}px`;
@@ -529,6 +552,7 @@ const GlobalDragHandle = Extension.create({
       excludedTags: [],
       customNodes: [],
       atomNodes: [],
+      nativeDrag: true,
     };
   },
 
@@ -542,6 +566,7 @@ const GlobalDragHandle = Extension.create({
         excludedTags: this.options.excludedTags,
         customNodes: this.options.customNodes,
         atomNodes: this.options.atomNodes,
+        nativeDrag: this.options.nativeDrag,
       }),
     ];
   },
