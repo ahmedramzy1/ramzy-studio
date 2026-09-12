@@ -68,7 +68,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
     return {
       ...(found as { position: number; end: number; emptyParagraph: boolean }),
       dom,
-      left: rowRect.left - overlayRect.left - 12,
+      left: rowRect.left - overlayRect.left - 20,
       top: rect.top - overlayRect.top,
     };
   }, [editor]);
@@ -119,7 +119,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         rect &&
         (overlayRef.current?.contains(document.activeElement) ||
           (event.clientX >=
-            Math.min(rail?.left || rect.left - 84, rect.left) - 8 &&
+            Math.min(rail?.left || rect.left - 92, rect.left) - 8 &&
             event.clientX <= rect.left + 8 &&
             event.clientY >= Math.min(rail?.top || rect.top, rect.top) - 8 &&
             event.clientY <=
