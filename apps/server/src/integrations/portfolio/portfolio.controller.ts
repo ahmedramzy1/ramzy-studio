@@ -243,6 +243,12 @@ export class PortfolioController {
       throw new NotFoundException('Portfolio publication not found');
     }
 
+    const publicContent = await this.shareService.prepareContentForShare(
+      publication.content,
+      page.id,
+      page.workspaceId,
+    );
+
     return {
       page: {
         id: page.id,
@@ -253,7 +259,7 @@ export class PortfolioController {
         id: publication.id,
         pageId: publication.pageId,
         createdAt: publication.createdAt,
-        content: publication.content ?? null,
+        content: publicContent?.toJSON() ?? publication.content ?? null,
       },
       share: {
         id: share.id,

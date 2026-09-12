@@ -5,6 +5,7 @@ describe('PortfolioController contract', () => {
   const shareService = {
     getSharedPage: jest.fn(),
     createShare: jest.fn(),
+    prepareContentForShare: jest.fn(),
   };
   const pageService = {
     findById: jest.fn(),
@@ -58,7 +59,9 @@ describe('PortfolioController contract', () => {
     const user = { id: 'user-1' };
     const content = {
       type: 'doc',
-      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'exact' }] }],
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'exact' }] },
+      ],
     };
     const publication = {
       id: 'publication-1',
@@ -120,5 +123,62 @@ describe('PortfolioController contract', () => {
         { id: 'workspace-1' } as any,
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('returns immutable publication media with public attachment URLs', async () => {
+    const publicationContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            attachmentId: 'attachment-1',
+            src: '/api/files/attachment-1/image.png',
+          },
+        },
+      ],
+    };
+    const publicContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: {
+            attachmentId: 'attachment-1',
+            src: '/api/files/public/attachment-1/image.png?jwt=attachment-token',
+          },
+        },
+      ],
+    };
+
+    shareService.getSharedPage.mockResolvedValue({
+      page: {
+        id: 'page-1',
+        workspaceId: 'workspace-1',
+        slugId: 'page-one',
+        title: 'Page one',
+      },
+      share: { id: 'share-1', key: 'share-key' },
+    });
+    pageHistoryService.findById.mockResolvedValue({
+      id: 'publication-1',
+      pageId: 'page-1',
+      content: publicationContent,
+    });
+    shareService.prepareContentForShare.mockResolvedValue({
+      toJSON: () => publicContent,
+    });
+
+    const result = await controller.getPublicPublication(
+      { pageId: 'page-1', publicationId: 'publication-1' },
+      { id: 'workspace-1' } as any,
+    );
+
+    expect(shareService.prepareContentForShare).toHaveBeenCalledWith(
+      publicationContent,
+      'page-1',
+      'workspace-1',
+    );
+    expect(result.publication.content).toEqual(publicContent);
   });
 });
