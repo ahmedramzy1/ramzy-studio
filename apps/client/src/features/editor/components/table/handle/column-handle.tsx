@@ -17,6 +17,7 @@ interface ColumnHandleProps {
   anchorPos: number;
   tableNode: ProseMirrorNode;
   tablePos: number;
+  visible?: boolean;
 }
 
 export const ColumnHandle = React.memo(function ColumnHandle({
@@ -25,6 +26,7 @@ export const ColumnHandle = React.memo(function ColumnHandle({
   anchorPos,
   tableNode,
   tablePos,
+  visible = true,
 }: ColumnHandleProps) {
   const { t } = useTranslation();
   // Hold the cell DOM in a ref-backed state so we never unmount the handle
@@ -99,9 +101,12 @@ export const ColumnHandle = React.memo(function ColumnHandle({
           }}
           style={{
             ...floatingStyles,
-            ...(isReferenceHidden ? { visibility: "hidden" as const } : {}),
+            ...(!visible || isReferenceHidden
+              ? { visibility: "hidden" as const }
+              : {}),
           }}
           className={clsx(classes.handle, classes.columnHandle)}
+          data-ramzy-table-handle="col"
           role="button"
           tabIndex={0}
           aria-label={t("Column actions")}

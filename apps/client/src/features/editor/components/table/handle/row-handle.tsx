@@ -17,6 +17,7 @@ interface RowHandleProps {
   anchorPos: number;
   tableNode: ProseMirrorNode;
   tablePos: number;
+  visible?: boolean;
 }
 
 export const RowHandle = React.memo(function RowHandle({
@@ -25,6 +26,7 @@ export const RowHandle = React.memo(function RowHandle({
   anchorPos,
   tableNode,
   tablePos,
+  visible = true,
 }: RowHandleProps) {
   const { t } = useTranslation();
   // See ColumnHandle for the rationale: keep the last valid cell DOM cached
@@ -94,9 +96,12 @@ export const RowHandle = React.memo(function RowHandle({
           }}
           style={{
             ...floatingStyles,
-            ...(isReferenceHidden ? { visibility: "hidden" as const } : {}),
+            ...(!visible || isReferenceHidden
+              ? { visibility: "hidden" as const }
+              : {}),
           }}
           className={clsx(classes.handle, classes.rowHandle)}
+          data-ramzy-table-handle="row"
           role="button"
           tabIndex={0}
           aria-label={t("Row actions")}

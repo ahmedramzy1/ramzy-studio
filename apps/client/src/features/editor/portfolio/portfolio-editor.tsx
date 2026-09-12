@@ -414,7 +414,7 @@ function DirectPortfolioEditor({
           <EditorLinkMenu editor={editor} />
           <EditorBubbleMenu editor={editor} />
           <TableMenu editor={editor} />
-          <TableHandlesLayer editor={editor} />
+          <TableHandlesLayer editor={editor} borderOnly />
           <ImageMenu editor={editor} />
           <VideoMenu editor={editor} />
           <AudioMenu editor={editor} />

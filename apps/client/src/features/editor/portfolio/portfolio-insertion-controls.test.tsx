@@ -280,6 +280,8 @@ describe("portfolio insertion controls", () => {
     expect(grip.classList.contains("ramzy-block-action")).toBe(true);
     expect(grip.parentElement).toBe(plus.parentElement);
     expect(grip.parentElement!.style.gap).toBe("8px");
+    expect(grip.parentElement!.style.flexDirection).toBe("row");
+    expect(plus.nextElementSibling).toBe(grip);
     act(() => grip.focus());
     hover(document.body);
     await act(async () => {

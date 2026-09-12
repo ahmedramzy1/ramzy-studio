@@ -68,7 +68,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
     return {
       ...(found as { position: number; end: number; emptyParagraph: boolean }),
       dom,
-      left: rowRect.left - overlayRect.left - 52,
+      left: rowRect.left - overlayRect.left - 12,
       top: rect.top - overlayRect.top,
     };
   }, [editor]);
@@ -119,11 +119,11 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         rect &&
         (overlayRef.current?.contains(document.activeElement) ||
           (event.clientX >=
-            Math.min(rail?.left || rect.left - 52, rect.left) - 8 &&
+            Math.min(rail?.left || rect.left - 84, rect.left) - 8 &&
             event.clientX <= rect.left + 8 &&
             event.clientY >= Math.min(rail?.top || rect.top, rect.top) - 8 &&
             event.clientY <=
-              Math.max(rail?.bottom || rect.top + 96, rect.bottom) + 8))
+              Math.max(rail?.bottom || rect.top + 44, rect.bottom) + 8))
       ) {
         cancelClose();
         return;
@@ -274,7 +274,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             left: control.left,
             top: control.top,
             display: "flex",
-            flexDirection: "column",
+            flexDirection: "row",
+            transform: "translateX(-100%)",
             gap: 8,
             pointerEvents: "auto",
           }}
@@ -297,8 +298,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
           >
             <svg
               aria-hidden
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 18 18"
               fill="none"
               stroke="currentColor"
@@ -355,8 +356,8 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
           >
             <svg
               aria-hidden
-              width="18"
-              height="18"
+              width="16"
+              height="16"
               viewBox="0 0 18 18"
               fill="currentColor"
             >
@@ -371,7 +372,7 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       )}
       <style>{`
         .ramzy-block-action {
-          width:36px;height:36px;flex:none;padding:0;display:grid;place-items:center;
+          width:32px;height:32px;flex:none;padding:0;display:grid;place-items:center;
           border:1px solid var(--mantine-color-default-border);border-radius:8px;
           background:var(--mantine-color-body);color:var(--mantine-color-text);
           box-shadow:var(--ramzy-element-shadow,var(--mantine-shadow-sm));cursor:pointer;
