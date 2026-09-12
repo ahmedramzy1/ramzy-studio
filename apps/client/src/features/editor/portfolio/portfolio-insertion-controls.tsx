@@ -314,7 +314,6 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             data-ramzy-node-position={control.position}
             aria-label="Move block"
             title="Drag to move block; use Alt + Arrow Up or Down to reorder"
-            onMouseDown={(event) => event.preventDefault()}
             onDragStart={() => {
               dragging.current = true;
               if (closeTimer.current !== null) clearTimeout(closeTimer.current);
