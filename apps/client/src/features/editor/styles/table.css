@@ -274,3 +274,16 @@
     display: none;
   }
 }
+
+[data-ramzy-block-actions-host] .ramzy-active-table-cell {
+  outline: 1px solid var(--mantine-primary-color-filled);
+  outline-offset: -1px;
+}
+[data-ramzy-block-actions-host] .selectedCell:after {
+  background: var(--mantine-primary-color-light);
+  outline: 1px solid var(--mantine-primary-color-filled);
+  outline-offset: -1px;
+}
+[data-ramzy-block-actions-host] .table-dnd-drop-indicator {
+  background: var(--mantine-primary-color-filled);
+}

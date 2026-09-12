@@ -20,6 +20,7 @@ import {
 import { EditorBubbleMenu } from "@/features/editor/components/bubble-menu/bubble-menu";
 import { EditorLinkMenu } from "@/features/editor/components/link/link-menu";
 import TableMenu from "@/features/editor/components/table/table-menu";
+import { PortfolioTableCellFocus } from "@/features/editor/components/table/handle/lib/active-table-cell";
 import { TableHandlesLayer } from "@/features/editor/components/table/handle/table-handles-layer";
 import ImageMenu from "@/features/editor/components/image/image-menu";
 import VideoMenu from "@/features/editor/components/video/video-menu";
@@ -201,6 +202,7 @@ function DirectPortfolioEditor({
         (extension) => extension.name !== "globalDragHandle",
       ),
       PortfolioDndPreview,
+      PortfolioTableCellFocus,
       PortfolioBlockWidth,
       PortfolioGridResizePreview,
       PortfolioGridNormalizer,

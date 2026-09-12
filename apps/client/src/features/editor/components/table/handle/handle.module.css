@@ -106,3 +106,59 @@
     display: none !important;
   }
 }
+
+/* A quiet marker locates the axis; the grip appears on approach or focus. */
+.portfolioHandle {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--mantine-color-text);
+}
+.portfolioHandle:not([data-active]):not(:hover):not(:focus-visible) svg {
+  opacity: 0;
+}
+.portfolioHandle:not([data-active]):not(:hover):not(:focus-visible)::after {
+  content: "";
+  position: absolute;
+  border-radius: 8px;
+  background: var(--mantine-color-default-border);
+  box-shadow: 0 0 0 2px var(--mantine-color-body);
+  pointer-events: none;
+}
+.portfolioHandle.rowHandle::after { width: 4px; height: 24px; }
+.portfolioHandle.columnHandle::after { width: 24px; height: 4px; }
+.portfolioHandle[data-active], .portfolioHandle:hover, .portfolioHandle:focus-visible {
+  color: var(--mantine-color-white);
+  background: var(--mantine-primary-color-filled);
+}
+.portfolioHandle:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+.insertGuide {
+  position: fixed;
+  pointer-events: none;
+  background: var(--mantine-primary-color-filled);
+  z-index: 55;
+}
+.insertBoundary {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+  cursor: pointer;
+  z-index: 56;
+  font-size: 16px;
+  line-height: 1;
+}
+.insertBoundary:focus-visible { outline: 2px solid var(--mantine-primary-color-filled); outline-offset: 2px; }
+.portfolioHandle.rowHandle { height: 24px; }
+.portfolioHandle.columnHandle { width: 24px; }

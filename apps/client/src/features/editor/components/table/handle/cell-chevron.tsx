@@ -2,15 +2,15 @@ import React, { useCallback, useEffect } from "react";
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
 import { columnResizingPluginKey } from "@tiptap/pm/tables";
 import { useFloating, offset, autoUpdate, hide } from "@floating-ui/react";
 import { Menu, UnstyledButton } from "@mantine/core";
 import { IconChevronDown } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
-import { isCellSelection, isEditorReady } from "@docmost/editor-ext";
+import { isEditorReady } from "@docmost/editor-ext";
 import { CellChevronMenu } from "./menus/cell-chevron-menu";
+import { prepareTableCellMenu } from "./lib/active-table-cell";
 import classes from "./handle.module.css";
 
 interface CellChevronProps {
@@ -27,9 +27,10 @@ export const CellChevron = React.memo(function CellChevron({
   tablePos,
 }: CellChevronProps) {
   const { t } = useTranslation();
-  const cellDom = isEditorReady(editor)
+  const nodeDom = isEditorReady(editor)
     ? (editor.view.nodeDOM(cellPos) as HTMLElement | null)
     : null;
+  const cellDom = nodeDom instanceof HTMLElement ? nodeDom : null;
 
   const { refs, floatingStyles, middlewareData } = useFloating({
     placement: "top-end",
@@ -63,29 +64,7 @@ export const CellChevron = React.memo(function CellChevron({
   });
 
   const onOpen = useCallback(() => {
-    if (!isEditorReady(editor)) return;
-    const current = editor.state.selection;
-
-    // Preserve an existing multi-cell CellSelection that already covers
-    // this cell so merge etc. operate on the user's whole range.
-    let preserveExisting = false;
-    if (isCellSelection(current)) {
-      current.forEachCell((_node, pos) => {
-        if (pos === cellPos) preserveExisting = true;
-      });
-    }
-
-    if (!preserveExisting) {
-      // Drop a collapsed cursor inside the cell rather than a single-cell
-      // CellSelection — PM-tables paints the latter as a text-range
-      // highlight on the cell content.
-      try {
-        const $inside = editor.state.doc.resolve(cellPos + 1);
-        const sel = TextSelection.near($inside, 1);
-        editor.view.dispatch(editor.state.tr.setSelection(sel));
-      } catch {}
-    }
-    editor.commands.freezeHandles();
+    prepareTableCellMenu(editor, cellPos);
   }, [editor, cellPos]);
 
   const onClose = useCallback(() => {

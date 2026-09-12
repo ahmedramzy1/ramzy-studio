@@ -18,6 +18,9 @@ interface ColumnHandleProps {
   tableNode: ProseMirrorNode;
   tablePos: number;
   visible?: boolean;
+  quiet?: boolean;
+  portfolio?: boolean;
+  selected?: boolean;
 }
 
 export const ColumnHandle = React.memo(function ColumnHandle({
@@ -27,6 +30,9 @@ export const ColumnHandle = React.memo(function ColumnHandle({
   tableNode,
   tablePos,
   visible = true,
+  quiet = false,
+  portfolio = false,
+  selected = false,
 }: ColumnHandleProps) {
   const { t } = useTranslation();
   // Hold the cell DOM in a ref-backed state so we never unmount the handle
@@ -55,7 +61,7 @@ export const ColumnHandle = React.memo(function ColumnHandle({
 
   const { refs, floatingStyles, middlewareData } = useFloating({
     placement: "top",
-    middleware: [offset(-4), hide()],
+    middleware: [offset(portfolio ? -8 : -4), hide()],
     whileElementsMounted: autoUpdate,
   });
   const isReferenceHidden = !!middlewareData.hide?.referenceHidden;
@@ -101,11 +107,16 @@ export const ColumnHandle = React.memo(function ColumnHandle({
           }}
           style={{
             ...floatingStyles,
-            ...(!visible || isReferenceHidden
+            ...((!visible && !quiet && !selected) || isReferenceHidden
               ? { visibility: "hidden" as const }
               : {}),
           }}
-          className={clsx(classes.handle, classes.columnHandle)}
+          className={clsx(
+            classes.handle,
+            classes.columnHandle,
+            portfolio && classes.portfolioHandle,
+          )}
+          data-active={visible || selected || menuOpened || undefined}
           data-ramzy-table-handle="col"
           role="button"
           tabIndex={0}

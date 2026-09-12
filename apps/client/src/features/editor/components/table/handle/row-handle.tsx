@@ -18,6 +18,9 @@ interface RowHandleProps {
   tableNode: ProseMirrorNode;
   tablePos: number;
   visible?: boolean;
+  quiet?: boolean;
+  portfolio?: boolean;
+  selected?: boolean;
 }
 
 export const RowHandle = React.memo(function RowHandle({
@@ -27,6 +30,9 @@ export const RowHandle = React.memo(function RowHandle({
   tableNode,
   tablePos,
   visible = true,
+  quiet = false,
+  portfolio = false,
+  selected = false,
 }: RowHandleProps) {
   const { t } = useTranslation();
   // See ColumnHandle for the rationale: keep the last valid cell DOM cached
@@ -53,7 +59,7 @@ export const RowHandle = React.memo(function RowHandle({
 
   const { refs, floatingStyles, middlewareData } = useFloating({
     placement: "left",
-    middleware: [offset(-4), hide()],
+    middleware: [offset(portfolio ? -8 : -4), hide()],
     whileElementsMounted: autoUpdate,
   });
   const isReferenceHidden = !!middlewareData.hide?.referenceHidden;
@@ -96,11 +102,16 @@ export const RowHandle = React.memo(function RowHandle({
           }}
           style={{
             ...floatingStyles,
-            ...(!visible || isReferenceHidden
+            ...((!visible && !quiet && !selected) || isReferenceHidden
               ? { visibility: "hidden" as const }
               : {}),
           }}
-          className={clsx(classes.handle, classes.rowHandle)}
+          className={clsx(
+            classes.handle,
+            classes.rowHandle,
+            portfolio && classes.portfolioHandle,
+          )}
+          data-active={visible || selected || menuOpened || undefined}
           data-ramzy-table-handle="row"
           role="button"
           tabIndex={0}
