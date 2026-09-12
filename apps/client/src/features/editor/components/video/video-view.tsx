@@ -1,3 +1,4 @@
+import { useComputedColorScheme } from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { Group, Loader, Text } from "@mantine/core";
@@ -15,6 +16,7 @@ import { isVideoFile } from "@/features/editor/components/media/media-file-utils
 import { normalizeVideoWidth, videoAlignmentMargins } from "./video-layout";
 
 export default function VideoView(props: NodeViewProps) {
+  const mode = useComputedColorScheme("light");
   const { t } = useTranslation();
   const { editor, node, selected, updateAttributes } = props;
   const { src, width, align, alt, caption, captions, placeholder, poster } =
@@ -166,6 +168,7 @@ export default function VideoView(props: NodeViewProps) {
               }}
             >
               <RamzyVideoPlayer
+              mode={mode}
                 src={getFileUrl(src)}
                 poster={poster ? getFileUrl(poster) : undefined}
                 captions={(Array.isArray(captions) ? captions : []).map(
@@ -202,6 +205,7 @@ export default function VideoView(props: NodeViewProps) {
           {!src && previewSrc && (
             <div style={{ position: "absolute", inset: 0 }}>
               <RamzyVideoPlayer
+              mode={mode}
                 src={previewSrc}
                 title={placeholder?.name || t("Video")}
                 style={{ width: "100%", height: "100%" }}

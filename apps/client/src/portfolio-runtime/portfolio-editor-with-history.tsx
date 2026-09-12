@@ -288,9 +288,9 @@ export function RamzyStudioPortfolioEditor(
             fontSize: 12,
             color:
               restoreFeedback.kind === "error"
-                ? "var(--mantine-color-red-6)"
+                ? "var(--ramzy-element-error)"
                 : restoreFeedback.kind === "success"
-                  ? "var(--mantine-color-green-7)"
+                  ? "var(--ramzy-element-success)"
                   : "inherit",
             opacity: restoreFeedback.kind === "saving" ? 0.68 : 0.9,
           }}
@@ -441,7 +441,7 @@ export function RamzyStudioPortfolioEditor(
 
               <div style={{ minHeight: 0, overflowY: "auto", padding: 22 }}>
                 {historyError ? (
-                  <div role="alert" style={{ color: "var(--mantine-color-red-6)", fontSize: 13 }}>
+                  <div role="alert" style={{ color: "var(--ramzy-element-error)", fontSize: 13 }}>
                     {historyError}
                   </div>
                 ) : detailLoading ? (

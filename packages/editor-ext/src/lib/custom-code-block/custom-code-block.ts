@@ -59,11 +59,11 @@ export const CustomCodeBlock = CodeBlock.extend<CodeBlockLowlightOptions>({
         }),
       },
       theme: {
-        default: 'dark',
+        default: 'auto',
         parseHTML: (element) =>
-          element.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
+          ['light', 'dark'].includes(element.getAttribute('data-theme') || '') ? element.getAttribute('data-theme') : 'auto',
         renderHTML: (attributes) => ({
-          'data-theme': attributes.theme === 'light' ? 'light' : 'dark',
+          'data-theme': ['light', 'dark'].includes(attributes.theme) ? attributes.theme : 'auto',
         }),
       },
       collapsed: {

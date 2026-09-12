@@ -28,7 +28,7 @@
 
     td,
     th {
-      border: 1px solid #ced4da;
+      border: 1px solid var(--mantine-color-default-border);
       box-sizing: border-box;
       min-width: 1em;
       padding: 8px;
@@ -304,14 +304,14 @@
 .ProseMirror .ramzy-rounded-table > table {
   border-collapse: separate;
   border-spacing: 0;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--ramzy-radius-bordered, 8px);
   overflow: visible;
 
   > tbody > tr > :is(td, th) {
     border: 0;
-    border-right: 1px solid #ced4da;
-    border-bottom: 1px solid #ced4da;
+    border-right: 1px solid var(--mantine-color-default-border);
+    border-bottom: 1px solid var(--mantine-color-default-border);
   }
   > tbody > tr > [data-table-edge~="right"] { border-right: 0; }
   > tbody > tr > [data-table-edge~="bottom"] { border-bottom: 0; }

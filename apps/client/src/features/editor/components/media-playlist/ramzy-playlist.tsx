@@ -360,7 +360,7 @@ export default function RamzyPlaylist({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: active ? SIGNAL : c.textTertiary,
+                  color: active ? c.signalText : c.textTertiary,
                   position: "relative",
                   flex: "0 0 auto",
                 }}

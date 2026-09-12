@@ -113,3 +113,20 @@
     }
   }
 }
+
+/* Explicit code appearance overrides the ambient theme as one unit. */
+.ProseMirror .codeBlock,
+.ProseMirror .codeBlock pre {
+  background-color: var(--ramzy-code-bg);
+  color: var(--ramzy-code-text);
+}
+.ProseMirror .codeBlock pre {
+  .hljs-comment, .hljs-quote { color: var(--ramzy-code-comment); }
+  .hljs-variable, .hljs-template-variable, .hljs-attribute, .hljs-tag,
+  .hljs-name, .hljs-regexp, .hljs-link, .hljs-selector-id, .hljs-selector-class,
+  .hljs-string, .hljs-symbol, .hljs-bullet { color: var(--ramzy-code-red); }
+  .hljs-number, .hljs-meta, .hljs-built_in, .hljs-builtin-name, .hljs-literal,
+  .hljs-type, .hljs-params { color: var(--ramzy-code-number); }
+  .hljs-title, .hljs-section { color: var(--ramzy-code-title); }
+  .hljs-keyword, .hljs-selector-tag { color: var(--ramzy-code-keyword); }
+}

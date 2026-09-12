@@ -1,7 +1,7 @@
 /* Portfolio-only authoring foundation. Content dimensions and saved attributes
    remain owned by their nodes and the row layout. */
 .ProseMirror.ramzy-portfolio-editor {
-  --ramzy-element-signal: var(--mantine-color-blue-5);
+  --ramzy-element-signal: var(--ramzy-element-focus, var(--mantine-color-blue-5));
 }
 .ProseMirror.ramzy-portfolio-editor .ProseMirror-selectednode {
   outline-color: var(--ramzy-element-signal);
@@ -24,4 +24,17 @@
   .ProseMirror.ramzy-portfolio-editor .media-pulse {
     animation: none;
   }
+}
+
+/* Shared content colours also cover DOM-only node views and readonly rendering. */
+.ProseMirror.ramzy-portfolio-editor {
+  color: var(--mantine-color-text);
+  caret-color: currentColor;
+}
+.ProseMirror.ramzy-portfolio-editor a {
+  color: var(--ramzy-element-link, var(--mantine-color-anchor));
+}
+.ProseMirror.ramzy-portfolio-editor ::selection {
+  background: var(--mantine-primary-color-light);
+  color: inherit;
 }

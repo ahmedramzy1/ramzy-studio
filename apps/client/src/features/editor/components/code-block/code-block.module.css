@@ -4,8 +4,8 @@
 }
 
 .error {
-    color: light-dark(var(--mantine-color-red-8), var(--mantine-color-red-7));
-    background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-gray-8));
+    color: var(--ramzy-code-red, var(--mantine-color-error));
+    background-color: var(--ramzy-code-bg, var(--mantine-color-default-hover));
     display: flex;
     align-items: center;
     justify-content: center;

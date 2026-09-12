@@ -57,6 +57,8 @@ import { getMountedPortfolioEditorDom } from "./portfolio-editor-mode";
 export type RamzyPortfolioSaveState = "idle" | "saving" | "saved" | "error";
 
 export interface RamzyStudioPortfolioEditorProps {
+  /** Host preference; changes update views/portals without recreating the document. */
+  colorScheme?: "light" | "dark";
   pageId: string;
   session: RamzyPortfolioSession;
   initialContent?: JSONContent | null;
@@ -88,6 +90,7 @@ export interface RamzyStudioPortfolioEditorProps {
  * its normal Hocuspocus/Yjs collaboration path.
  */
 export function RamzyStudioPortfolioEditor({
+  colorScheme,
   pageId,
   session,
   initialContent,
@@ -107,7 +110,7 @@ export function RamzyStudioPortfolioEditor({
   }, [session.accessToken, session.apiUrl, session.collaborationUrl]);
 
   return (
-    <PortfolioRuntimeProviders>
+    <PortfolioRuntimeProviders colorScheme={colorScheme}>
       <TransclusionLookupProvider>
         <DirectPortfolioEditor
           pageId={pageId}

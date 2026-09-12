@@ -10,7 +10,7 @@ import { Superscript } from "@tiptap/extension-superscript";
 import SubScript from "@tiptap/extension-subscript";
 import { Typography } from "@tiptap/extension-typography";
 import { TextStyle } from "@tiptap/extension-text-style";
-import { Color } from "@tiptap/extension-color";
+import { ThemeAwareColor } from "./theme-aware-color";
 import Youtube from "@/features/editor/extensions/interactive-youtube";
 import SlashCommand, {
   SlashCommandExtension as Command,
@@ -288,7 +288,7 @@ export const mainExtensions = [
     atomNodes: ["base", "photoGrid", "photoAlbum"],
   }),
   TextStyle,
-  Color,
+  ThemeAwareColor,
   SlashCommand,
   EmojiCommand,
   Comment.configure({

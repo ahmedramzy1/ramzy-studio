@@ -84,10 +84,10 @@ export const CellChevronMenu = React.memo(function CellChevronMenu({
                 }}
               >
                 <ColorSwatch
-                  color={c.color || "#ffffff"}
+                  color={c.color || "var(--mantine-color-body)"}
                   size={22}
                   style={{
-                    border: c.color === "" ? "1px solid #e5e7eb" : undefined,
+                    border: c.color === "" ? "1px solid var(--mantine-color-default-border)" : undefined,
                   }}
                 />
               </button>

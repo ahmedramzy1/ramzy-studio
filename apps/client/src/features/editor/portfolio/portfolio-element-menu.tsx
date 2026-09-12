@@ -1085,7 +1085,7 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
           text: block.node.textContent,
           wrap: Boolean(block.node.attrs.wrap),
           lineNumbers: Boolean(block.node.attrs.lineNumbers),
-          theme: block.node.attrs.theme === "light" ? "light" : "dark",
+          theme: ["light", "dark"].includes(block.node.attrs.theme) ? block.node.attrs.theme : "auto",
           collapsed: Boolean(block.node.attrs.collapsed),
         };
       }
@@ -1692,14 +1692,14 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
             >
               <Menu.Target>
                 <Tooltip
-                  label={`${current.theme === "light" ? "Light" : "Dark"} theme`}
+                  label={`${current.theme === "auto" ? "Page" : current.theme === "light" ? "Light" : "Dark"} theme`}
                   position="top"
                   withinPortal={false}
                 >
                   <ActionIcon
                     size="lg"
                     variant="subtle"
-                    aria-label={`${current.theme === "light" ? "Light" : "Dark"} theme`}
+                    aria-label={`${current.theme === "auto" ? "Page" : current.theme === "light" ? "Light" : "Dark"} theme`}
                     onMouseDown={(event) => event.preventDefault()}
                   >
                     <IconSunMoon size={18} />
@@ -1707,6 +1707,12 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
                 </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
+                <Menu.Item
+                  rightSection={current.theme === "auto" ? <IconCheck size={14} /> : null}
+                  onClick={() => updatePortfolioTopLevelBlockAttributes(editor, { theme: "auto" })}
+                >
+                  Page theme
+                </Menu.Item>
                 <Menu.Item
                   rightSection={
                     current.theme === "dark" ? <IconCheck size={14} /> : null

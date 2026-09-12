@@ -23,6 +23,18 @@ export const portfolioCssResolver: CSSVariablesResolver = (theme) => {
       "--ramzy-element-surface": c.bgSurface,
       "--ramzy-element-border": c.borderDefault,
       "--ramzy-element-shadow": c.elev2,
+      "--ramzy-element-focus": c.borderFocus,
+      "--ramzy-element-muted": c.textSecondary,
+      "--ramzy-element-error": c.errorText,
+      "--ramzy-element-success": c.successText,
+      "--ramzy-element-link": c.textLink,
+      "--mantine-color-anchor": c.textLink,
+      "--mantine-color-error": c.errorText,
+      "--mantine-primary-color-light-color": c.signalText,
+      "--mantine-color-blue-light-color": c.signalText,
+      "--mantine-primary-color-light": name === "dark" ? "rgba(107,132,255,.18)" : "rgba(59,91,255,.10)",
+      "--mantine-color-blue-light": name === "dark" ? "rgba(107,132,255,.18)" : "rgba(59,91,255,.10)",
+      "--mantine-color-red-light-color": c.errorText,
     };
   }
   return {

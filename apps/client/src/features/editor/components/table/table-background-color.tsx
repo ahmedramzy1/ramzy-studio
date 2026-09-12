@@ -130,10 +130,10 @@ export const TableBackgroundColor: FC<TableBackgroundColorProps> = ({
                 title={t(item.name)}
               >
                 <ColorSwatch
-                  color={item.color || "#ffffff"}
+                  color={item.color || "var(--mantine-color-body)"}
                   size={24}
                   style={{
-                    border: item.color === "" ? "1px solid #e5e7eb" : undefined,
+                    border: item.color === "" ? "1px solid var(--mantine-color-default-border)" : undefined,
                     cursor: "pointer",
                   }}
                 >

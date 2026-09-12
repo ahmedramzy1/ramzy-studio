@@ -476,7 +476,7 @@ export default function RamzyAudioPlayer({
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
             <button type="button" aria-label="Playback speed" title="Playback speed" onClick={cycleSpeed} style={{ minWidth: 52, height: 38, padding: "0 10px", border: `1px solid ${c.borderDefault}`, borderRadius: 999, background: c.bgElevated, color: c.textSecondary, fontFamily: FONT.body, fontSize: 13, fontWeight: 650, cursor: "pointer" }}>{speed}×</button>
-            <button type="button" aria-label="Repeat" aria-pressed={localLoop} onClick={() => setLocalLoop((value) => !value)} style={{ ...iconButton, color: localLoop ? SIGNAL : c.textSecondary, background: localLoop ? c.signalBg : "transparent" }}><AudioIcon name="loop" size={22} /></button>
+            <button type="button" aria-label="Repeat" aria-pressed={localLoop} onClick={() => setLocalLoop((value) => !value)} style={{ ...iconButton, color: localLoop ? c.signalText : c.textSecondary, background: localLoop ? c.signalBg : "transparent" }}><AudioIcon name="loop" size={22} /></button>
           </div>
         </div>
 

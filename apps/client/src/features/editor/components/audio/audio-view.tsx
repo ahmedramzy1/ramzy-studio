@@ -1,3 +1,4 @@
+import { useComputedColorScheme } from "@mantine/core";
 import { NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 import { BlockDragHandle } from "@/features/editor/components/common/block-drag-handle";
 import { Group, Loader, Text } from "@mantine/core";
@@ -14,6 +15,7 @@ import {
 import { isAudioFile } from "@/features/editor/components/media/media-file-utils.ts";
 
 export default function AudioView(props: NodeViewProps) {
+  const mode = useComputedColorScheme("light");
   const { t } = useTranslation();
   const { editor, node, updateAttributes } = props;
   const {
@@ -195,6 +197,7 @@ export default function AudioView(props: NodeViewProps) {
         {safeSrc && activated && (
           <div style={{ position: "relative", width: "100%" }}>
             <RamzyAudioPlayer
+              mode={mode}
               src={safeSrc}
               title={title}
               artist={artist || undefined}
@@ -210,7 +213,7 @@ export default function AudioView(props: NodeViewProps) {
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  background: "rgba(255,255,255,.76)",
+                  background: "color-mix(in srgb, var(--mantine-color-body) 85%, transparent)",
                   backdropFilter: "blur(2px)",
                 }}
               >
@@ -223,6 +226,7 @@ export default function AudioView(props: NodeViewProps) {
         {!safeSrc && previewSrc && (
           <Group pos="relative" w="100%">
             <RamzyAudioPlayer
+              mode={mode}
               src={previewSrc}
               title={title}
             />

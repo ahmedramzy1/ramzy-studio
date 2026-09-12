@@ -5,6 +5,7 @@ import { render, act, cleanup, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { Editor } from '@tiptap/core';
 import { RamzyStudioPortfolioEditor } from './portfolio-editor';
+import { RamzyStudioPortfolioRenderer } from './portfolio-renderer';
 
 // Keep real MutationObservers and ProseMirror DOM reconciliation. The limit
 // turns a microtask loop into an assertion failure instead of hanging CI.
@@ -48,7 +49,8 @@ function labDocument() {
   ] });
 }
 
-it.each([true, false])('mounts all Experience Lab chapters and switches tabs (editable=%s)', async (editable) => {
+it.each(['build', 'preview', 'public'])('mounts the full Lab, switches theme and tabs (%s)', async (surface) => {
+  const editable = surface === 'build';
   const assertSettled = watchMutationLoops();
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
   vi.stubGlobal('IntersectionObserver', class { observe() {} unobserve() {} disconnect() {} });
@@ -58,21 +60,45 @@ it.each([true, false])('mounts all Experience Lab chapters and switches tabs (ed
     matches: false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {},
   })));
   let editor: Editor | null = null;
+  document.documentElement.setAttribute("data-theme", "dark");
   try {
-    render(<StrictMode><MemoryRouter><RamzyStudioPortfolioEditor
+    const session = { accessToken: 'test', user: { id: 'test', name: 'Test' }, apiUrl: 'http://localhost/api', collaborationUrl: '' } as any;
+    render(<StrictMode><MemoryRouter>{editable ? <RamzyStudioPortfolioEditor
       pageId="experience-lab-test"
       initialContent={labDocument()}
-      editable={editable}
       onEditorChange={value => { editor = value; }}
-      session={{ accessToken: 'test', user: { id: 'test', name: 'Test' }, apiUrl: 'http://localhost/api', collaborationUrl: '' } as any}
-    /></MemoryRouter></StrictMode>);
+      session={session}
+    /> : <RamzyStudioPortfolioRenderer
+      pageId="experience-lab-test"
+      content={labDocument()}
+      onCreate={value => { editor = value; }}
+      session={surface === 'preview' ? session : undefined}
+    />}</MemoryRouter></StrictMode>);
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 200)); });
     assertSettled();
+    // EditorProvider's onCreate may report StrictMode's disposable first
+    // instance. Inspect the actual DOM owner for readonly lifecycle assertions.
+    const domEditor = () => (document.querySelector('.tiptap') as HTMLElement & { editor: Editor })?.editor;
+    if (!editable) editor = domEditor();
     expect(editor).toBeTruthy();
     expect(document.querySelectorAll('.tiptap h1')).toHaveLength(11);
     const tabs = document.querySelector('[data-type="tabs"]')!;
     const panels = () => Array.from(tabs.querySelector('[data-tabs-content]')!.children) as HTMLElement[];
     const original = editor!.getJSON();
+    const liveEditor = editor;
+    expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe("dark");
+    for (const mode of ["light", "dark", "light"]) {
+      await act(async () => {
+        document.documentElement.setAttribute("data-theme", mode);
+        await new Promise(resolve => setTimeout(resolve, 60));
+      });
+      assertSettled();
+      expect(document.documentElement.getAttribute("data-mantine-color-scheme")).toBe(mode);
+      expect(domEditor()).toBe(liveEditor);
+      expect(editor).toBe(liveEditor);
+      expect(editor!.isDestroyed).toBe(false);
+      expect(editor!.getJSON()).toEqual(original);
+    }
     fireEvent.mouseDown(tabs.querySelector('[data-tab-index="1"]')!);
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 60)); });
     assertSettled();
@@ -82,6 +108,7 @@ it.each([true, false])('mounts all Experience Lab chapters and switches tabs (ed
     expect(editor!.getJSON()).toEqual(original);
   } finally {
     cleanup();
+    document.documentElement.removeAttribute("data-theme");
     // TipTap defers destruction; keep browser shims until it has completed.
     await new Promise(resolve => setTimeout(resolve, 100));
     vi.restoreAllMocks();

@@ -1,3 +1,4 @@
+import { useComputedColorScheme } from "@mantine/core";
 import {
   CollectionFrame,
   CollectionTitle,
@@ -47,6 +48,7 @@ export default function MediaPlaylistView({
   updateAttributes,
   selected,
 }: NodeViewProps) {
+  const mode = useComputedColorScheme("light");
   const inputRef = useRef<HTMLInputElement>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -413,6 +415,7 @@ export default function MediaPlaylistView({
           {active ? (
             kind === "video" ? (
               <RamzyVideoPlayer
+              mode={mode}
                 key={active.key}
                 src={getFileUrl(active.src)}
                 poster={activePoster}
@@ -435,6 +438,7 @@ export default function MediaPlaylistView({
               />
             ) : (
               <RamzyAudioPlayer
+              mode={mode}
                 key={active.key}
                 src={getFileUrl(active.src)}
                 title={active.title || "Audio"}
@@ -469,6 +473,7 @@ export default function MediaPlaylistView({
 
           {items.length > 0 && node.attrs.showQueue !== false && (
             <RamzyPlaylist
+              mode={mode}
               items={queueItems}
               activeKey={active?.key}
               playingKey={playKey}

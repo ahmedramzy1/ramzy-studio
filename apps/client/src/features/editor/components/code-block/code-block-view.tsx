@@ -1,5 +1,5 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { ActionIcon, Group, Select, Tooltip } from "@mantine/core";
+import { ActionIcon, Group, Select, Tooltip, useComputedColorScheme } from "@mantine/core";
 import { CopyButton } from "@/components/common/copy-button";
 import { useEffect, useState } from "react";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
@@ -17,6 +17,9 @@ export default function CodeBlockView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { node, updateAttributes, extension, editor, getPos } = props;
   const { language, wrap, lineNumbers, theme, collapsed } = node.attrs;
+  const hostTheme = useComputedColorScheme("light");
+  const codeTheme = theme === "light" || theme === "dark" ? theme : hostTheme;
+  const dark = codeTheme === "dark";
   const [languageValue, setLanguageValue] = useState<string | null>(
     language || null,
   );
@@ -50,12 +53,17 @@ export default function CodeBlockView(props: NodeViewProps) {
   return (
     <NodeViewWrapper
       className="codeBlock"
-      data-code-theme={theme === "light" ? "light" : "dark"}
+      data-code-theme={codeTheme}
       style={{
-        background: theme === "light" ? "#f6f7f9" : undefined,
-        color: theme === "light" ? "#202124" : undefined,
+        "--ramzy-code-bg": dark ? "var(--mantine-color-dark-8)" : "var(--mantine-color-gray-0)",
+        "--ramzy-code-text": dark ? "var(--mantine-color-dark-1)" : "var(--mantine-color-gray-9)",
+        "--ramzy-code-comment": dark ? "var(--mantine-color-dark-2)" : "var(--mantine-color-gray-7)",
+        "--ramzy-code-red": dark ? "var(--mantine-color-red-3)" : "var(--mantine-color-red-7)",
+        "--ramzy-code-number": dark ? "var(--mantine-color-cyan-3)" : "var(--mantine-color-blue-7)",
+        "--ramzy-code-title": dark ? "var(--mantine-color-yellow-3)" : "var(--mantine-color-pink-7)",
+        "--ramzy-code-keyword": dark ? "var(--mantine-color-violet-3)" : "var(--mantine-color-violet-7)",
         borderRadius: "var(--ramzy-radius-bordered, 8px)",
-      }}
+      } as React.CSSProperties}
     >
       {!portfolioMode && (
         <Group
@@ -121,7 +129,7 @@ export default function CodeBlockView(props: NodeViewProps) {
               borderRight: "1px solid rgba(127,127,127,.25)",
               textAlign: "right",
               userSelect: "none",
-              opacity: 0.48,
+              color: "var(--ramzy-code-comment)",
             }}
           >
             {Array.from(
@@ -140,7 +148,7 @@ export default function CodeBlockView(props: NodeViewProps) {
 
       {language === "mermaid" && (
         <Suspense fallback={null}>
-          <MermaidView props={props} />
+          <MermaidView props={props} colorScheme={codeTheme} />
         </Suspense>
       )}
     </NodeViewWrapper>
