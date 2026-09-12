@@ -24,7 +24,10 @@ import {
   type PortfolioColumnRatioGuide,
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
-import { setPortfolioGridResizePreview } from "./portfolio-grid-resize-preview-extension";
+import {
+  isPortfolioFixedText,
+  setPortfolioGridResizePreview,
+} from "./portfolio-grid-resize-preview-extension";
 
 type ActiveBlock = {
   element: HTMLElement;
@@ -119,6 +122,7 @@ function supportsPortfolioWidth(editor: Editor, position: number) {
   return (
     node?.type.name === "columns" ||
     (!!node?.isBlock &&
+      !isPortfolioFixedText(node.type.name) &&
       Object.prototype.hasOwnProperty.call(
         node.type.spec.attrs ?? {},
         "portfolioWidth",
@@ -184,17 +188,28 @@ function setBlockWidth(
   customWidth: number,
 ) {
   const node = editor.state.doc.nodeAt(position);
-  if (!node || (!node.isBlock && node.type.name !== "columns")) return;
+  if (
+    !node ||
+    isPortfolioFixedText(node.type.name) ||
+    (!node.isBlock && node.type.name !== "columns")
+  )
+    return;
+  const baseline = Math.min(
+    editor.view.dom.getBoundingClientRect().width,
+    MAX_PORTFOLIO_BLOCK_WIDTH,
+  );
+  const savedWidth =
+    customWidth <= baseline + 0.5 ? null : Math.round(customWidth);
   const attributes =
     node.type.name === "columns"
       ? {
           ...node.attrs,
-          widthMode,
-          customWidth: Math.round(customWidth),
+          widthMode: savedWidth === null ? "normal" : widthMode,
+          customWidth: savedWidth,
         }
       : {
           ...node.attrs,
-          portfolioWidth: Math.round(customWidth),
+          portfolioWidth: savedWidth,
         };
   editor.view.dispatch(
     editor.state.tr.setNodeMarkup(position, undefined, attributes),
@@ -615,30 +630,49 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     setOuterResizing(true);
     const startWidth = active.element.getBoundingClientRect().width;
     const editorWidth = editor.view.dom.getBoundingClientRect().width;
-    const canvas = editor.view.dom.closest<HTMLElement>("[data-ramzy-portfolio-canvas]");
+    const canvas = editor.view.dom.closest<HTMLElement>(
+      "[data-ramzy-portfolio-canvas]",
+    );
     const canvasWidth = canvas?.getBoundingClientRect().width;
-    const available = canvasWidth && canvasWidth > 0
-      ? canvasWidth
-      : Math.max(editorWidth, window.innerWidth - 96);
+    const available =
+      canvasWidth && canvasWidth > 0
+        ? canvasWidth
+        : Math.max(editorWidth, window.innerWidth - 96);
     const columns = columnsIn(active.element);
     const occupiedColumnWidth = columns.reduce(
       (total, column) => total + column.getBoundingClientRect().width,
       0,
     );
     const totalGapWidth = Math.max(0, startWidth - occupiedColumnWidth);
-    const minimumWidth =
-      active.nodeType === "columns"
-        ? columns.length * MIN_PORTFOLIO_COLUMN_WIDTH + totalGapWidth
-        : 240;
     const nextMode = (active.element.dataset.widthMode ||
       "normal") as PortfolioGridWidthMode;
     const widths: Record<PortfolioGridWidthMode, number> = {
-      normal: Math.min(editorWidth, MAX_PORTFOLIO_BLOCK_WIDTH),
-      wide: Math.min(1120, available, Math.max(editorWidth, window.innerWidth - 352)),
+      normal: Math.min(editorWidth, MAX_PORTFOLIO_BLOCK_WIDTH, available),
+      wide: Math.min(
+        1120,
+        available,
+        Math.max(editorWidth, window.innerWidth - 352),
+      ),
       full: Math.min(MAX_PORTFOLIO_BLOCK_WIDTH, available),
     };
-    const maximumWidth = Math.max(minimumWidth, widths.full);
-    const guideWidths = portfolioResizeGuideWidths(minimumWidth, maximumWidth);
+    const maximumWidth = widths.full;
+    const minimumWidth = Math.min(
+      maximumWidth,
+      Math.max(
+        widths.normal,
+        active.nodeType === "columns"
+          ? columns.length * MIN_PORTFOLIO_COLUMN_WIDTH + totalGapWidth
+          : 0,
+      ),
+    );
+    // Include the exact 100% measure even when it falls between grid increments.
+    const guideWidths = [
+      ...new Set([
+        minimumWidth,
+        ...portfolioResizeGuideWidths(minimumWidth, maximumWidth),
+        maximumWidth,
+      ]),
+    ].sort((a, b) => a - b);
     const center = active.element.getBoundingClientRect().left + startWidth / 2;
     sessionRef.current = {
       kind: "row",

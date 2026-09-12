@@ -13,7 +13,6 @@ import {
   type RamzyPortfolioSession,
 } from "@docmost/editor-ext/portfolio";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
-import GlobalDragHandle from "@/features/editor/extensions/drag-handle";
 import {
   handleFileDrop,
   handlePaste,
@@ -201,11 +200,6 @@ function DirectPortfolioEditor({
       ...mainExtensions.filter(
         (extension) => extension.name !== "globalDragHandle",
       ),
-      GlobalDragHandle.configure({
-        customNodes: ["transclusionSource", "transclusionReference"],
-        atomNodes: ["base", "photoGrid", "photoAlbum"],
-        nativeDrag: false,
-      }),
       PortfolioDndPreview,
       PortfolioBlockWidth,
       PortfolioGridResizePreview,
@@ -380,6 +374,7 @@ function DirectPortfolioEditor({
   return (
     <div
       className="editor-container"
+      data-ramzy-block-actions-host
       style={{ position: "relative", minHeight: 240 }}
     >
       <RamzyPortfolioEditor

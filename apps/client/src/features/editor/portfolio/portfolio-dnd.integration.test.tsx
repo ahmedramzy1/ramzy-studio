@@ -4,7 +4,7 @@ import { Editor, Node } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PortfolioDnd } from "./portfolio-dnd";
 import { PortfolioDndPreview } from "./portfolio-dnd-preview-extension";
@@ -406,6 +406,33 @@ describe("portfolio Pragmatic Drag and Drop integration", () => {
     editor = null;
     document.body.replaceChildren();
     vi.unstubAllGlobals();
+  });
+
+  it("registers a contextual rail outside the editor and drags the current target after retargeting", async () => {
+    editor = createEditor();
+    const host = editor.view.dom.parentElement!;
+    host.setAttribute("data-ramzy-block-actions-host", "");
+    render(<PortfolioDnd editor={editor} />);
+    const target = editor.view.dom.children[0] as HTMLElement;
+    const source = editor.view.dom.children[1] as HTMLElement;
+    setRect(target, 100, 100, 800, 300);
+    setRect(source, 100, 440, 800, 180);
+    const handle = document.createElement("button");
+    handle.setAttribute("data-ramzy-portfolio-drag-handle", "");
+    handle.dataset.ramzyNodePosition = "0";
+    host.append(handle);
+    await waitFor(() => expect(handle.draggable).toBe(true));
+    handle.dataset.ramzyNodePosition = String(
+      editor.state.doc.firstChild!.nodeSize,
+    );
+    handle.dispatchEvent(dragEvent("dragstart", 65, 450));
+    target.dispatchEvent(dragEvent("dragover", 120, 240));
+    expect(source.classList.contains("ramzy-dnd-source")).toBe(true);
+    target.dispatchEvent(dragEvent("drop", 120, 240));
+    expect(editor.state.doc.firstChild?.type.name).toBe("columns");
+    expect(editor.state.doc.firstChild?.firstChild?.firstChild?.type.name).toBe(
+      "media",
+    );
   });
 
   it.each([

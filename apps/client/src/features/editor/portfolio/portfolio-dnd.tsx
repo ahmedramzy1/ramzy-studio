@@ -465,6 +465,10 @@ function targetDataAtInput(
 function PortfolioDndController({ editor }: { editor: Editor }) {
   useEffect(() => {
     const root = editor.view.dom;
+    const actionsHost =
+      root.closest<HTMLElement>("[data-ramzy-block-actions-host]") ??
+      root.parentElement ??
+      root;
     const scrollContainers = verticalScrollContainers(root);
     const handleCleanups = new Map<HTMLElement, () => void>();
     let dragGeometry: DragGeometry | null = null;
@@ -513,6 +517,9 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
         ":scope > .drag-handle",
       );
       if (globalHandle) registerHandle(globalHandle);
+      actionsHost
+        .querySelectorAll<HTMLElement>("[data-ramzy-portfolio-drag-handle]")
+        .forEach(registerHandle);
       root
         .querySelectorAll<HTMLElement>("[data-ramzy-block-drag-handle]")
         .forEach(registerHandle);
@@ -520,11 +527,7 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
 
     refreshRegistrations();
     const observer = new MutationObserver(refreshRegistrations);
-    const observerRoot = root.parentElement?.querySelector(
-      ":scope > .drag-handle",
-    )
-      ? root.parentElement
-      : root;
+    const observerRoot = actionsHost;
     observer.observe(observerRoot, {
       childList: true,
       subtree: true,
@@ -542,14 +545,16 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
       const target = event.target;
       if (
         target instanceof Element &&
-        target.closest("[data-ramzy-block-drag-handle]")
+        target.closest(
+          "[data-ramzy-block-drag-handle], [data-ramzy-portfolio-drag-handle]",
+        )
       ) {
         setDragUiActive(true);
       }
     };
     const onNativeDragEnd = () => setDragUiActive(false);
-    root.addEventListener("dragstart", onNativeDragStart, true);
-    root.addEventListener("dragend", onNativeDragEnd, true);
+    actionsHost.addEventListener("dragstart", onNativeDragStart, true);
+    actionsHost.addEventListener("dragend", onNativeDragEnd, true);
     const dataAtInput = (source: SourceData, input: Input) => {
       dragGeometry ??= captureDragGeometry(editor, scrollContainers);
       return targetDataAtInput(
@@ -635,8 +640,8 @@ function PortfolioDndController({ editor }: { editor: Editor }) {
     );
     return () => {
       observer.disconnect();
-      root.removeEventListener("dragstart", onNativeDragStart, true);
-      root.removeEventListener("dragend", onNativeDragEnd, true);
+      actionsHost.removeEventListener("dragstart", onNativeDragStart, true);
+      actionsHost.removeEventListener("dragend", onNativeDragEnd, true);
       cleanup();
       handleCleanups.forEach((unbind) => unbind());
       dragGeometry = null;

@@ -167,7 +167,10 @@ function setupProseMirrorGrid() {
   return { editor, row, left, right };
 }
 
-function setupProseMirrorBlock(nodeType: "paragraph" | "photoAlbum") {
+function setupProseMirrorBlock(
+  nodeType: "paragraph" | "photoAlbum",
+  measure = 800,
+) {
   const element = document.createElement("div");
   document.body.append(element);
   const editor = new TiptapEditor({
@@ -199,7 +202,7 @@ function setupProseMirrorBlock(nodeType: "paragraph" | "photoAlbum") {
   const editorDom = editor.view.dom;
   const block = editorDom.firstElementChild as HTMLElement;
   Object.defineProperty(editorDom, "getBoundingClientRect", {
-    value: () => rect(100, 800),
+    value: () => rect(100, measure),
   });
   Object.defineProperty(block, "getBoundingClientRect", {
     value: () => {
@@ -402,7 +405,7 @@ describe("portfolio grid resize through browser pointer events", () => {
     editor.destroy();
   });
 
-  it.each(["paragraph", "photoAlbum"] as const)(
+  it.each(["photoAlbum"] as const)(
     "resizes a standalone %s live and persists its exact width",
     async (nodeType) => {
       const { editor, block } = setupProseMirrorBlock(nodeType);
@@ -425,13 +428,13 @@ describe("portfolio grid resize through browser pointer events", () => {
 
       act(() => {
         outerRight.dispatchEvent(pointerEvent("pointerdown", 900, 11));
-        window.dispatchEvent(pointerEvent("pointermove", 850, 11));
+        window.dispatchEvent(pointerEvent("pointermove", 950, 11));
       });
 
       await Promise.resolve();
       expect(
         block.style.getPropertyValue("--ramzy-portfolio-block-width"),
-      ).toBe("704px");
+      ).toBe("896px");
       expect(block.classList.contains("ramzy-block-resize-preview")).toBe(true);
       expect(
         document.querySelectorAll(".ramzy-block-resize-snap-guide").length,
@@ -446,11 +449,11 @@ describe("portfolio grid resize through browser pointer events", () => {
       );
 
       act(() => {
-        window.dispatchEvent(pointerEvent("pointerup", 850, 11));
+        window.dispatchEvent(pointerEvent("pointerup", 950, 11));
       });
 
       expect(editor.getJSON().content?.[0].attrs).toEqual(
-        expect.objectContaining({ portfolioWidth: 704 }),
+        expect.objectContaining({ portfolioWidth: 896 }),
       );
       const savedBlock = editor.view.dom.firstElementChild as HTMLElement;
       expect(savedBlock.classList.contains("ramzy-block-resize-preview")).toBe(
@@ -461,7 +464,7 @@ describe("portfolio grid resize through browser pointer events", () => {
       ).toBe(true);
       expect(
         savedBlock.style.getPropertyValue("--ramzy-portfolio-block-width"),
-      ).toBe("704px");
+      ).toBe("896px");
       expect(
         document.querySelectorAll(".ramzy-block-resize-snap-guide"),
       ).toHaveLength(0);
@@ -469,8 +472,33 @@ describe("portfolio grid resize through browser pointer events", () => {
     },
   );
 
+  it("excludes standalone text from width controls", () => {
+    const { editor } = setupProseMirrorBlock("paragraph");
+    expect(document.querySelectorAll(".ramzy-grid-resize-handle")).toHaveLength(
+      0,
+    );
+    editor.destroy();
+  });
+
+  it("clamps inward resizing to the exact 100% measure and clears the pixel override", async () => {
+    const { editor, block } = setupProseMirrorBlock("photoAlbum", 803);
+    const handle = document.querySelector<HTMLElement>(
+      '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+    )!;
+    act(() => {
+      handle.dispatchEvent(pointerEvent("pointerdown", 900, 25));
+      window.dispatchEvent(pointerEvent("pointermove", 500, 25));
+    });
+    expect(block.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe(
+      "803px",
+    );
+    act(() => window.dispatchEvent(pointerEvent("pointerup", 500, 25)));
+    expect(editor.getJSON().content?.[0].attrs?.portfolioWidth).toBeNull();
+    editor.destroy();
+  });
+
   it("clears a standalone block preview and guides when resize is cancelled", async () => {
-    const { editor, block } = setupProseMirrorBlock("paragraph");
+    const { editor, block } = setupProseMirrorBlock("photoAlbum");
     const outerLeft = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="outer"][data-side="left"]',
     )!;
@@ -501,7 +529,7 @@ describe("portfolio grid resize through browser pointer events", () => {
 
   it("snaps a standalone block to the visible canvas grid before release", async () => {
     vi.stubGlobal("innerWidth", 1800);
-    const { editor, block } = setupProseMirrorBlock("paragraph");
+    const { editor, block } = setupProseMirrorBlock("photoAlbum");
     const outerRight = document.querySelector<HTMLElement>(
       '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
     )!;
@@ -530,28 +558,38 @@ describe("portfolio grid resize through browser pointer events", () => {
     editor.destroy();
   });
 
-  it.each(["paragraph", "photoAlbum"] as const)("keeps %s resizing inside the host canvas beside the navigator", async (nodeType) => {
-    vi.stubGlobal("innerWidth", 2048);
-    const { editor, block } = setupProseMirrorBlock(nodeType);
-    const canvas = editor.view.dom.parentElement!;
-    canvas.setAttribute("data-ramzy-portfolio-canvas", "");
-    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(rect(20, 960));
-    const handle = document.querySelector<HTMLElement>(
-      '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
-    )!;
-    act(() => {
-      handle.dispatchEvent(pointerEvent("pointerdown", 900, 24));
-      window.dispatchEvent(pointerEvent("pointermove", 1900, 24));
-    });
-    await Promise.resolve();
-    expect(block.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe("960px");
-    const guidePositions = Array.from(document.querySelectorAll<HTMLElement>(".ramzy-block-resize-snap-guide"))
-      .map(guide => parseFloat(guide.style.left));
-    expect(guidePositions.every(left => left >= 20 && left <= 980)).toBe(true);
-    act(() => window.dispatchEvent(pointerEvent("pointerup", 1900, 24)));
-    expect(editor.getJSON().content?.[0].attrs?.portfolioWidth).toBe(960);
-    editor.destroy();
-  });
+  it.each(["photoAlbum"] as const)(
+    "keeps %s resizing inside the host canvas beside the navigator",
+    async (nodeType) => {
+      vi.stubGlobal("innerWidth", 2048);
+      const { editor, block } = setupProseMirrorBlock(nodeType);
+      const canvas = editor.view.dom.parentElement!;
+      canvas.setAttribute("data-ramzy-portfolio-canvas", "");
+      vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(rect(20, 960));
+      const handle = document.querySelector<HTMLElement>(
+        '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+      )!;
+      act(() => {
+        handle.dispatchEvent(pointerEvent("pointerdown", 900, 24));
+        window.dispatchEvent(pointerEvent("pointermove", 1900, 24));
+      });
+      await Promise.resolve();
+      expect(
+        block.style.getPropertyValue("--ramzy-portfolio-block-width"),
+      ).toBe("960px");
+      const guidePositions = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".ramzy-block-resize-snap-guide",
+        ),
+      ).map((guide) => parseFloat(guide.style.left));
+      expect(guidePositions.every((left) => left >= 20 && left <= 980)).toBe(
+        true,
+      );
+      act(() => window.dispatchEvent(pointerEvent("pointerup", 1900, 24)));
+      expect(editor.getJSON().content?.[0].attrs?.portfolioWidth).toBe(960);
+      editor.destroy();
+    },
+  );
 
   it("never lets a standalone block exceed the safe full-width boundary", async () => {
     vi.stubGlobal("innerWidth", 2048);

@@ -19,7 +19,8 @@ export const portfolioGridResizePreviewKey =
     "portfolioGridResizePreview",
   );
 
-export const PORTFOLIO_RESIZABLE_BLOCK_TYPES = [
+// Text follows the reading measure (or its parent column), never a custom row width.
+export const PORTFOLIO_FIXED_TEXT_TYPES = [
   "paragraph",
   "heading",
   "blockquote",
@@ -27,10 +28,15 @@ export const PORTFOLIO_RESIZABLE_BLOCK_TYPES = [
   "orderedList",
   "taskList",
   "codeBlock",
+  "details",
+] as const;
+export const isPortfolioFixedText = (name: string) =>
+  (PORTFOLIO_FIXED_TEXT_TYPES as readonly string[]).includes(name);
+
+export const PORTFOLIO_RESIZABLE_BLOCK_TYPES = [
   "horizontalRule",
   "table",
   "mathBlock",
-  "details",
   "youtube",
   "image",
   "video",
@@ -83,6 +89,7 @@ function resizeDecorations(
   const decorations: Decoration[] = [];
 
   state.doc.forEach((node, position) => {
+    if (isPortfolioFixedText(node.type.name)) return;
     if (preview?.kind === "block" && preview.position === position) return;
     const width = validWidth(
       node.type.name === "columns"
@@ -102,7 +109,8 @@ function resizeDecorations(
 
   if (preview.kind === "block") {
     const block = state.doc.nodeAt(preview.position);
-    if (!block?.isBlock) return DecorationSet.create(state.doc, decorations);
+    if (!block?.isBlock || isPortfolioFixedText(block.type.name))
+      return DecorationSet.create(state.doc, decorations);
     decorations.push(
       Decoration.node(preview.position, preview.position + block.nodeSize, {
         class: "ramzy-block-resize-preview",
@@ -150,9 +158,9 @@ export const PortfolioBlockWidth = Extension.create({
   name: "portfolioBlockWidth",
 
   addGlobalAttributes() {
-    return [
-      {
-        types: [...PORTFOLIO_RESIZABLE_BLOCK_TYPES],
+    return [PORTFOLIO_FIXED_TEXT_TYPES, PORTFOLIO_RESIZABLE_BLOCK_TYPES].map(
+      (types) => ({
+        types: [...types],
         attributes: {
           portfolioWidth: {
             default: null,
@@ -163,6 +171,8 @@ export const PortfolioBlockWidth = Extension.create({
               return validWidth(value);
             },
             renderHTML: (attributes) => {
+              // Retain old JSON attributes for compatibility without rendering stale text widths.
+              if (types === PORTFOLIO_FIXED_TEXT_TYPES) return {};
               const width = validWidth(attributes.portfolioWidth);
               if (!width) return {};
               return {
@@ -172,8 +182,8 @@ export const PortfolioBlockWidth = Extension.create({
             },
           },
         },
-      },
-    ];
+      }),
+    );
   },
 });
 

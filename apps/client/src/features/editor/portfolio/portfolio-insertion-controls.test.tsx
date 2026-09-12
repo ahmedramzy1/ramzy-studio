@@ -96,7 +96,9 @@ describe("portfolio insertion controls", () => {
     act(() => editor!.mount(element));
     await waitFor(() => {
       expect(observe).toHaveBeenCalledWith(editor!.view.dom);
-      expect(container.querySelectorAll("button")).toHaveLength(0);
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(0);
     });
     unmount();
     expect(disconnect).toHaveBeenCalledTimes(2);
@@ -137,13 +139,17 @@ describe("portfolio insertion controls", () => {
     const { container, getByRole } = render(
       <PortfolioInsertionControls editor={editor} />,
     );
-    expect(container.querySelectorAll("button")).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".ramzy-context-insert-control"),
+    ).toHaveLength(0);
     hover(editor.view.dom.children[0]);
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(1),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(1),
     );
     hover(editor.view.dom.children[1]);
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("button", { name: /Add content/ }));
     expect(texts(editor.state.doc)).toEqual(["First", "Second", "/"]);
   });
 
@@ -154,25 +160,31 @@ describe("portfolio insertion controls", () => {
       left: 100,
       top: 100,
       right: 500,
-      bottom: 150,
+      bottom: 600,
       width: 400,
-      height: 50,
+      height: 500,
     } as DOMRect);
     const { container } = render(
       <PortfolioInsertionControls editor={editor} />,
     );
     hover(block);
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(1),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(1),
     );
     const move = new Event("pointermove", { bubbles: true });
-    Object.assign(move, { clientX: 75, clientY: 110, pointerType: "mouse" });
+    Object.assign(move, { clientX: 75, clientY: 550, pointerType: "mouse" });
     fireEvent(document.body, move);
     hover(container.querySelector("button")!);
-    expect(container.querySelectorAll("button")).toHaveLength(1);
+    expect(
+      container.querySelectorAll(".ramzy-context-insert-control"),
+    ).toHaveLength(1);
     hover(document.body);
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(0),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(0),
     );
   });
 
@@ -190,12 +202,16 @@ describe("portfolio insertion controls", () => {
     const { container, getByRole } = render(
       <PortfolioInsertionControls editor={editor} />,
     );
-    expect(container.querySelectorAll("button")).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".ramzy-context-insert-control"),
+    ).toHaveLength(0);
     hover(editor.view.dom.querySelector('[data-type="column"] p')!);
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(1),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(1),
     );
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("button", { name: /Add content/ }));
     const doc = editor.state.doc;
     expect(texts(doc.child(0).child(0))).toEqual(["Left", "/", "Lower"]);
     expect(doc.child(0).child(1).textContent).toBe("Right");
@@ -210,9 +226,11 @@ describe("portfolio insertion controls", () => {
     Object.assign(tap, { pointerType: "touch" });
     fireEvent(editor.view.dom.children[1], tap);
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(1),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(1),
     );
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("button", { name: /Add content/ }));
     expect(texts(editor.state.doc)).toEqual(["First", "/"]);
   });
 
@@ -226,7 +244,9 @@ describe("portfolio insertion controls", () => {
     );
     act(() => editor!.setEditable(false));
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(0),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(0),
     );
   });
 
@@ -236,12 +256,40 @@ describe("portfolio insertion controls", () => {
       <PortfolioInsertionControls editor={editor} />,
     );
     hover(editor.view.dom.children[1]);
-    await waitFor(() => expect(getByRole("button")).toBeTruthy());
+    await waitFor(() =>
+      expect(getByRole("button", { name: /Add content/ })).toBeTruthy(),
+    );
     act(() => {
       editor!.commands.insertContentAt(1, "Longer ");
     });
-    fireEvent.click(getByRole("button"));
+    fireEvent.click(getByRole("button", { name: /Add content/ }));
     expect(texts(editor.state.doc)).toEqual(["Longer First", "Second", "/"]);
+  });
+
+  it("keeps matching actions reachable while focused and supports keyboard reordering", async () => {
+    editor = createEditor([paragraph("First"), paragraph("Second")]);
+    const { getByRole } = render(
+      <PortfolioInsertionControls editor={editor} />,
+    );
+    hover(editor.view.dom.children[1]);
+    const plus = await waitFor(() =>
+      getByRole("button", { name: /Add content/ }),
+    );
+    const grip = getByRole("button", { name: "Move block" });
+    expect(plus.classList.contains("ramzy-block-action")).toBe(true);
+    expect(grip.classList.contains("ramzy-block-action")).toBe(true);
+    expect(grip.parentElement).toBe(plus.parentElement);
+    expect(grip.parentElement!.style.gap).toBe("8px");
+    act(() => grip.focus());
+    hover(document.body);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+    expect(grip.isConnected).toBe(true);
+    fireEvent.keyDown(grip, { key: "ArrowUp", altKey: true });
+    expect(texts(editor.state.doc)).toEqual(["Second", "First"]);
+    fireEvent.keyDown(grip, { key: "ArrowDown", altKey: true });
+    expect(texts(editor.state.doc)).toEqual(["First", "Second"]);
   });
 
   it("reveals for keyboard users and dismisses with Escape", async () => {
@@ -254,11 +302,15 @@ describe("portfolio insertion controls", () => {
     });
     fireEvent.keyDown(editor.view.dom, { key: "ArrowRight" });
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(1),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(1),
     );
     fireEvent.keyDown(editor.view.dom, { key: "Escape" });
     await waitFor(() =>
-      expect(container.querySelectorAll("button")).toHaveLength(0),
+      expect(
+        container.querySelectorAll(".ramzy-context-insert-control"),
+      ).toHaveLength(0),
     );
   });
 });

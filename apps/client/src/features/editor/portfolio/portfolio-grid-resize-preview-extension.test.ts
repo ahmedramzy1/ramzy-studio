@@ -99,7 +99,7 @@ describe("portfolio block width and grid resize preview", () => {
     );
   });
 
-  it("serializes and decorates a saved width on a standalone block", () => {
+  it("ignores legacy text widths in Build and Preview without mutating content", () => {
     const { editor, element, onUpdate } = createEditor(vi.fn(), {
       type: "doc",
       content: [
@@ -113,12 +113,21 @@ describe("portfolio block width and grid resize preview", () => {
     const paragraph = element.querySelector<HTMLElement>("p")!;
 
     expect(paragraph.classList.contains("ramzy-portfolio-custom-width")).toBe(
-      true,
+      false,
     );
     expect(
       paragraph.style.getPropertyValue("--ramzy-portfolio-block-width"),
-    ).toBe("640px");
-    expect(editor.getHTML()).toContain('data-portfolio-width="640"');
+    ).toBe("");
+    expect(editor.getHTML()).not.toContain("data-portfolio-width");
+    expect(editor.getJSON().content?.[0].attrs?.portfolioWidth).toBe(640);
+    setPortfolioGridResizePreview(editor, {
+      kind: "block",
+      position: 0,
+      width: 1200,
+    });
+    expect(paragraph.classList.contains("ramzy-block-resize-preview")).toBe(
+      false,
+    );
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
