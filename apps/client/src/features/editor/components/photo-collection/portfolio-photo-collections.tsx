@@ -89,7 +89,7 @@ function PhotoViewer({
           maxWidth: "100%",
           maxHeight: "calc(100vh - 56px)",
           objectFit: "contain",
-          borderRadius: 8,
+          borderRadius: "var(--ramzy-radius-bordered, 8px)",
         }}
       />
       <button
@@ -269,7 +269,7 @@ export function PhotoCollectionView({
             active?.key === image.key && kind === "album"
               ? "2px solid var(--mantine-primary-color-filled)"
               : "1px solid var(--mantine-color-default-border)",
-          borderRadius: 8,
+          borderRadius: "var(--ramzy-radius-bordered, 8px)",
           overflow: "hidden",
           background: "var(--mantine-color-default-hover)",
           cursor: "pointer",

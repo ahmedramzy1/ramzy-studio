@@ -5,7 +5,7 @@
     iframe {
       display: block;
       outline: 0 solid transparent;
-      border-radius: var(--mantine-radius-md);
+      border-radius: var(--ramzy-radius-bordered, 8px);
       max-width: 100%;
       cursor: auto;
       pointer-events: auto;

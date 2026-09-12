@@ -97,7 +97,7 @@ export default function SubpagesView(props: NodeViewProps) {
         {node.attrs.layout === "cards" ? (
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             {subpages.map((page) => (
-              <Paper key={page.id} withBorder p="sm" radius="md">
+              <Paper key={page.id} withBorder p="sm" radius="var(--ramzy-radius-bordered, 8px)">
                 <Anchor
                   component={Link}
                   fw={600}

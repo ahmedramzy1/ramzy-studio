@@ -4,7 +4,7 @@
 
 .wrapper {
   position: relative;
-  border-radius: 8px;
+  border-radius: var(--ramzy-radius-bordered, 8px);
   overflow: visible;
   max-width: 100%;
 }

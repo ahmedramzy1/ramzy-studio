@@ -177,7 +177,7 @@ export default function AudioView(props: NodeViewProps) {
         style={{
           outline: dropActive ? "2px solid #3B5BFF" : undefined,
           outlineOffset: dropActive ? 4 : undefined,
-          borderRadius: dropActive ? 8 : undefined,
+          borderRadius: dropActive ? "var(--ramzy-radius-bordered, 8px)" : undefined,
         }}
       >
         {safeSrc && !activated && (

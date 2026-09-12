@@ -3,6 +3,7 @@ import { Editor } from "@tiptap/core";
 import { DOMOutputSpec } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import { cellAround } from "@tiptap/pm/tables";
+import { tableSurfacePlugin } from "./surface";
 
 const LIST_TYPES = ["bulletList", "orderedList", "taskList"];
 
@@ -34,6 +35,9 @@ function handleListOutdent(editor: Editor): boolean {
 }
 
 export const CustomTable = Table.extend({
+  addProseMirrorPlugins() {
+    return [...(this.parent?.() ?? []), tableSurfacePlugin()];
+  },
 
   addKeyboardShortcuts() {
     return {

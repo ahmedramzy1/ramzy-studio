@@ -297,3 +297,35 @@
 [data-ramzy-block-actions-host] .table-dnd-drop-indicator {
   background: var(--mantine-primary-color-filled);
 }
+
+/* One shared outer radius; separate borders keep the grid at one pixel without
+   clipping the row/column controls or the pinned header. TableMap decorations
+   identify perimeter cells correctly even when a corner spans multiple rows. */
+.ProseMirror .ramzy-rounded-table > table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #ced4da;
+  border-radius: var(--ramzy-radius-bordered, 8px);
+  overflow: visible;
+
+  > tbody > tr > :is(td, th) {
+    border: 0;
+    border-right: 1px solid #ced4da;
+    border-bottom: 1px solid #ced4da;
+  }
+  > tbody > tr > [data-table-edge~="right"] { border-right: 0; }
+  > tbody > tr > [data-table-edge~="bottom"] { border-bottom: 0; }
+  > tbody > tr > [data-table-edge~="top-left"] {
+    border-top-left-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > [data-table-edge~="top-right"] {
+    border-top-right-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > [data-table-edge~="bottom-left"] {
+    border-bottom-left-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > [data-table-edge~="bottom-right"] {
+    border-bottom-right-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > .selectedCell::after { border-radius: inherit; }
+}

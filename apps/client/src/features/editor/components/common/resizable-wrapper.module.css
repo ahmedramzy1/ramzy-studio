@@ -1,7 +1,7 @@
 .wrapper {
   position: relative;
   overflow: visible;
-  border-radius: 8px;
+  border-radius: var(--ramzy-radius-bordered, 8px);
 }
 
 .resizing {

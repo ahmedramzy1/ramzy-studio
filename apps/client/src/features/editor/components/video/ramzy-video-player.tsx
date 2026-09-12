@@ -785,7 +785,7 @@ export default function RamzyVideoPlayer({
         height: pseudoFullscreen ? "100vh" : floatingMounted ? "auto" : "100%",
         aspectRatio: pseudoFullscreen ? undefined : "16 / 9",
         overflow: "hidden",
-        borderRadius: fullscreen ? 0 : R.default,
+        borderRadius: fullscreen ? 0 : "var(--ramzy-radius-bordered, 8px)",
         background: "#0F0F0F",
         outline: "none",
         boxShadow: pseudoFullscreen

@@ -54,7 +54,7 @@ export default function CodeBlockView(props: NodeViewProps) {
       style={{
         background: theme === "light" ? "#f6f7f9" : undefined,
         color: theme === "light" ? "#202124" : undefined,
-        borderRadius: 8,
+        borderRadius: "var(--ramzy-radius-bordered, 8px)",
       }}
     >
       {!portfolioMode && (

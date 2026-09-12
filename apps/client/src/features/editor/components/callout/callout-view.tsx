@@ -17,6 +17,7 @@ export default function CalloutView(props: NodeViewProps) {
   return (
     <NodeViewWrapper>
       <Alert
+        radius="var(--ramzy-radius-bordered, 8px)"
         variant="light"
         title=""
         color={getCalloutColor(type)}

@@ -76,6 +76,7 @@ export default function AttachmentView(props: NodeViewProps) {
   return (
     <NodeViewWrapper>
       <Paper
+        radius="var(--ramzy-radius-bordered, 8px)"
         withBorder={display !== "inline"}
         p={display === "inline" ? 0 : "4px"}
         ref={ref}

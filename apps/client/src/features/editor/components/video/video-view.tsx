@@ -153,7 +153,7 @@ export default function VideoView(props: NodeViewProps) {
             background: "#0F0F0F",
             outline: dropActive ? "2px solid #3B5BFF" : undefined,
             outlineOffset: dropActive ? 4 : undefined,
-            borderRadius: 8,
+            borderRadius: "var(--ramzy-radius-bordered, 8px)",
           }}
         >
           {src && (

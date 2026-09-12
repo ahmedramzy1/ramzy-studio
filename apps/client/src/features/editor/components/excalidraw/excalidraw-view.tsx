@@ -228,7 +228,7 @@ export default function ExcalidrawView(props: NodeViewProps) {
       </ReactClearModal>
 
       <Card
-        radius="md"
+        radius="var(--ramzy-radius-bordered, 8px)"
         onClick={(e) => e.detail === 2 && handleOpen()}
         p="xs"
         style={{

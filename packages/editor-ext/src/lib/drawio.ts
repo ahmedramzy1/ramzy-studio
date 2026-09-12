@@ -237,7 +237,7 @@ export const Drawio = Node.create<DrawioOptions>({
       el.alt = node.attrs.alt || node.attrs.title || "";
       el.style.display = "block";
       el.style.maxWidth = "100%";
-      el.style.borderRadius = "8px";
+      el.style.borderRadius = "var(--ramzy-radius-bordered, 8px)";
 
       let currentNode = node;
 

@@ -121,7 +121,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
       const dom = document.createElement('div');
       dom.setAttribute('data-type', 'tabs');
       dom.style.border = '1px solid var(--mantine-color-default-border)';
-      dom.style.borderRadius = '8px';
+      dom.style.borderRadius = 'var(--ramzy-radius-bordered, 8px)';
       dom.style.overflow = 'hidden';
       dom.style.margin = '12px 0';
       dom.style.background = 'var(--mantine-color-body)';

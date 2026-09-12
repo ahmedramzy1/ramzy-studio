@@ -3,7 +3,7 @@
   align-items: center;
   gap: 2px;
   padding: 3px;
-  border-radius: 8px;
+  border-radius: var(--ramzy-radius-bordered, 8px);
   border: 1px solid
     var(--ramzy-element-border, var(--mantine-color-default-border));
   background-color: var(--ramzy-element-surface, var(--mantine-color-body));

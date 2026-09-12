@@ -133,7 +133,7 @@ export default function RamzyMini({
         boxSizing: "border-box",
         padding: 12,
         border: `1px solid ${c.borderDefault}`,
-        borderRadius: 14,
+        borderRadius: "var(--ramzy-radius-bordered, 8px)",
         background: mode === "light" ? "rgba(255,255,255,.96)" : "rgba(28,28,27,.96)",
         backdropFilter: "blur(20px)",
         boxShadow: floating ? "0 18px 55px rgba(0,0,0,.22)" : "none",
@@ -142,7 +142,7 @@ export default function RamzyMini({
       }}
     >
       <div style={{ display: "grid", gridTemplateColumns: "58px minmax(0,1fr) auto", gap: 12, alignItems: "center" }}>
-        <button type="button" aria-label="Return to full audio player" onClick={onReturn} style={{ width: 58, height: 58, padding: 0, border: 0, borderRadius: 9, overflow: "hidden", background: c.bgSubtle, cursor: onReturn ? "pointer" : "default", display: "grid", placeItems: "center", color: c.textTertiary }}>
+        <button type="button" aria-label="Return to full audio player" onClick={onReturn} style={{ width: 58, height: 58, padding: 0, border: 0, borderRadius: "var(--ramzy-radius-bordered, 8px)", overflow: "hidden", background: c.bgSubtle, cursor: onReturn ? "pointer" : "default", display: "grid", placeItems: "center", color: c.textTertiary }}>
           {artwork ? <img src={artwork} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18V6l9-2v12M9 10l9-2M6.5 20A2.5 2.5 0 1 0 6.5 15a2.5 2.5 0 0 0 0 5Zm9-2A2.5 2.5 0 1 0 15.5 13a2.5 2.5 0 0 0 0 5Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>}
         </button>
         <button type="button" onClick={onReturn} style={{ minWidth: 0, textAlign: "left", padding: 0, border: 0, background: "transparent", cursor: onReturn ? "pointer" : "default" }}>

@@ -376,7 +376,7 @@ export default function RamzyAudioPlayer({
           boxSizing: "border-box",
           padding: 24,
           border: `1px solid ${c.borderDefault}`,
-          borderRadius: R.default,
+          borderRadius: "var(--ramzy-radius-bordered, 8px)",
           background: c.bgSurface,
           outline: "none",
           boxShadow: mode === "light" ? "0 8px 30px rgba(29,29,27,.045)" : "0 10px 32px rgba(0,0,0,.18)",
@@ -414,7 +414,7 @@ export default function RamzyAudioPlayer({
         />
 
         <div style={{ display: "grid", gridTemplateColumns: artwork ? "104px minmax(0, 1fr) auto" : "minmax(0,1fr) auto", gap: 20, alignItems: "center" }}>
-          {artwork && <img src={artwork} alt="" style={{ width: 104, height: 104, borderRadius: 10, objectFit: "cover", boxShadow: "0 8px 24px rgba(0,0,0,.14)" }} />}
+          {artwork && <img src={artwork} alt="" style={{ width: 104, height: 104, borderRadius: "var(--ramzy-radius-bordered, 8px)", objectFit: "cover", boxShadow: "0 8px 24px rgba(0,0,0,.14)" }} />}
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: FONT.body, fontSize: 21, fontWeight: 720, lineHeight: 1.18, letterSpacing: "-.015em", color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
             {secondary && <div style={{ marginTop: 7, fontFamily: FONT.body, fontSize: 14, fontWeight: artist ? 550 : 400, lineHeight: 1.4, color: c.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{secondary}</div>}
