@@ -215,6 +215,7 @@ export interface RamzyStudioPortfolioHeaderActions {
 }
 
 export interface RamzyStudioPortfolioEditorProps {
+  colorScheme?: 'light' | 'dark';
   pageId: string;
   session: RamzyPortfolioSession;
   initialContent?: RamzyPortfolioDocument | null;
@@ -231,6 +232,7 @@ export interface RamzyStudioPortfolioEditorProps {
 }
 
 export interface RamzyStudioPortfolioRendererProps {
+  colorScheme?: 'light' | 'dark';
   content: RamzyPortfolioDocument | null | undefined;
   pageId?: string;
   shareId?: string;
