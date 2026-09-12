@@ -60,6 +60,7 @@ export const ColumnHandle = React.memo(function ColumnHandle({
   const [handleEl, setHandleEl] = useState<HTMLDivElement | null>(null);
 
   const { refs, floatingStyles, middlewareData } = useFloating({
+    strategy: portfolio ? "fixed" : "absolute",
     placement: "top",
     middleware: [offset(portfolio ? -8 : -4), hide()],
     whileElementsMounted: autoUpdate,
@@ -97,6 +98,7 @@ export const ColumnHandle = React.memo(function ColumnHandle({
       onOpen={onOpen}
       onClose={onClose}
       withinPortal
+      zIndex={portfolio ? 10001 : undefined}
       shadow="md"
     >
       <Menu.Target>

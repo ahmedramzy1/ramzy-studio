@@ -1,5 +1,7 @@
-import React, { useCallback, useSyncExternalStore } from "react";
+import React, { useCallback, useRef, useSyncExternalStore } from "react";
 import { useEditorState, type Editor } from "@tiptap/react";
+import { createPortal } from "react-dom";
+import classes from "./handle.module.css";
 import { activeTableCell } from "./lib/active-table-cell";
 import { TableBoundaryInsert } from "./table-boundary-insert";
 import { useTableHandleState } from "./hooks/use-table-handle-state";
@@ -36,7 +38,8 @@ export const TableHandlesLayer = React.memo(function TableHandlesLayer({
     selector: ({ editor }) => (editor ? activeTableCell(editor.state) : null),
   });
   const state = useTableHandleState(editor);
-  const visible = useTableBorderHandles(editor, borderOnly);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const visible = useTableBorderHandles(editor, borderOnly, controlsRef);
 
   if (!editor || !editable) return null;
   if (!state.hoveringCell || !state.tableNode || state.tablePos == null)
@@ -45,7 +48,7 @@ export const TableHandlesLayer = React.memo(function TableHandlesLayer({
   const hoverTable = editor.state.doc.nodeAt(state.tablePos);
   if (hoverTable?.type.spec.tableRole !== "table") return null;
 
-  return (
+  const controls = (
     <>
       <ColumnHandle
         portfolio={borderOnly}
@@ -81,6 +84,7 @@ export const TableHandlesLayer = React.memo(function TableHandlesLayer({
       />
       {(!borderOnly || active) && (
         <CellChevron
+          portfolio={borderOnly}
           editor={editor}
           cellPos={
             borderOnly && active ? active.cellPos : state.hoveringCell.cellPos
@@ -89,7 +93,17 @@ export const TableHandlesLayer = React.memo(function TableHandlesLayer({
           tablePos={borderOnly && active ? active.tablePos : state.tablePos!}
         />
       )}
-      {borderOnly && <TableBoundaryInsert editor={editor} />}
     </>
   );
+  // Escape the editor stacking context: the full-height width-resize hit area
+  // otherwise intercepts the row grip even though the grip is painted there.
+  return borderOnly
+    ? createPortal(
+        <div ref={controlsRef} className={classes.portfolioControls}>
+          {controls}
+          <TableBoundaryInsert editor={editor} />
+        </div>,
+        document.body,
+      )
+    : controls;
 });

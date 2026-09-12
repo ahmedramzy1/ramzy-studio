@@ -33,17 +33,20 @@ export function useTableMoveRowColumn(
             tr,
             originIndex: index,
             targetIndex: target,
-            select: true,
+            select: false,
             pos: tablePos + 1,
           })
         : moveRow({
             tr,
             originIndex: index,
             targetIndex: target,
-            select: true,
+            select: false,
             pos: tablePos + 1,
           });
-    if (moved) editor.view.dispatch(tr);
+    if (moved) {
+      editor.view.dispatch(tr);
+      editor.view.focus();
+    }
   }, [editor, orientation, index, target, tablePos, canMove]);
 
   return { canMove, handleMove };

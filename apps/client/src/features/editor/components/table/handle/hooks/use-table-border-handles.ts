@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import type { Editor } from "@tiptap/react";
 import { isEditorReady, TableDndKey } from "@docmost/editor-ext";
 
@@ -6,8 +6,12 @@ const HIDDEN = { row: false, col: false };
 const BOTH = { row: true, col: true };
 const BORDER_ZONE = 8;
 
-/** Only the perimeter of a row/column reveals its grip; cell contents stay quiet. */
-export function useTableBorderHandles(editor: Editor | null, enabled: boolean) {
+/** Cell hover reveals both axes; the perimeter corridor keeps them reachable. */
+export function useTableBorderHandles(
+  editor: Editor | null,
+  enabled: boolean,
+  controlsRef?: RefObject<HTMLDivElement | null>,
+) {
   const [visible, setVisible] = useState(HIDDEN);
 
   useEffect(() => {
@@ -23,7 +27,7 @@ export function useTableBorderHandles(editor: Editor | null, enabled: boolean) {
       const host = root.closest(".editor-container") ?? root.parentElement;
       const onHandle = (target: EventTarget | null) =>
         target instanceof Element &&
-        host?.contains(target) &&
+        (host?.contains(target) || controlsRef?.current?.contains(target)) &&
         !!target.closest("[data-ramzy-table-handle]");
       // Handles stay mounted: hiding/unmounting a native drag source cancels DnD.
       if (onHandle(document.activeElement) || onHandle(point?.target ?? null))
@@ -37,17 +41,24 @@ export function useTableBorderHandles(editor: Editor | null, enabled: boolean) {
           const row = rowCell.getBoundingClientRect();
           const col = colCell.getBoundingClientRect();
           // Include the floating grip and the small border-to-grip crossing.
+          const hoveredCell =
+            point.target instanceof Element
+              ? point.target.closest("td, th")
+              : null;
+          const onCell = !!hoveredCell && root.contains(hoveredCell);
           next = {
             row:
-              point.x >= row.left - 20 &&
-              point.x <= row.left + BORDER_ZONE &&
-              point.y >= row.top &&
-              point.y <= row.bottom,
+              onCell ||
+              (point.x >= row.left - 20 &&
+                point.x <= row.left + BORDER_ZONE &&
+                point.y >= row.top &&
+                point.y <= row.bottom),
             col:
-              point.y >= col.top - 20 &&
-              point.y <= col.top + BORDER_ZONE &&
-              point.x >= col.left &&
-              point.x <= col.right,
+              onCell ||
+              (point.y >= col.top - 20 &&
+                point.y <= col.top + BORDER_ZONE &&
+                point.x >= col.left &&
+                point.x <= col.right),
           };
         }
       }
@@ -94,7 +105,7 @@ export function useTableBorderHandles(editor: Editor | null, enabled: boolean) {
       editor.off("transaction", schedule);
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [editor, enabled]);
+  }, [editor, enabled, controlsRef]);
 
   return enabled ? visible : BOTH;
 }

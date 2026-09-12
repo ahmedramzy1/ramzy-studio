@@ -15,6 +15,7 @@ import classes from "./handle.module.css";
 
 interface CellChevronProps {
   editor: Editor;
+  portfolio?: boolean;
   cellPos: number;
   tableNode: ProseMirrorNode;
   tablePos: number;
@@ -22,6 +23,7 @@ interface CellChevronProps {
 
 export const CellChevron = React.memo(function CellChevron({
   editor,
+  portfolio = false,
   cellPos,
   tableNode,
   tablePos,
@@ -41,7 +43,7 @@ export const CellChevron = React.memo(function CellChevron({
     // `col-resize`, and a drag near the edge clicks the chevron.
     middleware: [offset({ mainAxis: -22, crossAxis: -10 }), hide()],
     whileElementsMounted: autoUpdate,
-    strategy: "absolute",
+    strategy: portfolio ? "fixed" : "absolute",
   });
   const isReferenceHidden = !!middlewareData.hide?.referenceHidden;
 
@@ -81,6 +83,7 @@ export const CellChevron = React.memo(function CellChevron({
       onOpen={onOpen}
       onClose={onClose}
       withinPortal
+      zIndex={portfolio ? 10001 : undefined}
       shadow="md"
     >
       <Menu.Target>

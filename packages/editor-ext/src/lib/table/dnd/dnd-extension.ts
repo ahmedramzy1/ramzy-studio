@@ -241,7 +241,11 @@ class TableHandlePluginSpec implements PluginSpec<TableHandleState> {
     clientX: number,
     clientY: number,
   ): boolean => {
-    if (!this._hoveringCell) return false;
+    // Unfreezing a menu can update plugin state without a pointermove.
+    // Always take the current visible grip target, not the last private hover.
+    this._hoveringCell =
+      TableDndKey.getState(this.editor.state)?.hoveringCell ?? undefined;
+    if (!this.editor.isEditable || !this._hoveringCell) return false;
     this._dragging = true;
     this._draggingDirection = orientation;
     this._startCoords = { x: clientX, y: clientY };
@@ -344,18 +348,20 @@ class TableHandlePluginSpec implements PluginSpec<TableHandleState> {
           tr,
           originIndex: from,
           targetIndex: to,
-          select: true,
+          select: false,
           pos,
         })
       ) {
         this.editor.view.dispatch(tr);
+        this.editor.view.focus();
       }
       return;
     }
     if (
-      moveRow({ tr, originIndex: from, targetIndex: to, select: true, pos })
+      moveRow({ tr, originIndex: from, targetIndex: to, select: false, pos })
     ) {
       this.editor.view.dispatch(tr);
+      this.editor.view.focus();
     }
   };
 

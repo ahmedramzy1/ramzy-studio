@@ -12,6 +12,7 @@ import {
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from "@testing-library/react";
@@ -26,11 +27,13 @@ import {
   TableRow,
 } from "@tiptap/extension-table";
 import {
+  getTableHandlePluginSpec,
   TableDndExtension,
   TableDndKey,
   TableHandleCommandsExtension,
 } from "@docmost/editor-ext";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useTableMoveRowColumn } from "./hooks/use-table-move-row-column";
 import { TableHandlesLayer } from "./table-handles-layer";
 
 // Keep the real editor/plugin and visibility hook; floating placement and menu
@@ -109,6 +112,11 @@ async function setup() {
   vi.spyOn(table, "getBoundingClientRect").mockReturnValue(
     box(100, 100, 400, 100),
   );
+  Array.from(table.rows).forEach((row, index) =>
+    vi
+      .spyOn(row, "getBoundingClientRect")
+      .mockReturnValue(box(100, 100 + index * 50, 400, 50)),
+  );
   const cells = Array.from(table.querySelectorAll("td"));
   cells.forEach((cell, index) =>
     vi
@@ -152,21 +160,22 @@ afterEach(() => {
 });
 
 describe("portfolio table border handles", () => {
-  it("keeps grips hidden for cell contents and text selection; reveals only the relevant perimeter", async () => {
+  it("reveals both axes on any cell hover without requiring a border approach", async () => {
     const { cells } = await setup();
     act(() => editor.commands.setTextSelection(4));
     expect(visible("row")).toBe(false);
     expect(visible("col")).toBe(false);
     move(cells[0], 180, 125);
-    expect(visible("row")).toBe(false);
-    expect(visible("col")).toBe(false);
-    move(cells[2], 103, 175);
     expect(visible("row")).toBe(true);
-    expect(visible("col")).toBe(false);
-    move(cells[1], 400, 103);
-    expect(visible("row")).toBe(false);
     expect(visible("col")).toBe(true);
-    move(cells[1], 400, 125);
+    move(cells[3], 400, 175);
+    expect(visible("row")).toBe(true);
+    expect(visible("col")).toBe(true);
+    expect(TableDndKey.getState(editor.state)!.hoveringCell).toMatchObject({
+      rowIndex: 1,
+      colIndex: 1,
+    });
+    move(document.body, 700, 300);
     await waitFor(() => expect(visible("col")).toBe(false));
     expect(editor.getText()).toContain("A");
   });
@@ -187,7 +196,7 @@ describe("portfolio table border handles", () => {
     expect(visible("row")).toBe(false);
   });
 
-  it("retains a focused grip, an open menu and an active drag, then hides on return to cell content", async () => {
+  it("retains a focused grip, an open menu and an active drag, then hides outside the table", async () => {
     const { cells } = await setup();
     move(cells[0], 103, 125);
     const grip = document.querySelector<HTMLElement>(
@@ -203,6 +212,7 @@ describe("portfolio table border handles", () => {
     move(cells[1], 400, 125);
     expect(visible("row")).toBe(true);
     act(() => editor.commands.unfreezeHandles());
+    move(document.body, 700, 600);
     await waitFor(() => expect(visible("row")).toBe(false));
     move(cells[0], 103, 125);
     act(() =>
@@ -228,7 +238,9 @@ describe("portfolio table border handles", () => {
     move(cells[0], 103, 125);
     act(() => editor.setEditable(false));
     await waitFor(() =>
-      expect(layer.querySelectorAll("button")).toHaveLength(0),
+      expect(
+        document.querySelectorAll("[data-ramzy-table-handle]"),
+      ).toHaveLength(0),
     );
     act(() => editor.unmount());
     expect(() => move(document.body, 50, 50)).not.toThrow();
@@ -251,7 +263,7 @@ describe("Confluence reference cell interactions", () => {
         .querySelector('[data-ramzy-table-handle="row"]')
         ?.getAttribute("data-quiet"),
     ).toBe("true");
-    expect(visible("row")).toBe(false);
+    expect(visible("row")).toBe(true);
     act(() => editor.commands.goToNextCell());
     expect(activeTableCell(editor.state)!.cellPos).not.toBe(selected);
     expect(cells[1].classList.contains("ramzy-active-table-cell")).toBe(true);
@@ -387,4 +399,77 @@ describe("Confluence reference cell interactions", () => {
       }),
     ).toBe(false);
   });
+});
+
+describe("table movement without selection", () => {
+  it.each(["row", "col"] as const)(
+    "drags a %s, leaves a caret and undoes in one step",
+    async (axis) => {
+      const { cells } = await setup();
+      move(cells[0], 180, 125);
+      const original = editor.getJSON();
+      const spec = getTableHandlePluginSpec(editor)!;
+      act(() => {
+        expect(
+          spec.startDragFromHandle(
+            axis,
+            axis === "row" ? 100 : 200,
+            axis === "row" ? 125 : 100,
+          ),
+        ).toBe(true);
+        spec.updateDragPosition(400, 175);
+        spec.commitDrop();
+        spec.endDrag();
+      });
+      expect(editor.state.doc.firstChild!.child(0).textContent).toBe(
+        axis === "row" ? "CD" : "BA",
+      );
+      expect(editor.state.selection.empty).toBe(true);
+      expect(editor.state.selection instanceof CellSelection).toBe(false);
+      expect(document.querySelectorAll(".selectedCell")).toHaveLength(0);
+      expect(
+        activeTableCell(editor.state)![
+          axis === "row" ? "rowIndex" : "colIndex"
+        ],
+      ).toBe(1);
+      act(() => editor.commands.undo());
+      expect(editor.getJSON()).toEqual(original);
+    },
+  );
+
+  it.each(["row", "col"] as const)(
+    "menu moves a selected %s without keeping the axis selected",
+    async (axis) => {
+      await setup();
+      const table = editor.state.doc.firstChild!;
+      const map = TableMap.get(table);
+      act(() =>
+        editor.view.dispatch(
+          editor.state.tr.setSelection(
+            CellSelection.create(
+              editor.state.doc,
+              1 + map.map[0],
+              1 + map.map[axis === "row" ? 1 : 2],
+            ),
+          ),
+        ),
+      );
+      const { result } = renderHook(() =>
+        useTableMoveRowColumn(
+          editor,
+          axis,
+          0,
+          axis === "row" ? "down" : "right",
+          table,
+          0,
+        ),
+      );
+      act(() => result.current.handleMove());
+      expect(editor.state.doc.firstChild!.child(0).textContent).toBe(
+        axis === "row" ? "CD" : "BA",
+      );
+      expect(editor.state.selection.empty).toBe(true);
+      expect(editor.state.selection instanceof CellSelection).toBe(false);
+    },
+  );
 });
