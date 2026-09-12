@@ -33,7 +33,7 @@
       min-width: 1em;
       padding: 3px 5px;
       position: relative;
-      vertical-align: top;
+      vertical-align: middle;
 
       &:first-of-type:not(a) {
         margin-top: 0;
