@@ -1,4 +1,5 @@
 import { TableCell as TiptapTableCell } from "@tiptap/extension-table";
+import { cellAlignmentAttributes } from "./cell-alignment";
 
 export const TableCell = TiptapTableCell.extend({
   name: "tableCell",
@@ -8,6 +9,7 @@ export const TableCell = TiptapTableCell.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      ...cellAlignmentAttributes(),
       backgroundColor: {
         default: null,
         parseHTML: (element) =>

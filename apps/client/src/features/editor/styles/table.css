@@ -31,9 +31,9 @@
       border: 1px solid #ced4da;
       box-sizing: border-box;
       min-width: 1em;
-      padding: 3px 5px;
+      padding: 8px;
       position: relative;
-      vertical-align: middle;
+      vertical-align: top;
 
       &:first-of-type:not(a) {
         margin-top: 0;
@@ -80,6 +80,16 @@
       z-index: 2;
     }
   }
+}
+
+/* Portfolio paragraph margins outrank the generic table reset. Keep outer
+   whitespace symmetric; only spacing BETWEEN content blocks belongs in cells.
+   With no taller neighbour, equal padding naturally centres a single line. */
+.ProseMirror.ramzy-portfolio-editor table :is(td, th) > :first-child {
+  margin-top: 0;
+}
+.ProseMirror.ramzy-portfolio-editor table :is(td, th) > :last-child {
+  margin-bottom: 0;
 }
 
 /* Table cell background colors with dark mode support */

@@ -1,4 +1,5 @@
 import { TableHeader as TiptapTableHeader } from "@tiptap/extension-table";
+import { cellAlignmentAttributes } from "./cell-alignment";
 
 export const TableHeader = TiptapTableHeader.extend({
   name: "tableHeader",
@@ -8,6 +9,7 @@ export const TableHeader = TiptapTableHeader.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      ...cellAlignmentAttributes(),
       backgroundColor: {
         default: null,
         parseHTML: (element) =>
