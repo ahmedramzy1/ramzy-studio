@@ -7,6 +7,7 @@ import clsx from "clsx";
 import classes from "./pdf-view.module.css";
 import { useTranslation } from "react-i18next";
 import { isInternalFileUrl } from "@docmost/editor-ext";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 import { IconFileTypePdf, IconPaperclip, IconTrash } from "@tabler/icons-react";
 
 export default function PdfView(props: NodeViewProps) {
@@ -14,9 +15,7 @@ export default function PdfView(props: NodeViewProps) {
   const { editor, node, getPos, selected, updateAttributes } = props;
   const { src, placeholder, width: nodeWidth, height: nodeHeight } = node.attrs;
   const [hasError, setHasError] = useState(false);
-  const portfolioMode = editor.view.dom.classList.contains(
-    "ramzy-portfolio-editor",
-  );
+  const portfolioMode = isPortfolioEditor(editor);
 
   const safeSrc = useMemo(() => {
     if (!src || !isInternalFileUrl(src)) return null;

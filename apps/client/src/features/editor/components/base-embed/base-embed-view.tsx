@@ -6,6 +6,7 @@ import { BaseView } from "@/ee/base/components/base-view";
 import { BaseTableSkeleton } from "@/ee/base/components/base-table-skeleton";
 import { useBaseQuery } from "@/ee/base/queries/base-query";
 import { pinOffsetWatcher } from "@docmost/editor-ext";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 import { useHasFeature } from "@/ee/hooks/use-feature";
 import { Feature } from "@/ee/features";
 import { IconDots, IconTable, IconX } from "@tabler/icons-react";
@@ -59,9 +60,7 @@ export function BaseEmbedView({ node, editor, deleteNode }: NodeViewProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const hasBases = useHasFeature(Feature.BASES);
   const [menuOpen, setMenuOpen] = useState(false);
-  const portfolioMode = editor.view.dom.classList.contains(
-    "ramzy-portfolio-editor",
-  );
+  const portfolioMode = isPortfolioEditor(editor);
   const { spaceSlug } = useParams();
   // Suppress the query while the slash command awaits the server-assigned
   // pageId; useBaseQuery would otherwise fire with an empty key.

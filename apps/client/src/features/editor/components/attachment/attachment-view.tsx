@@ -11,6 +11,7 @@ import { formatBytes } from "@/lib";
 import { useTranslation } from "react-i18next";
 import { useCallback, useRef, useState } from "react";
 import { uploadFile } from "@/features/page/services/page-service";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 
 export default function AttachmentView(props: NodeViewProps) {
   const { t } = useTranslation();
@@ -20,9 +21,7 @@ export default function AttachmentView(props: NodeViewProps) {
   const replaceInputRef = useRef<HTMLInputElement>(null);
   const [replacing, setReplacing] = useState(false);
   const { hovered, ref } = useHover();
-  const portfolioMode = editor.view.dom.classList.contains(
-    "ramzy-portfolio-editor",
-  );
+  const portfolioMode = isPortfolioEditor(editor);
 
   const isPdf =
     mime === "application/pdf" || name?.toLowerCase().endsWith(".pdf");

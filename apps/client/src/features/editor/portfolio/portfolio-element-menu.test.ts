@@ -9,13 +9,16 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   deletePortfolioTopLevelBlock,
   duplicatePortfolioTopLevelBlock,
+  getPortfolioCodeLanguages,
   getPortfolioTopLevelBlock,
+  hasPortfolioElementMenu,
   movePortfolioTopLevelBlock,
   movePortfolioBlockToNewSection,
   movePortfolioBlockToSection,
   triggerPortfolioElementAction,
   updatePortfolioTopLevelBlockAttributes,
 } from "./portfolio-element-menu";
+import { getMountedPortfolioEditorDom } from "./portfolio-editor-mode";
 
 function createEditor(content: Record<string, unknown>[]) {
   const element = document.createElement("div");
@@ -55,6 +58,59 @@ describe("portfolio element menu commands", () => {
     editor?.destroy();
     editor = null;
     document.body.replaceChildren();
+  });
+
+  it("does not access the editor view before TipTap has mounted it", () => {
+    const unmountedEditor = {
+      isInitialized: false,
+      isDestroyed: false,
+      get view() {
+        throw new Error("The editor view is not available");
+      },
+    } as unknown as Editor;
+
+    expect(() => hasPortfolioElementMenu(unmountedEditor)).not.toThrow();
+    expect(hasPortfolioElementMenu(unmountedEditor)).toBe(false);
+  });
+
+  it("detects portfolio mode from editor options before the view is mounted", () => {
+    const mountingEditor = {
+      isInitialized: false,
+      isDestroyed: false,
+      options: {
+        editorProps: {
+          attributes: { class: "ramzy-portfolio-editor" },
+        },
+      },
+      get view() {
+        throw new Error("The editor view is not available");
+      },
+    } as unknown as Editor;
+
+    expect(() => hasPortfolioElementMenu(mountingEditor)).not.toThrow();
+    expect(hasPortfolioElementMenu(mountingEditor)).toBe(true);
+  });
+
+  it("waits for the editor DOM to be connected before mounting controllers", () => {
+    const detachedDom = document.createElement("div");
+    const mountingEditor = {
+      isInitialized: true,
+      isDestroyed: false,
+      view: { dom: detachedDom },
+    } as unknown as Editor;
+
+    expect(getMountedPortfolioEditorDom(mountingEditor)).toBeNull();
+    document.body.append(detachedDom);
+    expect(getMountedPortfolioEditorDom(mountingEditor)).toBe(detachedDom);
+  });
+
+  it("uses fallback code languages while a stale editor is being destroyed", () => {
+    const destroyingEditor = {
+      extensionManager: null,
+    } as unknown as Editor;
+
+    expect(() => getPortfolioCodeLanguages(destroyingEditor)).not.toThrow();
+    expect(getPortfolioCodeLanguages(destroyingEditor)).toContain("typescript");
   });
 
   it("resolves the selected top-level element", () => {

@@ -615,7 +615,11 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
     setOuterResizing(true);
     const startWidth = active.element.getBoundingClientRect().width;
     const editorWidth = editor.view.dom.getBoundingClientRect().width;
-    const available = Math.max(editorWidth, window.innerWidth - 96);
+    const canvas = editor.view.dom.closest<HTMLElement>("[data-ramzy-portfolio-canvas]");
+    const canvasWidth = canvas?.getBoundingClientRect().width;
+    const available = canvasWidth && canvasWidth > 0
+      ? canvasWidth
+      : Math.max(editorWidth, window.innerWidth - 96);
     const columns = columnsIn(active.element);
     const occupiedColumnWidth = columns.reduce(
       (total, column) => total + column.getBoundingClientRect().width,
@@ -630,7 +634,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       "normal") as PortfolioGridWidthMode;
     const widths: Record<PortfolioGridWidthMode, number> = {
       normal: Math.min(editorWidth, MAX_PORTFOLIO_BLOCK_WIDTH),
-      wide: Math.min(1120, Math.max(editorWidth, window.innerWidth - 352)),
+      wide: Math.min(1120, available, Math.max(editorWidth, window.innerWidth - 352)),
       full: Math.min(MAX_PORTFOLIO_BLOCK_WIDTH, available),
     };
     const maximumWidth = Math.max(minimumWidth, widths.full);

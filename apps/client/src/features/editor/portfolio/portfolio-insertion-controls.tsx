@@ -1,210 +1,215 @@
 import type { Editor } from "@tiptap/core";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { portfolioColumnInsertionPoints } from "./portfolio-column-insertion";
 
-interface BlockControl {
+interface InsertionTarget {
+  dom: HTMLElement;
   position: number;
-  top: number;
-  bottom: number;
-  insertionTop: number;
-  followsColumns: boolean;
-  isEmptyTextBlock: boolean;
-  usesDedicatedHandle: boolean;
-}
-
-interface ColumnControl {
-  key: string;
-  insertionPosition: number;
-  emptyParagraphPosition: number | null;
+  end: number;
+  emptyParagraph: boolean;
   left: number;
   top: number;
 }
 
+// Resolve a whole block, never a table cell, media item or nested inline node.
+// Direct column children retain insertion inside their own column.
+function blockFromTarget(root: HTMLElement, target: EventTarget | null) {
+  if (!(target instanceof Element) || !root.contains(target)) return null;
+  let block: HTMLElement | null =
+    target instanceof HTMLElement ? target : target.parentElement;
+  while (block && block !== root) {
+    const parent = block.parentElement;
+    if (parent === root || parent?.dataset.type === "column") return block;
+    block = parent;
+  }
+  return null;
+}
+
 export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const activeDom = useRef<HTMLElement | null>(null);
   const frameRef = useRef<number | null>(null);
-  const [blocks, setBlocks] = useState<BlockControl[]>([]);
-  const [columns, setColumns] = useState<ColumnControl[]>([]);
-  const [lastTop, setLastTop] = useState(0);
-  const [isDocumentEmpty, setIsDocumentEmpty] = useState(editor.isEmpty);
-  const [isEditingLastBlock, setIsEditingLastBlock] = useState(false);
-  const [editingBlockPosition, setEditingBlockPosition] = useState<
-    number | null
-  >(null);
-  const [hasTrailingEmptyTextBlock, setHasTrailingEmptyTextBlock] =
-    useState(false);
+  const modality = useRef("mouse");
+  const [control, setControl] = useState<InsertionTarget | null>(null);
+
+  const resolve = useCallback((): InsertionTarget | null => {
+    const overlay = overlayRef.current;
+    if (!overlay || editor.isDestroyed || !editor.isEditable) return null;
+    const root = editor.view.dom;
+    const dom =
+      activeDom.current ?? (editor.isEmpty ? root.firstElementChild : null);
+    if (!(dom instanceof HTMLElement) || !root.contains(dom)) return null;
+    let found: {
+      position: number;
+      end: number;
+      emptyParagraph: boolean;
+    } | null = null;
+    editor.state.doc.descendants((node, position) => {
+      if (found) return false;
+      if (editor.view.nodeDOM(position) === dom) {
+        found = {
+          position,
+          end: position + node.nodeSize,
+          emptyParagraph:
+            node.type.name === "paragraph" && node.content.size === 0,
+        };
+        return false;
+      }
+      return !node.isAtom;
+    });
+    if (!found) return null;
+    const rect = dom.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
+    return {
+      ...(found as { position: number; end: number; emptyParagraph: boolean }),
+      dom,
+      left: rect.left - overlayRect.left - 44,
+      top: rect.top - overlayRect.top,
+    };
+  }, [editor]);
 
   const measure = useCallback(() => {
     if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     frameRef.current = requestAnimationFrame(() => {
       frameRef.current = null;
-      const overlay = overlayRef.current;
-      if (!overlay || editor.isDestroyed) return;
-      const overlayRect = overlay.getBoundingClientRect();
-      const nextBlocks: BlockControl[] = [];
-      const nextColumns: ColumnControl[] = [];
-      let previousTopLevelType: string | null = null;
-
-      editor.state.doc.forEach((node, offset) => {
-        const dom = editor.view.nodeDOM(offset);
-        if (dom instanceof HTMLElement) {
-          const rect = dom.getBoundingClientRect();
-          const top = rect.top - overlayRect.top;
-          const previous = nextBlocks[nextBlocks.length - 1];
-          nextBlocks.push({
-            position: offset,
-            top,
-            bottom: rect.bottom - overlayRect.top,
-            insertionTop: previous
-              ? (previous.bottom + top) / 2 - 14
-              : top - 38,
-            followsColumns: previousTopLevelType === "columns",
-            isEmptyTextBlock: node.isTextblock && node.textContent.length === 0,
-            usesDedicatedHandle: [
-              "video",
-              "audio",
-              "image",
-              "mediaPlaylist",
-              "photoGrid",
-              "photoAlbum",
-            ].includes(node.type.name),
-          });
-
-          if (node.type.name === "columns") {
-            const columnElements = Array.from(dom.children).filter(
-              (child): child is HTMLElement =>
-                child instanceof HTMLElement && child.dataset.type === "column",
-            );
-            portfolioColumnInsertionPoints(node, offset).forEach((point) => {
-              const columnIndex = point.columnIndex;
-              const columnElement = columnElements[columnIndex];
-              if (columnElement) {
-                const columnRect = columnElement.getBoundingClientRect();
-                nextColumns.push({
-                  key: `${offset}-${columnIndex}`,
-                  insertionPosition: point.insertionPosition,
-                  emptyParagraphPosition: point.emptyParagraphPosition,
-                  left:
-                    columnRect.left -
-                    overlayRect.left +
-                    columnRect.width / 2 -
-                    14,
-                  top: columnRect.bottom - overlayRect.top + 6,
-                });
-              }
-            });
-          }
-        }
-        previousTopLevelType = node.type.name;
-      });
-
-      const last = nextBlocks[nextBlocks.length - 1];
-      const empty = editor.isEmpty;
-      const first = nextBlocks[0];
-      const lastNode = last ? editor.state.doc.nodeAt(last.position) : null;
-      const selection = editor.state.selection;
-      const selectionBlockPosition =
-        selection.$from.depth > 0 ? selection.$from.before(1) : -1;
-      const lastDom = last ? editor.view.nodeDOM(last.position) : null;
-      const finalTop =
-        empty && first
-          ? first.top
-          : lastDom instanceof HTMLElement
-            ? lastDom.getBoundingClientRect().bottom - overlayRect.top + 10
-            : 8;
-
-      setBlocks(nextBlocks);
-      setColumns(nextColumns);
-      setLastTop(finalTop);
-      setIsDocumentEmpty(empty);
-      setEditingBlockPosition(
-        editor.isFocused && selectionBlockPosition >= 0
-          ? selectionBlockPosition
-          : null,
-      );
-      setIsEditingLastBlock(
-        editor.isFocused &&
-          Boolean(lastNode?.isTextblock) &&
-          selectionBlockPosition === last?.position,
-      );
-      setHasTrailingEmptyTextBlock(
-        Boolean(lastNode?.isTextblock && !lastNode.textContent),
-      );
+      setControl(resolve());
     });
-  }, [editor]);
+  }, [resolve]);
 
   useEffect(() => {
-    measure();
+    const activate = (dom: HTMLElement | null) => {
+      if (activeDom.current === dom) return;
+      activeDom.current = dom;
+      measure();
+    };
+    const pointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch" || editor.isDestroyed) return;
+      modality.current = "mouse";
+      if (overlayRef.current?.contains(event.target as globalThis.Node)) return;
+      const block = blockFromTarget(editor.view.dom, event.target);
+      if (block) {
+        activate(block);
+        return;
+      }
+      // Keep the control reachable across the small gap beside its block.
+      const rect = activeDom.current?.getBoundingClientRect();
+      if (
+        rect &&
+        event.clientX >= rect.left - 48 &&
+        event.clientX <= rect.left &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.top + 36
+      )
+        return;
+      activate(null);
+    };
+    const pointerDown = (event: PointerEvent) => {
+      if (editor.isDestroyed) return;
+      modality.current = event.pointerType || "mouse";
+      if (overlayRef.current?.contains(event.target as globalThis.Node)) return;
+      activate(blockFromTarget(editor.view.dom, event.target));
+    };
+    const selectBlock = () => {
+      if (
+        modality.current === "mouse" ||
+        !editor.isFocused ||
+        editor.isDestroyed
+      )
+        return;
+      const { $from } = editor.state.selection;
+      if ($from.depth < 1) return;
+      let depth = 1;
+      for (let d = 1; d < $from.depth; d++) {
+        if ($from.node(d).type.name === "column") depth = d + 1;
+      }
+      const dom = editor.view.nodeDOM($from.before(depth));
+      activate(dom instanceof HTMLElement ? dom : null);
+    };
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        activate(null);
+        return;
+      }
+      modality.current = "keyboard";
+      selectBlock();
+    };
+    const focusOut = (event: FocusEvent) => {
+      if (editor.isDestroyed) return;
+      const next = event.relatedTarget as globalThis.Node | null;
+      if (
+        next &&
+        (editor.view.dom.contains(next) || overlayRef.current?.contains(next))
+      )
+        return;
+      activate(null);
+    };
+    const leaveWindow = (event: PointerEvent) => {
+      if (!event.relatedTarget && event.pointerType !== "touch") activate(null);
+    };
     editor.on("transaction", measure);
-    editor.on("selectionUpdate", measure);
-    editor.on("focus", measure);
-    editor.on("blur", measure);
+    editor.on("update", measure);
+    editor.on("selectionUpdate", selectBlock);
+    editor.on("focus", selectBlock);
+    document.addEventListener("pointermove", pointerMove);
+    document.addEventListener("pointerdown", pointerDown);
+    document.addEventListener("pointerout", leaveWindow);
+    document.addEventListener("keydown", keyDown);
+    document.addEventListener("focusout", focusOut);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     const observer = new ResizeObserver(measure);
-    observer.observe(editor.view.dom);
+    let mountFrame: number | null = null;
+    const observeWhenMounted = () => {
+      mountFrame = null;
+      // Preserve the iPad/React effect-replay fix: never access an absent view.
+      if (editor.isDestroyed || !editor.view.dom.isConnected) {
+        mountFrame = requestAnimationFrame(observeWhenMounted);
+        return;
+      }
+      observer.observe(editor.view.dom);
+      measure();
+    };
+    observeWhenMounted();
     return () => {
       editor.off("transaction", measure);
-      editor.off("selectionUpdate", measure);
-      editor.off("focus", measure);
-      editor.off("blur", measure);
+      editor.off("update", measure);
+      editor.off("selectionUpdate", selectBlock);
+      editor.off("focus", selectBlock);
+      document.removeEventListener("pointermove", pointerMove);
+      document.removeEventListener("pointerdown", pointerDown);
+      document.removeEventListener("pointerout", leaveWindow);
+      document.removeEventListener("keydown", keyDown);
+      document.removeEventListener("focusout", focusOut);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
       observer.disconnect();
+      if (mountFrame !== null) cancelAnimationFrame(mountFrame);
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
     };
   }, [editor, measure]);
 
-  function insertAt(position: number) {
-    if (editor.isDestroyed || !editor.isEditable) return;
+  function insertBelow() {
+    // Resolve again at click time, so edits before this block cannot stale the position.
+    const target = resolve();
+    if (!target) return;
+    const position = target.emptyParagraph ? target.position + 1 : target.end;
     editor
       .chain()
       .focus()
-      .insertContentAt(position, {
-        type: "paragraph",
-        content: [{ type: "text", text: "/" }],
-      })
-      .setTextSelection(position + 2)
+      .insertContentAt(
+        position,
+        target.emptyParagraph
+          ? "/"
+          : {
+              type: "paragraph",
+              content: [{ type: "text", text: "/" }],
+            },
+      )
+      .setTextSelection(position + (target.emptyParagraph ? 1 : 2))
       .run();
+    activeDom.current = null;
+    setControl(null);
   }
-
-  function insertAtEnd() {
-    if (editor.isDestroyed || !editor.isEditable) return;
-    if (editor.isEmpty) {
-      editor.chain().focus("start").insertContent("/").run();
-      return;
-    }
-    insertAt(editor.state.doc.content.size);
-  }
-
-  function insertInColumn(control: ColumnControl) {
-    if (editor.isDestroyed || !editor.isEditable) return;
-    if (control.emptyParagraphPosition !== null) {
-      editor
-        .chain()
-        .focus()
-        .insertContentAt(control.emptyParagraphPosition + 1, "/")
-        .setTextSelection(control.emptyParagraphPosition + 2)
-        .run();
-      return;
-    }
-    insertAt(control.insertionPosition);
-  }
-
-  const controlButtonStyle: React.CSSProperties = {
-    width: 28,
-    height: 28,
-    border: 0,
-    borderRadius: 6,
-    background: "var(--mantine-color-body)",
-    color: "var(--mantine-color-dimmed)",
-    display: "grid",
-    placeItems: "center",
-    cursor: "pointer",
-    pointerEvents: "auto",
-    padding: 0,
-    boxShadow: "0 1px 2px rgba(0,0,0,.08)",
-  };
 
   return (
     <div
@@ -217,112 +222,48 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
         zIndex: 25,
       }}
     >
-      {!isDocumentEmpty &&
-        blocks.map((block) => (
-          <React.Fragment key={`${block.position}-${Math.round(block.top)}`}>
-            {!block.followsColumns &&
-            !block.isEmptyTextBlock &&
-            block.position !== editingBlockPosition ? (
-              <button
-                type="button"
-                className="ramzy-boundary-insert-control"
-                style={{
-                  ...controlButtonStyle,
-                  position: "absolute",
-                  left: block.usesDedicatedHandle ? -76 : -54,
-                  top: block.insertionTop,
-                }}
-                aria-label="Insert content here"
-                title="Insert content here"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => insertAt(block.position)}
-              >
-                <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
-                  +
-                </span>
-              </button>
-            ) : null}
-          </React.Fragment>
-        ))}
-
-      {!isDocumentEmpty &&
-        columns.map((column) => (
-          <button
-            key={column.key}
-            type="button"
-            className="ramzy-column-insert-control"
-            style={{
-              ...controlButtonStyle,
-              position: "absolute",
-              left: column.left,
-              top: column.top,
-            }}
-            aria-label="Add content to column"
-            title="Add content to column"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => insertInColumn(column)}
-          >
-            <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
-              +
-            </span>
-          </button>
-        ))}
-
-      {isDocumentEmpty ||
-      (!isEditingLastBlock && !hasTrailingEmptyTextBlock) ? (
-        <div
-          className="ramzy-final-insert-row"
+      {control && (
+        <button
+          type="button"
+          className="ramzy-context-insert-control"
+          aria-label={
+            editor.isEmpty ? "Add content" : "Add content below this block"
+          }
+          title={
+            editor.isEmpty ? "Add content" : "Add content below this block"
+          }
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={insertBelow}
           style={{
             position: "absolute",
-            left: -68,
-            right: 0,
-            top: lastTop,
-            minHeight: 38,
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            pointerEvents: "none",
+            left: control.left,
+            top: control.top,
+            width: 36,
+            height: 36,
+            border: 0,
+            borderRadius: 6,
+            background: "var(--mantine-color-body)",
+            color: "var(--mantine-color-dimmed)",
+            display: "grid",
+            placeItems: "center",
+            cursor: "pointer",
+            pointerEvents: "auto",
+            padding: 0,
+            boxShadow: "0 1px 2px rgba(0,0,0,.08)",
           }}
         >
-          <button
-            type="button"
-            style={controlButtonStyle}
-            aria-label="Add content below"
-            title="Add content below"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={insertAtEnd}
-          >
-            <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
-              +
-            </span>
-          </button>
-          {!isDocumentEmpty ? (
-            <button
-              type="button"
-              className="ramzy-final-insert-prompt"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={insertAtEnd}
-              style={{
-                border: 0,
-                background: "transparent",
-                color: "var(--mantine-color-dimmed)",
-                padding: "5px 0",
-                cursor: "text",
-                opacity: 0,
-                pointerEvents: "auto",
-              }}
-            >
-              Type / to insert content
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
+          <span aria-hidden style={{ fontSize: 20, lineHeight: 1 }}>
+            +
+          </span>
+        </button>
+      )}
       <style>{`
-        .ramzy-boundary-insert-control{opacity:.22;transition:opacity 120ms ease}
-        .ramzy-boundary-insert-control:hover,.ramzy-boundary-insert-control:focus-visible{opacity:1;color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
-        .ramzy-final-insert-row button:first-child:hover{color:var(--mantine-primary-color-filled)!important;background:var(--mantine-primary-color-light)!important}
-        .ramzy-final-insert-row:hover .ramzy-final-insert-prompt,.ramzy-final-insert-row:focus-within .ramzy-final-insert-prompt{opacity:1!important}
+        .ramzy-context-insert-control:hover,.ramzy-context-insert-control:focus-visible {
+          color:var(--mantine-primary-color-filled)!important;
+          background:var(--mantine-primary-color-light)!important;
+          outline:2px solid var(--mantine-primary-color-filled);outline-offset:2px;
+        }
+        @media(pointer:coarse){.ramzy-context-insert-control{min-width:44px;min-height:44px}}
       `}</style>
     </div>
   );

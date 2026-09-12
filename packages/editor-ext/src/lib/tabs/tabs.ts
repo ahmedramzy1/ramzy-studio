@@ -107,6 +107,15 @@ export const Tabs = TiptapNode.create<TabsOptions>({
     return ({ editor, node, getPos }) => {
       let currentNode = node;
       let activeIndex = 0;
+      let destroyed = false;
+      const frames = new Set<number>();
+      const schedule = (callback: () => void) => {
+        const frame = requestAnimationFrame(() => {
+          frames.delete(frame);
+          if (!destroyed) callback();
+        });
+        frames.add(frame);
+      };
       const viewId = `ramzy-tabs-${++tabsViewSequence}`;
 
       const dom = document.createElement('div');
@@ -150,11 +159,17 @@ export const Tabs = TiptapNode.create<TabsOptions>({
 
         panelElements.forEach((panel, index) => {
           const active = index === activeIndex;
-          panel.style.display = active ? 'block' : 'none';
-          panel.setAttribute('role', 'tabpanel');
-          panel.setAttribute('aria-hidden', active ? 'false' : 'true');
-          panel.id = `${viewId}-panel-${index}`;
-          panel.setAttribute('aria-labelledby', `${viewId}-tab-${index}`);
+          const display = active ? 'block' : 'none';
+          if (panel.style.display !== display) panel.style.display = display;
+          const attributes = {
+            role: 'tabpanel',
+            'aria-hidden': active ? 'false' : 'true',
+            id: `${viewId}-panel-${index}`,
+            'aria-labelledby': `${viewId}-tab-${index}`,
+          };
+          for (const [name, value] of Object.entries(attributes)) {
+            if (panel.getAttribute(name) !== value) panel.setAttribute(name, value);
+          }
         });
       };
 
@@ -237,7 +252,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
         editor.view.dispatch(editor.state.tr.insert(insertPos, panel));
         activeIndex = nextIndex;
 
-        requestAnimationFrame(() => {
+        schedule(() => {
           activateTab(nextIndex);
           focusPanel(nextIndex);
         });
@@ -266,7 +281,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
 
         editor.view.dispatch(editor.state.tr.delete(from, to));
 
-        requestAnimationFrame(() => {
+        schedule(() => {
           activateTab(activeIndex);
           focusPanel(activeIndex);
         });
@@ -289,7 +304,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
         );
         editor.view.dispatch(editor.state.tr.insert(insertPos, duplicate));
         activeIndex = index + 1;
-        requestAnimationFrame(() => activateTab(activeIndex));
+        schedule(() => activateTab(activeIndex));
       };
 
       const movePanel = (index: number, direction: -1 | 1) => {
@@ -315,7 +330,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
         transaction.insert(target, panel);
         editor.view.dispatch(transaction);
         activeIndex = targetIndex;
-        requestAnimationFrame(() => activateTab(activeIndex));
+        schedule(() => activateTab(activeIndex));
       };
 
       const renameActivePanel = () => {
@@ -457,7 +472,7 @@ export const Tabs = TiptapNode.create<TabsOptions>({
         }
 
         syncHeaderStates();
-        requestAnimationFrame(syncPanels);
+        schedule(syncPanels);
       };
 
       const syncActiveFromSelection = () => {
@@ -504,6 +519,9 @@ export const Tabs = TiptapNode.create<TabsOptions>({
         ignoreMutation: (mutation) =>
           tabList.contains(mutation.target as globalThis.Node),
         destroy: () => {
+          destroyed = true;
+          for (const frame of frames) cancelAnimationFrame(frame);
+          frames.clear();
           observer.disconnect();
           editor.off('selectionUpdate', syncActiveFromSelection);
         },

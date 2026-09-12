@@ -10,6 +10,7 @@ import {
 import { ActionIcon, Button, Menu, Tooltip } from "@mantine/core";
 import clsx from "clsx";
 import {
+  IconAspectRatio,
   IconLayoutAlignCenter,
   IconLayoutAlignLeft,
   IconLayoutAlignRight,
@@ -309,9 +310,29 @@ export function ImageMenu({ editor }: EditorMenuProps) {
             width={160}
           >
             <Menu.Target>
-              <Button size="compact-sm" variant="subtle">
-                {editorState?.fit === "cover" ? "Fill" : "Fit"}
-              </Button>
+              {portfolioMode ? (
+                <Tooltip
+                  position="top"
+                  label={
+                    editorState?.fit === "cover" ? "Fill frame" : "Fit image"
+                  }
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={
+                      editorState?.fit === "cover" ? "Fill frame" : "Fit image"
+                    }
+                  >
+                    <IconAspectRatio size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : (
+                <Button size="compact-sm" variant="subtle">
+                  {editorState?.fit === "cover" ? "Fill" : "Fit"}
+                </Button>
+              )}
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item

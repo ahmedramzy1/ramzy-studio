@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import classes from "./transclusion.module.css";
 import SyncBlockReferencesDropdown from "@/features/transclusion/components/sync-block-references-dropdown";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 
 export default function TransclusionView(props: NodeViewProps) {
   const { editor, node, deleteNode } = props;
@@ -21,9 +22,7 @@ export default function TransclusionView(props: NodeViewProps) {
     setOpenMenus((n) => Math.max(0, n + (open ? 1 : -1)));
 
   const isEditable = editor.isEditable;
-  const portfolioMode = editor.view.dom.classList.contains(
-    "ramzy-portfolio-editor",
-  );
+  const portfolioMode = isPortfolioEditor(editor);
   // @ts-ignore - editor.storage.pageId is set by the host editor (page-editor.tsx onCreate)
   const sourcePageId: string | undefined = editor.storage?.pageId;
   const transclusionId: string | null = node.attrs.id ?? null;

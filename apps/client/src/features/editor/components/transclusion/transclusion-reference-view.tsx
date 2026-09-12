@@ -23,6 +23,7 @@ import {
   useUnsyncReferenceMutation,
 } from "@/features/transclusion/queries/transclusion-query";
 import { buildPageUrl } from "@/features/page/page.utils";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 
 export default function TransclusionReferenceView(props: NodeViewProps) {
   const isEditable = props.editor.isEditable;
@@ -61,9 +62,7 @@ function TransclusionReferenceBody({
   const sourcePageId: string | null = node.attrs.sourcePageId ?? null;
   const transclusionId: string | null = node.attrs.transclusionId ?? null;
   const isEditable = editor.isEditable;
-  const portfolioMode = editor.view.dom.classList.contains(
-    "ramzy-portfolio-editor",
-  );
+  const portfolioMode = isPortfolioEditor(editor);
 
   const { result, refresh } = useTransclusionLookup(
     sourcePageId,

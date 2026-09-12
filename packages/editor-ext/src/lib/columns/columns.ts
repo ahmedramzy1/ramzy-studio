@@ -1,6 +1,6 @@
 import { Node, mergeAttributes, findParentNode } from "@tiptap/core";
 import { Fragment, Node as PMNode } from "@tiptap/pm/model";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 export type ColumnsLayout =
@@ -42,6 +42,14 @@ declare module "@tiptap/core" {
       setColumnsGap: (gap: ColumnsGap) => ReturnType;
     };
   }
+}
+
+/** Resolve a row selected directly or containing the current selection. */
+export function getSelectedColumns(selection: Selection) {
+  if ("node" in selection && (selection as NodeSelection).node.type.name === "columns") {
+    return { node: (selection as NodeSelection).node, pos: selection.from };
+  }
+  return findParentNode((node) => node.type.name === "columns")(selection);
 }
 
 function columnCountFromLayout(layout: string): number {
@@ -206,10 +214,10 @@ export const Columns = Node.create<ColumnsOptions>({
       setColumnCount:
         (count: number) =>
         ({ tr, state }) => {
-          const predicate = (node: PMNode) => node.type.name === "columns";
-          const parent = findParentNode(predicate)(state.selection);
+          const parent = getSelectedColumns(state.selection);
           if (!parent) return false;
 
+          const rowSelected = "node" in state.selection && state.selection.from === parent.pos;
           const { node: columnsNode, pos: parentPos } = parent;
           const currentCount = columnsNode.childCount;
           if (count === currentCount || count < 2 || count > 5) return false;
@@ -262,7 +270,9 @@ export const Columns = Node.create<ColumnsOptions>({
           );
           tr.replaceWith(parentPos, parentPos + columnsNode.nodeSize, newNode);
           tr.setSelection(
-            TextSelection.near(tr.doc.resolve(parentPos + 1), 1),
+            rowSelected
+              ? NodeSelection.create(tr.doc, parentPos)
+              : TextSelection.near(tr.doc.resolve(parentPos + 1), 1),
           );
           return true;
         },
@@ -270,11 +280,10 @@ export const Columns = Node.create<ColumnsOptions>({
       setColumnsLayout:
         (layout) =>
         ({ tr, state }) => {
-          const parent = findParentNode(
-            (node: PMNode) => node.type.name === "columns",
-          )(state.selection);
+          const parent = getSelectedColumns(state.selection);
           if (!parent) return false;
 
+          const rowSelected = "node" in state.selection && state.selection.from === parent.pos;
           const newChildren: PMNode[] = [];
           parent.node.forEach((child) => {
             newChildren.push(clearColumnWidth(child));
@@ -286,7 +295,9 @@ export const Columns = Node.create<ColumnsOptions>({
           );
           tr.replaceWith(parent.pos, parent.pos + parent.node.nodeSize, newNode);
           tr.setSelection(
-            TextSelection.near(tr.doc.resolve(parent.pos + 1), 1),
+            rowSelected
+              ? NodeSelection.create(tr.doc, parent.pos)
+              : TextSelection.near(tr.doc.resolve(parent.pos + 1), 1),
           );
           return true;
         },

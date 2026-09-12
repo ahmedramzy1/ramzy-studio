@@ -1,3 +1,18 @@
+import {
+  Button,
+  Group,
+  Modal,
+  Stack,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
+import {
+  CollectionFrame,
+  CollectionTitle,
+  CollectionEmpty,
+  CollectionFeedback,
+} from "../collection/collection-shell";
+import collection from "../collection/collection-shell.module.css";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { PortfolioPhotoAlbum, PortfolioPhotoGrid } from "@docmost/editor-ext";
@@ -102,7 +117,7 @@ function PhotoViewer({
   );
 }
 
-function PhotoCollectionView({
+export function PhotoCollectionView({
   editor,
   node,
   selected,
@@ -114,6 +129,23 @@ function PhotoCollectionView({
   const inputRef = useRef<HTMLInputElement>(null);
   const draggedKey = useRef<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [details, setDetails] = useState({
+    description: "",
+    location: "",
+    date: "",
+    credit: "",
+  });
+  function openDetails() {
+    setDetails({
+      description: node.attrs.description || "",
+      location: node.attrs.location || "",
+      date: node.attrs.date || "",
+      credit: node.attrs.credit || "",
+    });
+    setDetailsOpen(true);
+  }
   const [viewer, setViewer] = useState<PhotoItem | null>(null);
   const active =
     images.find((image) => image.key === node.attrs.activeKey) || images[0];
@@ -170,7 +202,11 @@ function PhotoCollectionView({
     // Portfolio runtime storage owns the linked Studio page id.
     // @ts-ignore
     const pageId = editor.storage?.pageId as string | undefined;
-    if (!pageId) return;
+    if (!pageId) {
+      setUploadError("The upload session is not ready. Try again shortly.");
+      return;
+    }
+    setUploadError("");
     setUploading(true);
     try {
       const uploaded = await Promise.all(
@@ -186,6 +222,10 @@ function PhotoCollectionView({
         }),
       );
       setImages([...images, ...uploaded]);
+    } catch {
+      setUploadError(
+        "Photos could not be uploaded. Use Add photos to try again.",
+      );
     } finally {
       setUploading(false);
     }
@@ -305,7 +345,7 @@ function PhotoCollectionView({
   return (
     <NodeViewWrapper
       className={selected ? "ProseMirror-selectednode" : undefined}
-      style={{ position: "relative", margin: "18px 0" }}
+      style={{ position: "relative" }}
       onDragOver={(event) => {
         if (editable && event.dataTransfer?.types.includes("Files")) {
           event.preventDefault();
@@ -319,44 +359,14 @@ function PhotoCollectionView({
       }}
     >
       {editable && <BlockDragHandle label={`Drag photo ${kind} block`} />}
-      <div
-        style={{
-          border: editable
-            ? "1px solid var(--mantine-color-default-border)"
-            : 0,
-          borderRadius: 10,
-          overflow: "hidden",
-          background: "var(--mantine-color-body)",
-        }}
-      >
-        {(editable || node.attrs.title) && (
-          <input
-            className="ramzy-photo-collection-title"
-            value={node.attrs.title || ""}
-            readOnly={!editable}
-            placeholder={
-              kind === "album" ? "Photo album title…" : "Image grid title…"
-            }
-            onChange={(event) =>
-              updateAttributes({ title: event.currentTarget.value })
-            }
-            style={{
-              width: "100%",
-              height: 48,
-              boxSizing: "border-box",
-              border: 0,
-              borderBottom: editable
-                ? "1px solid var(--mantine-color-default-border)"
-                : 0,
-              padding: "0 14px",
-              background: "transparent",
-              color: "inherit",
-              fontSize: 16,
-              fontWeight: 700,
-              outline: "none",
-            }}
-          />
-        )}
+      <CollectionFrame>
+        <CollectionTitle
+          value={node.attrs.title || ""}
+          editable={editable}
+          label={kind === "album" ? "Photo album title" : "Image grid title"}
+          onChange={(title) => updateAttributes({ title })}
+        />
+        <CollectionFeedback message={uploadError} />
 
         {kind === "grid" &&
           images.length > 0 &&
@@ -366,13 +376,13 @@ function PhotoCollectionView({
                 display: "grid",
                 gridTemplateColumns: `repeat(${Math.min(Number(node.attrs.columns), images.length)}, minmax(0, 1fr))`,
                 gap,
-                padding: editable ? 14 : 0,
+                padding: 16,
               }}
             >
               {images.map((image) => photoTile(image, images.indexOf(image)))}
             </div>
           ) : (
-            <div style={{ display: "grid", gap, padding: editable ? 14 : 0 }}>
+            <div style={{ display: "grid", gap, padding: 16 }}>
               {rows.map((row, rowIndex) => (
                 <div
                   key={rowIndex}
@@ -390,25 +400,20 @@ function PhotoCollectionView({
 
         {kind === "album" && active && (
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                images.length > 1 && node.attrs.thumbnailPosition !== "bottom"
-                  ? "minmax(0,1fr) 132px"
-                  : "1fr",
-              gap,
-              padding: editable ? 14 : 0,
-            }}
+            className={collection.album}
+            data-side-rail={
+              (images.length > 1 &&
+                node.attrs.thumbnailPosition !== "bottom") ||
+              undefined
+            }
+            style={{ gap }}
           >
             <button
               type="button"
+              className={collection.stage}
+              aria-label={active.alt || active.title || "Open album photo"}
               onClick={() => node.attrs.lightbox !== false && setViewer(active)}
               style={{
-                padding: 0,
-                border: 0,
-                borderRadius: 8,
-                overflow: "hidden",
-                background: "#111",
                 cursor: node.attrs.lightbox === false ? "default" : "zoom-in",
               }}
             >
@@ -416,39 +421,12 @@ function PhotoCollectionView({
                 src={getFileUrl(active.src)}
                 alt={active.alt || ""}
                 style={{
-                  width: "100%",
-                  height: "min(62vh, 620px)",
-                  minHeight: 320,
-                  display: "block",
                   objectFit: node.attrs.fit === "cover" ? "cover" : "contain",
                 }}
               />
             </button>
             {images.length > 1 && (
-              <div
-                style={{
-                  maxHeight: "min(62vh, 620px)",
-                  overflowY:
-                    node.attrs.thumbnailPosition === "bottom"
-                      ? "hidden"
-                      : "auto",
-                  overflowX:
-                    node.attrs.thumbnailPosition === "bottom"
-                      ? "auto"
-                      : "hidden",
-                  display: "grid",
-                  gridTemplateColumns:
-                    node.attrs.thumbnailPosition === "bottom"
-                      ? "repeat(auto-fit, minmax(96px, 132px))"
-                      : undefined,
-                  alignContent: "start",
-                  gap,
-                  gridColumn:
-                    node.attrs.thumbnailPosition === "bottom"
-                      ? "1 / -1"
-                      : undefined,
-                }}
-              >
+              <div className={collection.rail}>
                 {images.map((image) =>
                   photoTile(image, images.indexOf(image), true),
                 )}
@@ -458,31 +436,24 @@ function PhotoCollectionView({
         )}
 
         {editable && images.length === 0 && (
-          <div style={{ padding: 14 }}>
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={uploading}
-              style={{
-                width: "100%",
-                minHeight: 150,
-                border: "1px dashed var(--mantine-color-default-border)",
-                borderRadius: 8,
-                background: "var(--mantine-color-default-hover)",
-                color: "inherit",
-                cursor: uploading ? "wait" : "pointer",
-                fontWeight: 650,
-              }}
-            >
-              {uploading
-                ? "Uploading photos…"
-                : `Drop photos here or click to create ${kind}`}
-            </button>
-          </div>
+          <CollectionEmpty
+            label="Add photos"
+            helper="Choose photos or drop them here."
+            uploading={uploading}
+            onAdd={() => inputRef.current?.click()}
+          />
         )}
 
         {editable && (
           <>
+            {kind === "album" && (
+              <button
+                type="button"
+                hidden
+                data-ramzy-element-action="edit-album-details"
+                onClick={openDetails}
+              />
+            )}
             <button
               type="button"
               hidden
@@ -505,81 +476,82 @@ function PhotoCollectionView({
           </>
         )}
 
-        {kind === "album" && editable && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 10,
-              padding: 14,
-              borderTop: "1px solid var(--mantine-color-default-border)",
-              background: "var(--mantine-color-default-hover)",
-            }}
-          >
-            <textarea
-              value={node.attrs.description || ""}
-              placeholder="Album description…"
-              onChange={(event) =>
-                updateAttributes({ description: event.currentTarget.value })
-              }
-              style={{
-                gridColumn: "1 / -1",
-                minHeight: 70,
-                resize: "vertical",
-              }}
-            />
-            <input
-              value={node.attrs.location || ""}
-              placeholder="Location"
-              onChange={(event) =>
-                updateAttributes({ location: event.currentTarget.value })
-              }
-            />
-            <input
-              value={node.attrs.date || ""}
-              placeholder="Date"
-              onChange={(event) =>
-                updateAttributes({ date: event.currentTarget.value })
-              }
-            />
-            <input
-              value={node.attrs.credit || ""}
-              placeholder="Photographer / credit"
-              onChange={(event) =>
-                updateAttributes({ credit: event.currentTarget.value })
-              }
-              style={{ gridColumn: "1 / -1" }}
-            />
-          </div>
-        )}
         {kind === "album" &&
-          !editable &&
           (node.attrs.description ||
             node.attrs.location ||
             node.attrs.date ||
             node.attrs.credit) && (
-            <div style={{ padding: "14px 0 0", display: "grid", gap: 7 }}>
+            <div className={collection.metadata}>
               {node.attrs.description && (
-                <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                <div className={collection.description}>
                   {node.attrs.description}
                 </div>
               )}
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  fontSize: 12,
-                  opacity: 0.68,
-                }}
-              >
+              <div className={collection.credits}>
                 {node.attrs.location && <span>{node.attrs.location}</span>}
                 {node.attrs.date && <span>{node.attrs.date}</span>}
                 {node.attrs.credit && <span>Photo: {node.attrs.credit}</span>}
               </div>
             </div>
           )}
-      </div>
+      </CollectionFrame>
+      {editable && (
+        <Modal
+          opened={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          title="Edit album details"
+          centered
+        >
+          <Stack>
+            <Textarea
+              label="Description"
+              autosize
+              minRows={3}
+              value={details.description}
+              onChange={(event) =>
+                setDetails({
+                  ...details,
+                  description: event.currentTarget.value,
+                })
+              }
+            />
+            <TextInput
+              label="Location"
+              value={details.location}
+              onChange={(event) =>
+                setDetails({ ...details, location: event.currentTarget.value })
+              }
+            />
+            <TextInput
+              label="Date"
+              value={details.date}
+              onChange={(event) =>
+                setDetails({ ...details, date: event.currentTarget.value })
+              }
+            />
+            <TextInput
+              label="Photographer / credit"
+              value={details.credit}
+              onChange={(event) =>
+                setDetails({ ...details, credit: event.currentTarget.value })
+              }
+            />
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setDetailsOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  updateAttributes(details);
+                  setDetailsOpen(false);
+                }}
+              >
+                Save details
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
+      )}
       {viewer && <PhotoViewer image={viewer} onClose={() => setViewer(null)} />}
     </NodeViewWrapper>
   );

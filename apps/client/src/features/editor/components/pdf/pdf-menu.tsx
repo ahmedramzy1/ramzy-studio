@@ -9,6 +9,7 @@ import {
 } from "@/features/editor/components/table/types/types.ts";
 import { ActionIcon, Button, Menu, Tooltip } from "@mantine/core";
 import {
+  IconArrowsHorizontal,
   IconCheck,
   IconDownload,
   IconEdit,
@@ -224,9 +225,25 @@ export function PdfMenu({ editor }: EditorMenuProps) {
           width={190}
         >
           <Menu.Target>
-            <Button size="compact-sm" variant="subtle">
-              {editorState?.width || 800}px
-            </Button>
+            {portfolioMode ? (
+              <Tooltip
+                position="top"
+                label={`PDF width: ${editorState?.width || 800}px`}
+                withinPortal={false}
+              >
+                <ActionIcon
+                  size="lg"
+                  variant="subtle"
+                  aria-label={`PDF width: ${editorState?.width || 800}px`}
+                >
+                  <IconArrowsHorizontal size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : (
+              <Button size="compact-sm" variant="subtle">
+                {editorState?.width || 800}px
+              </Button>
+            )}
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>PDF size</Menu.Label>

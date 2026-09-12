@@ -52,6 +52,7 @@ import {
   PortfolioDraftSaveError,
   savePortfolioDraft,
 } from "./portfolio-draft-save";
+import { getMountedPortfolioEditorDom } from "./portfolio-editor-mode";
 
 export type RamzyPortfolioSaveState = "idle" | "saving" | "saved" | "error";
 
@@ -137,6 +138,7 @@ function DirectPortfolioEditor({
 }: RamzyStudioPortfolioEditorProps) {
   const editorRef = useRef<Editor | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [editorViewReady, setEditorViewReady] = useState(false);
   const mountedRef = useRef(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingContentRef = useRef<JSONContent | null>(null);
@@ -157,6 +159,26 @@ function DirectPortfolioEditor({
   useEffect(() => {
     onSessionExpiredRef.current = onSessionExpired;
   }, [onSessionExpired]);
+
+  useEffect(() => {
+    setEditorViewReady(false);
+    if (!editor) return;
+
+    let frame: number | null = null;
+    const markReadyWhenMounted = () => {
+      if (editorRef.current !== editor || editor.isDestroyed) return;
+      if (getMountedPortfolioEditorDom(editor)) {
+        setEditorViewReady(true);
+        return;
+      }
+      frame = requestAnimationFrame(markReadyWhenMounted);
+    };
+
+    frame = requestAnimationFrame(markReadyWhenMounted);
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [editor]);
 
   const notifySaveState = useCallback(
     (state: RamzyPortfolioSaveState, error?: string) => {
@@ -378,7 +400,7 @@ function DirectPortfolioEditor({
         }}
       />
 
-      {editor && (editable ?? true) && (
+      {editor && editorViewReady && (editable ?? true) && (
         <>
           <PortfolioDnd editor={editor} />
           <PortfolioGridControls editor={editor} />
@@ -388,11 +410,11 @@ function DirectPortfolioEditor({
         </>
       )}
 
-      {editor && (
+      {editor && editorViewReady && (
         <SearchAndReplaceDialog editor={editor} editable={editable ?? true} />
       )}
 
-      {editor && (editable ?? true) && (
+      {editor && editorViewReady && (editable ?? true) && (
         <>
           <EditorLinkMenu editor={editor} />
           <EditorBubbleMenu editor={editor} />

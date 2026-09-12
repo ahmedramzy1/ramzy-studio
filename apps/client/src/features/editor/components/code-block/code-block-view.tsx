@@ -7,6 +7,7 @@ import classes from "./code-block.module.css";
 import React from "react";
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 
 const MermaidView = React.lazy(
   () => import("@/features/editor/components/code-block/mermaid-view.tsx"),
@@ -20,9 +21,7 @@ export default function CodeBlockView(props: NodeViewProps) {
     language || null,
   );
   const [isSelected, setIsSelected] = useState(false);
-  const portfolioMode = editor.view.dom.classList.contains(
-    "ramzy-portfolio-editor",
-  );
+  const portfolioMode = isPortfolioEditor(editor);
 
   useEffect(() => {
     const updateSelection = () => {

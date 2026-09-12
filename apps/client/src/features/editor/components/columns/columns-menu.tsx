@@ -9,6 +9,7 @@ import {
 import { ActionIcon, Tooltip, Popover, Button } from "@mantine/core";
 import clsx from "clsx";
 import {
+  IconArrowsHorizontal,
   IconChevronDown,
   IconCheck,
   IconColumns2,
@@ -16,10 +17,15 @@ import {
   IconLayoutSidebar,
   IconLayoutSidebarRight,
   IconLayoutAlignCenter,
+  IconSpacingHorizontal,
   IconCopy,
   IconTrash,
 } from "@tabler/icons-react";
-import { isEditorReady, isTextSelected } from "@docmost/editor-ext";
+import {
+  getSelectedColumns,
+  isEditorReady,
+  isTextSelected,
+} from "@docmost/editor-ext";
 import type {
   ColumnsGap,
   ColumnsLayout,
@@ -29,6 +35,7 @@ import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
 import {
   hasPortfolioElementMenu,
+  getPortfolioElementMenuOwner,
   PortfolioElementActions,
 } from "@/features/editor/portfolio/portfolio-element-menu";
 
@@ -119,13 +126,20 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
   const shouldShow = useCallback(
     ({ state }: ShouldShowProps) => {
       if (!state || !isEditorReady(editor)) return false;
+      if (portfolioMode && getPortfolioElementMenuOwner(editor) !== "columns") {
+        return false;
+      }
       if (!editor.isActive("columns")) return false;
-      if (isTextSelected(editor)) return false;
-      if (nodesWithMenus.some((name) => editor.isActive(name))) return false;
+      if (
+        (!portfolioMode || !("node" in state.selection)) && isTextSelected(editor)
+      ) return false;
+      if (
+        !portfolioMode &&
+        nodesWithMenus.some((name) => editor.isActive(name))
+      )
+        return false;
 
-      const parent = findParentNode(
-        (node: PMNode) => node.type.name === "columns",
-      )(state.selection);
+      const parent = getSelectedColumns(state.selection);
       if (!parent) return false;
 
       const dom = editor.view.nodeDOM(parent.pos) as HTMLElement;
@@ -134,7 +148,7 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
       const rect = dom.getBoundingClientRect();
       return rect.bottom > 0 && rect.top < window.innerHeight;
     },
-    [editor],
+    [editor, portfolioMode],
   );
 
   const editorState = useEditorState({
@@ -143,14 +157,13 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
       if (!ctx.editor) return null;
 
       const { selection } = ctx.editor.state;
-      const parent = findParentNode(
-        (node: PMNode) => node.type.name === "columns",
-      )(selection);
+      const parent = getSelectedColumns(selection);
       const column = findParentNode(
         (node: PMNode) => node.type.name === "column",
       )(selection);
 
       return {
+        hasSelectedColumn: Boolean(column),
         columnCount: parent?.node.childCount || 2,
         layout: (parent?.node.attrs.layout as ColumnsLayout) || "two_equal",
         verticalAlign:
@@ -169,11 +182,11 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
   const getReferencedVirtualElement = useCallback(() => {
     if (!isEditorReady(editor)) return;
     const { selection } = editor.state;
-    const predicate = (node: PMNode) => node.type.name === "columns";
-    const parent = findParentNode(predicate)(selection);
+    const parent = getSelectedColumns(selection);
 
     if (parent) {
       const dom = editor.view.nodeDOM(parent?.pos) as HTMLElement;
+      if (!dom) return;
       const domRect = dom.getBoundingClientRect();
 
       if (domRect.bottom <= 0 || domRect.top >= window.innerHeight) {
@@ -271,9 +284,7 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
 
   const handleCopy = useCallback(() => {
     const { state } = editor;
-    const parent = findParentNode(
-      (node: PMNode) => node.type.name === "columns",
-    )(state.selection);
+    const parent = getSelectedColumns(state.selection);
     if (!parent) return;
 
     const serializer = DOMSerializer.fromSchema(state.schema);
@@ -321,9 +332,7 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
   }, [editor]);
 
   const handleDelete = useCallback(() => {
-    const parent = findParentNode(
-      (node: PMNode) => node.type.name === "columns",
-    )(editor.state.selection);
+    const parent = getSelectedColumns(editor.state.selection);
     if (!parent) return;
     editor.chain().focus().setNodeSelection(parent.pos).deleteSelection().run();
   }, [editor]);
@@ -336,9 +345,11 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
   const presets = getPresetsForCount(columnCount);
 
   const alignLabel =
-    alignOptions.find((option) => option.value === currentAlign)?.label || "Top";
+    alignOptions.find((option) => option.value === currentAlign)?.label ||
+    "Top";
   const gapLabel =
-    gapOptions.find((option) => option.value === currentGap)?.label || "Standard";
+    gapOptions.find((option) => option.value === currentGap)?.label ||
+    "Standard";
   const widthLabel =
     widthOptions.find((option) => option.value === currentWidth)?.label ||
     `${currentWidth}×`;
@@ -361,16 +372,33 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
       <div className={classes.toolbar}>
         <Popover opened={isCountOpen} onChange={setIsCountOpen} withArrow>
           <Popover.Target>
-            <Button
-              variant="subtle"
-              color="dark"
-              size="compact-sm"
-              rightSection={<IconChevronDown size={12} />}
-              onClick={() => setIsCountOpen(!isCountOpen)}
-              aria-label={t("Column count")}
-            >
-              {t("{{count}} Columns", { count: columnCount })}
-            </Button>
+            {portfolioMode ? (
+              <Tooltip
+                position="top"
+                label={t("{{count}} Columns", { count: columnCount })}
+                withinPortal={false}
+              >
+                <ActionIcon
+                  variant="subtle"
+                  size="lg"
+                  onClick={() => setIsCountOpen(!isCountOpen)}
+                  aria-label={t("Column count")}
+                >
+                  <IconColumns3 size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : (
+              <Button
+                variant="subtle"
+                color="dark"
+                size="compact-sm"
+                rightSection={<IconChevronDown size={12} />}
+                onClick={() => setIsCountOpen(!isCountOpen)}
+                aria-label={t("Column count")}
+              >
+                {t("{{count}} Columns", { count: columnCount })}
+              </Button>
+            )}
           </Popover.Target>
           <Popover.Dropdown p={4}>
             <Button.Group orientation="vertical">
@@ -416,15 +444,32 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
 
         <Popover opened={isAlignOpen} onChange={setIsAlignOpen} withArrow>
           <Popover.Target>
-            <Button
-              variant="subtle"
-              color="dark"
-              size="compact-sm"
-              rightSection={<IconChevronDown size={12} />}
-              onClick={() => setIsAlignOpen(!isAlignOpen)}
-            >
-              {t("Align")}: {t(alignLabel)}
-            </Button>
+            {portfolioMode ? (
+              <Tooltip
+                position="top"
+                label={`${t("Align")}: ${t(alignLabel)}`}
+                withinPortal={false}
+              >
+                <ActionIcon
+                  variant="subtle"
+                  size="lg"
+                  onClick={() => setIsAlignOpen(!isAlignOpen)}
+                  aria-label={`${t("Align")}: ${t(alignLabel)}`}
+                >
+                  <IconLayoutAlignCenter size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : (
+              <Button
+                variant="subtle"
+                color="dark"
+                size="compact-sm"
+                rightSection={<IconChevronDown size={12} />}
+                onClick={() => setIsAlignOpen(!isAlignOpen)}
+              >
+                {t("Align")}: {t(alignLabel)}
+              </Button>
+            )}
           </Popover.Target>
           <Popover.Dropdown p={4}>
             <Button.Group orientation="vertical">
@@ -436,7 +481,9 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
                   justify="space-between"
                   fullWidth
                   rightSection={
-                    option.value === currentAlign ? <IconCheck size={14} /> : null
+                    option.value === currentAlign ? (
+                      <IconCheck size={14} />
+                    ) : null
                   }
                   onClick={() => setVerticalAlign(option.value)}
                   size="xs"
@@ -450,15 +497,32 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
 
         <Popover opened={isGapOpen} onChange={setIsGapOpen} withArrow>
           <Popover.Target>
-            <Button
-              variant="subtle"
-              color="dark"
-              size="compact-sm"
-              rightSection={<IconChevronDown size={12} />}
-              onClick={() => setIsGapOpen(!isGapOpen)}
-            >
-              {t("Gap")}: {t(gapLabel)}
-            </Button>
+            {portfolioMode ? (
+              <Tooltip
+                position="top"
+                label={`${t("Gap")}: ${t(gapLabel)}`}
+                withinPortal={false}
+              >
+                <ActionIcon
+                  variant="subtle"
+                  size="lg"
+                  onClick={() => setIsGapOpen(!isGapOpen)}
+                  aria-label={`${t("Gap")}: ${t(gapLabel)}`}
+                >
+                  <IconSpacingHorizontal size={18} />
+                </ActionIcon>
+              </Tooltip>
+            ) : (
+              <Button
+                variant="subtle"
+                color="dark"
+                size="compact-sm"
+                rightSection={<IconChevronDown size={12} />}
+                onClick={() => setIsGapOpen(!isGapOpen)}
+              >
+                {t("Gap")}: {t(gapLabel)}
+              </Button>
+            )}
           </Popover.Target>
           <Popover.Dropdown p={4}>
             <Button.Group orientation="vertical">
@@ -482,39 +546,60 @@ export function ColumnsMenu({ editor }: EditorMenuProps) {
           </Popover.Dropdown>
         </Popover>
 
-        <Popover opened={isWidthOpen} onChange={setIsWidthOpen} withArrow>
-          <Popover.Target>
-            <Button
-              variant="subtle"
-              color="dark"
-              size="compact-sm"
-              rightSection={<IconChevronDown size={12} />}
-              onClick={() => setIsWidthOpen(!isWidthOpen)}
-            >
-              {t("Width")}: {widthLabel}
-            </Button>
-          </Popover.Target>
-          <Popover.Dropdown p={4}>
-            <Button.Group orientation="vertical">
-              {widthOptions.map((option) => (
-                <Button
-                  key={option.label}
-                  variant={option.value === currentWidth ? "light" : "subtle"}
-                  color={option.value === currentWidth ? "blue" : "dark"}
-                  justify="space-between"
-                  fullWidth
-                  rightSection={
-                    option.value === currentWidth ? <IconCheck size={14} /> : null
-                  }
-                  onClick={() => setSelectedColumnWidth(option.value)}
-                  size="xs"
+        {editorState?.hasSelectedColumn && (
+          <Popover opened={isWidthOpen} onChange={setIsWidthOpen} withArrow>
+            <Popover.Target>
+              {portfolioMode ? (
+                <Tooltip
+                  position="top"
+                  label={`${t("Width")}: ${widthLabel}`}
+                  withinPortal={false}
                 >
-                  {t(option.label)}
+                  <ActionIcon
+                    variant="subtle"
+                    size="lg"
+                    onClick={() => setIsWidthOpen(!isWidthOpen)}
+                    aria-label={`${t("Width")}: ${widthLabel}`}
+                  >
+                    <IconArrowsHorizontal size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="subtle"
+                  color="dark"
+                  size="compact-sm"
+                  rightSection={<IconChevronDown size={12} />}
+                  onClick={() => setIsWidthOpen(!isWidthOpen)}
+                >
+                  {t("Width")}: {widthLabel}
                 </Button>
-              ))}
-            </Button.Group>
-          </Popover.Dropdown>
-        </Popover>
+              )}
+            </Popover.Target>
+            <Popover.Dropdown p={4}>
+              <Button.Group orientation="vertical">
+                {widthOptions.map((option) => (
+                  <Button
+                    key={option.label}
+                    variant={option.value === currentWidth ? "light" : "subtle"}
+                    color={option.value === currentWidth ? "blue" : "dark"}
+                    justify="space-between"
+                    fullWidth
+                    rightSection={
+                      option.value === currentWidth ? (
+                        <IconCheck size={14} />
+                      ) : null
+                    }
+                    onClick={() => setSelectedColumnWidth(option.value)}
+                    size="xs"
+                  >
+                    {t(option.label)}
+                  </Button>
+                ))}
+              </Button.Group>
+            </Popover.Dropdown>
+          </Popover>
+        )}
 
         <div className={classes.divider} />
 

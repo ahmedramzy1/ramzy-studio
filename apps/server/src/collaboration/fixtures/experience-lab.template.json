@@ -1,0 +1,3982 @@
+{
+  "version": 1,
+  "projectId": "drafts.1788994018441-62vwbux",
+  "expectedTitle": "Ramzy Studio — Experience Lab",
+  "chapters": [
+    {
+      "key": "brief",
+      "title": "01 / The brief",
+      "headingId": "2db0ef3d-6417-58bd-93d8-bdd55b939b09",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "2db0ef3d-6417-58bd-93d8-bdd55b939b09"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "01 / The brief"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "One project. Every element. A coherent experience."
+            }
+          ],
+          "attrs": {
+            "id": "78a2f7c2-9a86-5554-a3f2-03ac6507cd37"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Experience Lab is a private working case study for evaluating the Ramzy Studio editor as a complete product. It brings writing, imagery, media, structured layouts and supporting documents into one coherent narrative."
+            }
+          ],
+          "attrs": {
+            "id": "61f446f7-b10b-505a-a623-83693e2500ed"
+          }
+        },
+        {
+          "type": "blockquote",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The quality of the experience lives in the transitions between elements."
+                }
+              ],
+              "attrs": {
+                "id": "6d6244dd-d378-5e7f-a618-1397644f46d1"
+              }
+            }
+          ],
+          "attrs": {
+            "id": "e7ff87fa-cd4c-52fa-a824-26be4618817b"
+          }
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Project detail"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "04f6a02b-16b6-5227-876d-6b80434ba8ba"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Context"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "cd0ec277-b614-5189-bc9d-c119c583b8d5"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Owner"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "6f2c3edc-7ffc-5025-b81d-540049dff075"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Ahmed Ramzy"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "b136ce96-b8ef-570c-93a2-ebf286cb930f"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Organisation"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "07aff80f-f3d8-59b6-bdd4-78cc126a9e0a"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Ramzy Studio · Internal QA"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "0fe02117-19c4-5d79-b71f-bb2ef5e50d65"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Discipline"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "0e4ef208-5320-52a9-a62f-564c2613599a"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Product design · Design systems · UX research"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "1a73d2d9-4266-5c66-bc24-e79443a244de"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Stage"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "ea50df7f-247c-51fb-b207-de22a1891425"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "In Testing · Private draft"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "7a39b001-c078-5dfb-a076-889670008079"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Review cycle"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "288430e4-c6ee-5bb4-81d4-f7c39d74a5f7"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "September 2026"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "d2ba85df-18fc-5b84-a1a5-3e5f8c60bc01"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Platforms"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "53b093dc-8449-5e26-b457-e8683da3a201"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Desktop · iPad · phone"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "1c36cc1e-3f2c-5c88-b9d7-66a0fe652da8"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Success criteria"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "1ea6b827-c6ed-55ff-aad4-78153256f753"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Consistent appearance, discoverable controls, reliable saving"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "ad83fff1-1e7e-5d5d-bed8-016eeb1c8d26"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "a0d5db9e-1459-5a7a-8a86-a6a71d021b38"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "c74ca6b5-1ab9-5a29-8707-1c93e9f466cd"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "What we want to learn"
+            }
+          ]
+        },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Can an author move between elements without relearning the interface?"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "70a7af18-f585-5110-8406-78b0b978d60e"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Do mixed layouts remain readable and editable on touch devices?"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "855f82a9-6fa0-5405-9ad8-bbeb47d0ab99"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Does saved content match the preview?"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "18b47caa-370b-5875-9e73-daca397af93a"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "31bd379a-56a4-5180-84b2-5a61710c21bb"
+          }
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "info",
+            "id": "ea54589c-d42b-535b-b496-a82236ba0a7b"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "All examples are synthetic review fixtures. No outcome is a measured product result."
+                }
+              ],
+              "attrs": {
+                "id": "d7189e7b-babc-52df-a7bb-0d58b72e6557"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "writing",
+      "title": "02 / Research and writing",
+      "headingId": "93a4119e-dfe9-5fd1-814b-849cb7ec2e78",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "93a4119e-dfe9-5fd1-814b-849cb7ec2e78"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "02 / Research and writing"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "2a00c1e9-6c58-561f-bede-b26bef758b6c"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "The problem"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Individually useful components can feel inconsistent when their typography, spacing, controls and empty states are combined. This project makes those differences visible in context."
+            }
+          ],
+          "attrs": {
+            "id": "dedb4733-39c1-5e99-833a-8d3a9bd85875"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "91f6177a-1cef-524e-a4bf-85099966f9b9"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Our principles"
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Familiar structure: consistent spacing and hierarchy."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "1a566b30-dcb6-5498-9596-b2f10cb14762"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Predictable actions: controls follow the selected content."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "87e27eca-601d-5f27-9939-d5a95621352b"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Honest feedback: loading, saving and errors remain clear."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "f953454b-4a43-52fd-b24b-88fc8acc30a1"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "c18d8b54-b266-5e08-9fe4-c4d010c1fe21"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "a11a6852-c8fc-540b-99ae-80904b57be3e"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Editorial rhythm"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Use this section to check long lines, selection, cursor movement and transitions between text and media."
+            }
+          ],
+          "attrs": {
+            "id": "a970548b-4b05-5630-865f-7c8dfd31673c"
+          }
+        }
+      ]
+    },
+    {
+      "key": "type-specimen",
+      "title": "02b / Type and interaction specimens",
+      "headingId": "00d5e3c9-1d54-5f18-9e75-05cf572bb804",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "00d5e3c9-1d54-5f18-9e75-05cf572bb804"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "02b / Type and interaction specimens"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "010a4b77-e7c5-52a7-a094-12e51fa12fb7"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Heading two"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "02f3e295-35f1-5cfc-b2fa-591bfb3714e4"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Heading three"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 4,
+            "id": "7afa8009-46be-583e-b79f-49acf609322b"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Heading four"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 5,
+            "id": "3dbe4544-f769-5b87-9df0-93f7085f00f0"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Heading five"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 6,
+            "id": "fea23102-4a0b-5a7f-bea8-6bcbe7821926"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Heading six"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Bold ",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "italic ",
+              "marks": [
+                {
+                  "type": "italic"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "underline ",
+              "marks": [
+                {
+                  "type": "underline"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "strike ",
+              "marks": [
+                {
+                  "type": "strike"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "highlight ",
+              "marks": [
+                {
+                  "type": "highlight",
+                  "attrs": {
+                    "color": "#fff2a8"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "inline code ",
+              "marks": [
+                {
+                  "type": "code"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "H"
+            },
+            {
+              "type": "text",
+              "text": "2",
+              "marks": [
+                {
+                  "type": "subscript"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "O · x"
+            },
+            {
+              "type": "text",
+              "text": "2",
+              "marks": [
+                {
+                  "type": "superscript"
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "89fb6f31-874d-5c09-8ea8-2779260b7444"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "تجربة متكاملة تجمع النصوص والصور والفيديو في لغة تصميم واحدة."
+            }
+          ],
+          "attrs": {
+            "id": "2928947b-afd4-5c7a-a307-0e1f2202b831"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "A deliberately longer paragraph tests wrapping in narrow columns. Check that the line height feels consistent with neighbouring blocks and that tapping between words places the cursor where expected. This text is editable and contains no hidden behaviour."
+            }
+          ],
+          "attrs": {
+            "id": "cf864fb3-8718-5b76-9dac-6d0cfdb692b5"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Design-system reference ",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://ahmedramzy.com",
+                    "target": "_blank",
+                    "rel": "noopener noreferrer"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "status",
+              "attrs": {
+                "text": "Review pending",
+                "color": "yellow"
+              }
+            }
+          ],
+          "attrs": {
+            "id": "87f4bc50-a6bc-5e3e-aeb2-547021fa874c"
+          }
+        },
+        {
+          "type": "details",
+          "content": [
+            {
+              "type": "detailsSummary",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "How to review this project"
+                }
+              ]
+            },
+            {
+              "type": "detailsContent",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Start on desktop, repeat on iPad and phone, then compare Build and Preview. Open each toolbar, edit one value and reload after saving."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "623a7bda-48f5-53f5-bc0d-b5fa6b67e0d7"
+                  }
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Check spacing and contrast."
+                            }
+                          ],
+                          "attrs": {
+                            "id": "7f4efe10-e7d2-5c61-aa36-74d1964d72d7"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Check keyboard and touch interaction."
+                            }
+                          ],
+                          "attrs": {
+                            "id": "de1efcaa-95fe-5354-a1f9-2d6afd395cdd"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Record the actual result in the checklist."
+                            }
+                          ],
+                          "attrs": {
+                            "id": "67a0df08-aaf8-5a93-a54c-97fc9ddd0b7f"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "id": "ebc64bac-f496-538b-8620-0a487759e12a"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "471b7052-adb8-5411-94b1-65307ada0da0"
+          }
+        },
+        {
+          "type": "horizontalRule",
+          "attrs": {
+            "id": "d4cf63ea-a1f7-5b72-9aa7-f9be5ff10b27"
+          }
+        }
+      ]
+    },
+    {
+      "key": "images",
+      "title": "03 / Images and collections",
+      "headingId": "780166d4-b69c-565e-9c73-e8c86e782e0e",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "780166d4-b69c-565e-9c73-e8c86e782e0e"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "03 / Images and collections"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The same artwork appears as a single image, grid and album so differences in framing, captions and controls are easy to compare."
+            }
+          ],
+          "attrs": {
+            "id": "4b7bbca3-58a8-570d-b0b5-d90b04aae4e4"
+          }
+        },
+        {
+          "type": "image",
+          "attrs": {
+            "src": {
+              "$media": "cover.png",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "cover.png",
+              "field": "id"
+            },
+            "alt": "Experience Lab — blue circle and modular panels on a warm neutral canvas",
+            "caption": "Experience Lab — blue circle and modular panels on a warm neutral canvas",
+            "width": 800,
+            "aspectRatio": 1.6,
+            "fit": "contain"
+          }
+        },
+        {
+          "type": "photoGrid",
+          "attrs": {
+            "images": [
+              {
+                "key": "ad12ad65-9528-5371-be8d-0d9e5f761c1c",
+                "src": {
+                  "$media": "discover.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "discover.png",
+                  "field": "id"
+                },
+                "title": "Discover",
+                "alt": "Discover — original blue and neutral process illustration",
+                "caption": "Discover: one stage of the Experience Lab workflow."
+              },
+              {
+                "key": "a7b2373d-4ee6-5a6c-8a6c-bfe437813d6e",
+                "src": {
+                  "$media": "compose.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "compose.png",
+                  "field": "id"
+                },
+                "title": "Compose",
+                "alt": "Compose — original blue and neutral process illustration",
+                "caption": "Compose: one stage of the Experience Lab workflow."
+              },
+              {
+                "key": "84dedd67-e13d-5859-9797-fd765d7c37bf",
+                "src": {
+                  "$media": "refine.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "refine.png",
+                  "field": "id"
+                },
+                "title": "Refine",
+                "alt": "Refine — original blue and neutral process illustration",
+                "caption": "Refine: one stage of the Experience Lab workflow."
+              },
+              {
+                "key": "05562051-541a-5a6e-96ca-f5ca28ac761a",
+                "src": {
+                  "$media": "validate.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "validate.png",
+                  "field": "id"
+                },
+                "title": "Validate",
+                "alt": "Validate — original blue and neutral process illustration",
+                "caption": "Validate: one stage of the Experience Lab workflow."
+              }
+            ],
+            "title": "The four stages",
+            "description": "Original process illustrations for interaction testing.",
+            "columns": 2,
+            "gap": 10,
+            "fit": "contain",
+            "aspect": "auto",
+            "lightbox": true,
+            "id": "69f712ff-58a6-5a0b-bcdd-b7a939272a1d"
+          }
+        },
+        {
+          "type": "photoAlbum",
+          "attrs": {
+            "images": [
+              {
+                "key": "ad12ad65-9528-5371-be8d-0d9e5f761c1c",
+                "src": {
+                  "$media": "discover.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "discover.png",
+                  "field": "id"
+                },
+                "title": "Discover",
+                "alt": "Discover — original blue and neutral process illustration",
+                "caption": "Discover: one stage of the Experience Lab workflow."
+              },
+              {
+                "key": "a7b2373d-4ee6-5a6c-8a6c-bfe437813d6e",
+                "src": {
+                  "$media": "compose.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "compose.png",
+                  "field": "id"
+                },
+                "title": "Compose",
+                "alt": "Compose — original blue and neutral process illustration",
+                "caption": "Compose: one stage of the Experience Lab workflow."
+              },
+              {
+                "key": "84dedd67-e13d-5859-9797-fd765d7c37bf",
+                "src": {
+                  "$media": "refine.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "refine.png",
+                  "field": "id"
+                },
+                "title": "Refine",
+                "alt": "Refine — original blue and neutral process illustration",
+                "caption": "Refine: one stage of the Experience Lab workflow."
+              },
+              {
+                "key": "05562051-541a-5a6e-96ca-f5ca28ac761a",
+                "src": {
+                  "$media": "validate.png",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "validate.png",
+                  "field": "id"
+                },
+                "title": "Validate",
+                "alt": "Validate — original blue and neutral process illustration",
+                "caption": "Validate: one stage of the Experience Lab workflow."
+              }
+            ],
+            "title": "A closer look",
+            "description": "Move through the four stages using the thumbnail rail.",
+            "credit": "Experience Lab · Original fixture artwork",
+            "date": "2026-09-11",
+            "activeKey": "ad12ad65-9528-5371-be8d-0d9e5f761c1c",
+            "fit": "contain",
+            "thumbnailPosition": "right",
+            "lightbox": true,
+            "autoplay": false,
+            "id": "0bfc71c2-7c13-5687-bff4-fccc32051ef5"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "93eee805-0c88-5188-ae6a-ebd580c4acbf"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Adjacent grids: toolbar regression"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Select each grid and open its hovering toolbar. Move across the gap, change an image and resize the row. Repeat using touch."
+            }
+          ],
+          "attrs": {
+            "id": "52b6a7ae-06a7-5fc0-be2b-0bcb6e3021d5"
+          }
+        },
+        {
+          "type": "columns",
+          "attrs": {
+            "layout": "two_equal",
+            "gap": "standard",
+            "id": "b01f3d0c-2127-5a68-8b8e-6c691d3bfba2"
+          },
+          "content": [
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "photoGrid",
+                  "attrs": {
+                    "images": [
+                      {
+                        "key": "ad12ad65-9528-5371-be8d-0d9e5f761c1c",
+                        "src": {
+                          "$media": "discover.png",
+                          "field": "src"
+                        },
+                        "attachmentId": {
+                          "$media": "discover.png",
+                          "field": "id"
+                        },
+                        "title": "Discover",
+                        "alt": "Discover — original blue and neutral process illustration",
+                        "caption": "Discover: one stage of the Experience Lab workflow."
+                      },
+                      {
+                        "key": "a7b2373d-4ee6-5a6c-8a6c-bfe437813d6e",
+                        "src": {
+                          "$media": "compose.png",
+                          "field": "src"
+                        },
+                        "attachmentId": {
+                          "$media": "compose.png",
+                          "field": "id"
+                        },
+                        "title": "Compose",
+                        "alt": "Compose — original blue and neutral process illustration",
+                        "caption": "Compose: one stage of the Experience Lab workflow."
+                      }
+                    ],
+                    "title": "Discover and compose",
+                    "description": "Original process illustrations for interaction testing.",
+                    "columns": 2,
+                    "gap": 10,
+                    "fit": "contain",
+                    "aspect": "auto",
+                    "lightbox": true,
+                    "id": "0449b244-8942-5a37-ba10-af80fa9392f7"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "photoGrid",
+                  "attrs": {
+                    "images": [
+                      {
+                        "key": "84dedd67-e13d-5859-9797-fd765d7c37bf",
+                        "src": {
+                          "$media": "refine.png",
+                          "field": "src"
+                        },
+                        "attachmentId": {
+                          "$media": "refine.png",
+                          "field": "id"
+                        },
+                        "title": "Refine",
+                        "alt": "Refine — original blue and neutral process illustration",
+                        "caption": "Refine: one stage of the Experience Lab workflow."
+                      },
+                      {
+                        "key": "05562051-541a-5a6e-96ca-f5ca28ac761a",
+                        "src": {
+                          "$media": "validate.png",
+                          "field": "src"
+                        },
+                        "attachmentId": {
+                          "$media": "validate.png",
+                          "field": "id"
+                        },
+                        "title": "Validate",
+                        "alt": "Validate — original blue and neutral process illustration",
+                        "caption": "Validate: one stage of the Experience Lab workflow."
+                      }
+                    ],
+                    "title": "Refine and validate",
+                    "description": "Original process illustrations for interaction testing.",
+                    "columns": 2,
+                    "gap": 10,
+                    "fit": "contain",
+                    "aspect": "auto",
+                    "lightbox": true,
+                    "id": "32bd043f-321f-5386-bf37-22bf807d1e0f"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "media",
+      "title": "04 / Motion and sound",
+      "headingId": "aaf9898e-cf6d-5a24-842f-2b3564841648",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "aaf9898e-cf6d-5a24-842f-2b3564841648"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "04 / Motion and sound"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "These short fixtures test loading, playback, seeking, captions, artwork and queue navigation. They are not interview recordings."
+            }
+          ],
+          "attrs": {
+            "id": "a36e4e53-2c67-51a2-9ce6-18c068cff62e"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "fe622c2d-3663-55dd-90e6-52c70d659ed1"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Single video"
+            }
+          ]
+        },
+        {
+          "type": "video",
+          "attrs": {
+            "src": {
+              "$media": "discovery-demo.mp4",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "discovery-demo.mp4",
+              "field": "id"
+            },
+            "alt": "Discover motion fixture",
+            "caption": "Eight-second synthetic playback sample.",
+            "width": 800,
+            "aspectRatio": 1.6,
+            "captions": [
+              {
+                "key": "a3e7276e-767f-54d1-be67-306811d98312",
+                "src": {
+                  "$media": "review-captions.vtt",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "review-captions.vtt",
+                  "field": "id"
+                },
+                "label": "English review cues",
+                "language": "en"
+              }
+            ],
+            "id": "fec1d206-c3d3-5641-8ff9-28097cc8afe0"
+          }
+        },
+        {
+          "type": "mediaPlaylist",
+          "attrs": {
+            "kind": "video",
+            "title": "Process films",
+            "items": [
+              {
+                "key": "a9e011c4-bb8a-5205-88ba-ff056f1103bd",
+                "src": {
+                  "$media": "discovery-demo.mp4",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "discovery-demo.mp4",
+                  "field": "id"
+                },
+                "title": "Discover: establish the direction",
+                "description": "Synthetic motion fixture with a quiet test tone; no spoken narration.",
+                "durationSeconds": 8,
+                "dateAdded": "2026-09-11",
+                "width": 800,
+                "height": 500,
+                "aspectRatio": 1.6,
+                "poster": {
+                  "$media": "discover.png",
+                  "field": "src"
+                },
+                "posterAttachmentId": {
+                  "$media": "discover.png",
+                  "field": "id"
+                },
+                "captions": [
+                  {
+                    "key": "a3e7276e-767f-54d1-be67-306811d98312",
+                    "src": {
+                      "$media": "review-captions.vtt",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "review-captions.vtt",
+                      "field": "id"
+                    },
+                    "label": "English review cues",
+                    "language": "en"
+                  }
+                ]
+              },
+              {
+                "key": "5215b617-75a2-594a-ac7f-395590fa47ac",
+                "src": {
+                  "$media": "validation-demo.mp4",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "validation-demo.mp4",
+                  "field": "id"
+                },
+                "title": "Validate: check the experience",
+                "description": "Synthetic motion fixture with a quiet test tone; no spoken narration.",
+                "durationSeconds": 6,
+                "dateAdded": "2026-09-11",
+                "width": 800,
+                "height": 500,
+                "aspectRatio": 1.6,
+                "poster": {
+                  "$media": "validate.png",
+                  "field": "src"
+                },
+                "posterAttachmentId": {
+                  "$media": "validate.png",
+                  "field": "id"
+                },
+                "captions": [
+                  {
+                    "key": "82985115-aa45-5c0d-9ed1-345a9071b46e",
+                    "src": {
+                      "$media": "review-captions.vtt",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "review-captions.vtt",
+                      "field": "id"
+                    },
+                    "label": "English review cues",
+                    "language": "en"
+                  }
+                ]
+              }
+            ],
+            "activeKey": "a9e011c4-bb8a-5205-88ba-ff056f1103bd",
+            "autoplay": false,
+            "loop": false,
+            "showQueue": true,
+            "queueLayout": "detailed",
+            "id": "fa3860e2-f845-5541-9af6-50f44fc29cbc"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "f97bad87-34a2-50ef-b427-c0bf9c7fa395"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Single audio"
+            }
+          ]
+        },
+        {
+          "type": "audio",
+          "attrs": {
+            "src": {
+              "$media": "focus-tone.mp3",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "focus-tone.mp3",
+              "field": "id"
+            },
+            "title": "Focus — a quiet sound check",
+            "artist": "Experience Lab",
+            "album": "Interface studies",
+            "description": "Synthetic low-volume tone for playback and queue testing.",
+            "artwork": {
+              "$media": "compose.png",
+              "field": "src"
+            },
+            "artworkAttachmentId": {
+              "$media": "compose.png",
+              "field": "id"
+            },
+            "artworkSource": "custom",
+            "durationSeconds": 10,
+            "id": "fd06f241-2ad2-59da-8876-6105b0cb8047"
+          }
+        },
+        {
+          "type": "mediaPlaylist",
+          "attrs": {
+            "kind": "audio",
+            "title": "Listening studies",
+            "items": [
+              {
+                "key": "07039b0a-9652-52b8-9390-edbe2bf58a6f",
+                "src": {
+                  "$media": "focus-tone.mp3",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "focus-tone.mp3",
+                  "field": "id"
+                },
+                "title": "Focus — a quiet sound check",
+                "artist": "Experience Lab",
+                "album": "Interface studies",
+                "description": "Synthetic low-volume tone for playback and queue testing.",
+                "durationSeconds": 10,
+                "dateAdded": "2026-09-11",
+                "artwork": {
+                  "$media": "compose.png",
+                  "field": "src"
+                },
+                "artworkAttachmentId": {
+                  "$media": "compose.png",
+                  "field": "id"
+                },
+                "artworkSource": "custom"
+              },
+              {
+                "key": "08fe0b8a-073c-5333-b15c-45531a7d4bef",
+                "src": {
+                  "$media": "review-tone.mp3",
+                  "field": "src"
+                },
+                "attachmentId": {
+                  "$media": "review-tone.mp3",
+                  "field": "id"
+                },
+                "title": "Review — a second track",
+                "artist": "Experience Lab",
+                "album": "Interface studies",
+                "description": "Synthetic low-volume tone for playback and queue testing.",
+                "durationSeconds": 7,
+                "dateAdded": "2026-09-11",
+                "artwork": {
+                  "$media": "refine.png",
+                  "field": "src"
+                },
+                "artworkAttachmentId": {
+                  "$media": "refine.png",
+                  "field": "id"
+                },
+                "artworkSource": "custom"
+              }
+            ],
+            "activeKey": "07039b0a-9652-52b8-9390-edbe2bf58a6f",
+            "autoplay": false,
+            "loop": false,
+            "shuffle": false,
+            "showQueue": true,
+            "queueLayout": "detailed",
+            "id": "015db71d-c1a7-50b5-b203-c42d6f23d6b0"
+          }
+        }
+      ]
+    },
+    {
+      "key": "compare",
+      "title": "05 / Compare ideas",
+      "headingId": "54b70ff0-649f-5cc6-bec4-38b0cb651a12",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "54b70ff0-649f-5cc6-bec4-38b0cb651a12"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "05 / Compare ideas"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Switch between related views without losing your place in the project."
+            }
+          ],
+          "attrs": {
+            "id": "b4f75186-be80-5a8a-b03a-f78bd15c6632"
+          }
+        },
+        {
+          "type": "tabs",
+          "content": [
+            {
+              "type": "tabPanel",
+              "attrs": {
+                "label": "Discover"
+              },
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "60383c94-0c90-58d4-8230-8208cb5330d9"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Discover"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Frame the problem and identify the review questions."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "8d371398-ad93-5f8f-9a31-09d13547a078"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "discover.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "discover.png",
+                      "field": "id"
+                    },
+                    "alt": "Discover process illustration",
+                    "caption": "Discover process illustration",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "tabPanel",
+              "attrs": {
+                "label": "Compose"
+              },
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "405d2264-5900-5035-b43a-6f166d8d1724"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Compose"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Arrange the content into a readable story."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "7decad00-8d37-5f51-a006-63986f3d2ae4"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "compose.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "compose.png",
+                      "field": "id"
+                    },
+                    "alt": "Compose process illustration",
+                    "caption": "Compose process illustration",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "tabPanel",
+              "attrs": {
+                "label": "Validate"
+              },
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "a888eb6c-879e-5c0d-8e6a-04648b13a5ec"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Validate"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Test the complete journey across devices."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "5a6de998-2b48-5517-857f-ca3492b0efe5"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "validate.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "validate.png",
+                      "field": "id"
+                    },
+                    "alt": "Validate process illustration",
+                    "caption": "Validate process illustration",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "4b7ab552-aca6-5c41-be72-ae1e66f33195"
+          }
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "default",
+            "id": "c9db220f-a9fe-520a-ba59-be5ba3908c5f"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Context: this is a shared review workspace."
+                }
+              ],
+              "attrs": {
+                "id": "90753e42-184e-5cb5-9129-3c7bdb13a1fc"
+              }
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "info",
+            "id": "425075f5-a92f-586a-a1f5-b5fe59a36900"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Information: the content remains editable."
+                }
+              ],
+              "attrs": {
+                "id": "d37446a4-0803-5abe-85cf-fcbde431ea4c"
+              }
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "note",
+            "id": "5c72afe8-fd78-582e-bacb-f7e69ad31b9c"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Note: use the same spacing rules across every element."
+                }
+              ],
+              "attrs": {
+                "id": "a18d5b35-bc5c-5a7a-9c72-78a78bdbc15f"
+              }
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "success",
+            "id": "401e2182-b591-5f70-ba4c-ac51a112eb4a"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Success state specimen — no test result is implied."
+                }
+              ],
+              "attrs": {
+                "id": "dc229ada-429a-53d2-ad16-ae7ac706613c"
+              }
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "warning",
+            "id": "d4c31804-7027-55ae-aeee-588f3a41ee21"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Warning state specimen — check contrast and icon alignment."
+                }
+              ],
+              "attrs": {
+                "id": "dc1e13c6-55dc-5bb6-9f19-356d5e463936"
+              }
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "danger",
+            "id": "ff2531cf-92b0-53de-a7c1-e3f9e30b4f92"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Error state specimen — check that the next action is clear."
+                }
+              ],
+              "attrs": {
+                "id": "b7a91efa-a119-5a79-b5e8-9da70760c3ed"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "layouts",
+      "title": "06 / Layout laboratory",
+      "headingId": "98abc71c-7922-597b-9bce-7ee3ff5b0845",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "98abc71c-7922-597b-9bce-7ee3ff5b0845"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "06 / Layout laboratory"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Each row increases the layout density. Check reading order, toolbar placement, drag handles and responsive stacking."
+            }
+          ],
+          "attrs": {
+            "id": "bfadc947-317b-59f4-83b5-b2088edd6504"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "da129774-9400-5218-a5e8-beb4804e2778"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Two columns — mixed content"
+            }
+          ]
+        },
+        {
+          "type": "columns",
+          "attrs": {
+            "layout": "two_equal",
+            "gap": "standard",
+            "id": "59bd5830-6cb8-59b8-97b0-54e79dafbbb8"
+          },
+          "content": [
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "7f4fb3b2-3451-57bc-8b24-5e3f628a8852"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The idea"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "A readable summary next to supporting media."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "967d0a8f-3d11-556e-8e4f-7203627a69af"
+                  }
+                },
+                {
+                  "type": "callout",
+                  "attrs": {
+                    "type": "info",
+                    "id": "b3323932-8b5b-5238-b053-099dd67c0db6"
+                  },
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "The toolbar should remain reachable."
+                        }
+                      ],
+                      "attrs": {
+                        "id": "8a841a9a-d7f6-5df4-b61e-17c51a07dc91"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "refine.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "refine.png",
+                      "field": "id"
+                    },
+                    "alt": "Refine process illustration",
+                    "caption": "Refine process illustration",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "f0a8c598-5cf3-5106-8f01-dcd5dbea64f2"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Three columns"
+            }
+          ]
+        },
+        {
+          "type": "columns",
+          "attrs": {
+            "layout": "three_equal",
+            "gap": "standard",
+            "id": "8e5b743d-c783-507f-8931-198da53e0218"
+          },
+          "content": [
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "8135e2a6-ccb9-5e71-9395-4adaa318173a"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Intent"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "A clear purpose."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "97adfb39-c9a8-5bc6-9068-301b3a390b5e"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "1ea3494e-81c6-5ffc-97ea-85c7856bee15"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Structure"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "A familiar arrangement."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "e3821962-8329-5aad-b624-fbed3ac62f1f"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "a37f6f1b-3c15-5ba2-8cf6-fd7991a31cc9"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Feedback"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "A visible response."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "3a0a0f99-e073-5128-8fc6-823b8ccad2d0"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "2b994882-5b13-56a6-97e0-9a1efb489c24"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Four columns"
+            }
+          ]
+        },
+        {
+          "type": "columns",
+          "attrs": {
+            "layout": "four_equal",
+            "gap": "standard",
+            "id": "d041aa67-8dfa-5557-9fde-49f0128f4101"
+          },
+          "content": [
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "732da743-87d8-502c-87d4-1a464cbe0733"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Discover"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Stage 1"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "a1f81445-9f43-56ca-ad82-e836e4c42462"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "discover.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "discover.png",
+                      "field": "id"
+                    },
+                    "alt": "Discover",
+                    "caption": "Discover",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "6a77cdc4-6301-5a7d-b9be-14f48f581418"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Compose"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Stage 2"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "cb1a695d-f263-5d32-b713-7c940848d24c"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "compose.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "compose.png",
+                      "field": "id"
+                    },
+                    "alt": "Compose",
+                    "caption": "Compose",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "cc3a6c79-e0c5-5b75-b580-9de59058c82e"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Refine"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Stage 3"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "17d6a092-b9cd-5ad6-b596-eb38f75f0723"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "refine.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "refine.png",
+                      "field": "id"
+                    },
+                    "alt": "Refine",
+                    "caption": "Refine",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "88c425a3-ffca-598b-83fc-9730d7bf911a"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Validate"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Stage 4"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "ff027b31-0e79-5b97-a7df-90db2284368a"
+                  }
+                },
+                {
+                  "type": "image",
+                  "attrs": {
+                    "src": {
+                      "$media": "validate.png",
+                      "field": "src"
+                    },
+                    "attachmentId": {
+                      "$media": "validate.png",
+                      "field": "id"
+                    },
+                    "alt": "Validate",
+                    "caption": "Validate",
+                    "width": 800,
+                    "aspectRatio": 1.6,
+                    "fit": "contain"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "d60d20c5-0287-5ec4-a928-ba5d0a08d99a"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Five columns"
+            }
+          ]
+        },
+        {
+          "type": "columns",
+          "attrs": {
+            "layout": "five_equal",
+            "gap": "standard",
+            "id": "45b4d0f3-58ac-5203-acae-efbb2f22a8cc"
+          },
+          "content": [
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Plan"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "c115effb-4e3b-5869-bf34-8e92c622d8cc"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Write"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "9b4fc1db-e319-5bca-af85-6b053e12be98"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Arrange"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "1bd53fac-6d08-5c89-8f97-1165097de9ac"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Review"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "89b7ece2-8d87-5734-9f04-5052dd11db24"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Refine"
+                    }
+                  ],
+                  "attrs": {
+                    "id": "e199a047-2311-5c5d-b6dd-093e40b699ba"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "14ce1f59-9d38-5e1a-8225-e0c9970603d0"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Sidebar layout"
+            }
+          ]
+        },
+        {
+          "type": "columns",
+          "attrs": {
+            "layout": "two_left_sidebar",
+            "gap": "standard",
+            "id": "3e1b2f50-a004-549b-8116-a02cd420a4a1"
+          },
+          "content": [
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "245da3ed-3ab6-559f-bcec-ad7823e4a9fb"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "At a glance"
+                    }
+                  ]
+                },
+                {
+                  "type": "bulletList",
+                  "content": [
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Private"
+                            }
+                          ],
+                          "attrs": {
+                            "id": "5f008656-57e1-59b4-8005-72afb7fb31c8"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Editable"
+                            }
+                          ],
+                          "attrs": {
+                            "id": "7203000a-89e3-5d6e-b0a6-7b3a6e5a5091"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "listItem",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Review pending"
+                            }
+                          ],
+                          "attrs": {
+                            "id": "81dd9531-24e8-5046-82ba-20fa0b820098"
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "id": "f8f3594e-09e5-5bba-8756-e18348d9c57a"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "column",
+              "content": [
+                {
+                  "type": "heading",
+                  "attrs": {
+                    "level": 3,
+                    "id": "41943bfd-941b-565c-b9fa-672e0e8760d3"
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Main narrative"
+                    }
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "The wider column carries the story. The sidebar provides concise context without competing with it."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "3152c3ec-7f59-5cb0-80db-1b6e2b92f75f"
+                  }
+                },
+                {
+                  "type": "table",
+                  "content": [
+                    {
+                      "type": "tableRow",
+                      "content": [
+                        {
+                          "type": "tableHeader",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Device"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "3a173a25-2826-5e2d-a606-e41b7abfbb67"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "tableHeader",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Review status"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "4c3fa9ee-63d5-5ffe-a726-50a9d03f10a0"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tableRow",
+                      "content": [
+                        {
+                          "type": "tableCell",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Desktop"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "60abd203-e93c-5eb6-bba0-49efc9a03a2c"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "tableCell",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Pending"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "78b0aeb7-8fd5-5388-bd50-c25241fa43f1"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tableRow",
+                      "content": [
+                        {
+                          "type": "tableCell",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "iPad"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "23c2765c-2e67-581e-806c-ccf11275fa78"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "tableCell",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Pending"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "5fcaf83f-92ec-56b7-940b-a0ed5c9432e4"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "tableRow",
+                      "content": [
+                        {
+                          "type": "tableCell",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Phone"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "1576807a-308b-53d1-96ba-883749b7c8d8"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "tableCell",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Pending"
+                                }
+                              ],
+                              "attrs": {
+                                "id": "03563164-7eb4-5150-a1fa-4aa28a7781dd"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ],
+                  "attrs": {
+                    "id": "f996b955-78e6-5d2f-bb9b-98517410b16b"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "technical",
+      "title": "07 / Explain the system",
+      "headingId": "b0dec622-8210-5aca-9609-94668be12f52",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "b0dec622-8210-5aca-9609-94668be12f52"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "07 / Explain the system"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "1c7b22d4-9f61-5159-b00c-0538f14dcefa"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Code"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "typescript",
+            "lineNumbers": true,
+            "wrap": true,
+            "theme": "light",
+            "id": "0cb9e776-9312-5bd0-a87f-140af90b2161"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "type Review = { device: string; status: \"pending\" | \"passed\" | \"failed\" };\nconst review: Review = { device: \"iPad\", status: \"pending\" };\nconsole.log(review);"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "3c578993-3f4e-53b3-afc6-92c9ee8e4226"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Mermaid"
+            }
+          ]
+        },
+        {
+          "type": "codeBlock",
+          "attrs": {
+            "language": "mermaid",
+            "id": "b40ed7c0-7b33-5004-a74c-5571ada0fa8a"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "flowchart TD\n  A[Compose content] --> B[Save draft]\n  B --> C[Open preview]\n  C --> D{Review passed?}\n  D -->|Yes| E[Record result]\n  D -->|No| A"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Inline equation: "
+            },
+            {
+              "type": "mathInline",
+              "attrs": {
+                "text": "C = \\frac{p}{t}"
+              }
+            },
+            {
+              "type": "text",
+              "text": " where p is passed checks and t is total checks. No score has been measured."
+            }
+          ],
+          "attrs": {
+            "id": "56e73b5f-1b46-542b-a773-138e880ba3a0"
+          }
+        },
+        {
+          "type": "mathBlock",
+          "attrs": {
+            "text": "\\text{Coverage} = \\frac{\\text{elements reviewed}}{\\text{elements available}} \\times 100\\%",
+            "align": "center",
+            "id": "d10e4d3e-04b8-5ccc-98f9-ef244083fbbb"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "7deb7a49-944c-5e32-ad18-bc70fbf9001c"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Draw.io — a structured workflow"
+            }
+          ]
+        },
+        {
+          "type": "drawio",
+          "attrs": {
+            "src": {
+              "$media": "workflow.drawio.svg",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "workflow.drawio.svg",
+              "field": "id"
+            },
+            "title": "Compose, review and refine",
+            "alt": "Three-step editable workflow",
+            "width": 800,
+            "height": 240,
+            "aspectRatio": 3.3333333333333335,
+            "id": "d2642ee9-4777-54b1-a0a1-78edaad9066b"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "3f4a4ff6-5a49-52ed-82f0-530f82485b02"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Excalidraw — a spatial sketch"
+            }
+          ]
+        },
+        {
+          "type": "excalidraw",
+          "attrs": {
+            "src": {
+              "$media": "workspace.excalidraw.svg",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "workspace.excalidraw.svg",
+              "field": "id"
+            },
+            "title": "Three panels of a working canvas",
+            "alt": "Editable whiteboard with three coloured panels",
+            "width": 800,
+            "height": 240,
+            "aspectRatio": 3.3333333333333335,
+            "id": "602933b4-fc6c-597f-96b5-8715bd449f3c"
+          }
+        }
+      ]
+    },
+    {
+      "key": "documents",
+      "title": "08 / Documents and external sources",
+      "headingId": "04bead25-ade1-5bfb-bc72-b0e1181e2c88",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "04bead25-ade1-5bfb-bc72-b0e1181e2c88"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "08 / Documents and external sources"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "The brief and checklist are local project attachments. Provider-specific blocks below are intentionally empty authoring states: add your own shareable source to test that provider without substituting an unrelated demo."
+            }
+          ],
+          "attrs": {
+            "id": "e292abdf-bf49-5d7e-bfcf-2f614dd5638c"
+          }
+        },
+        {
+          "type": "pdf",
+          "attrs": {
+            "src": {
+              "$media": "experience-lab-brief.pdf",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "experience-lab-brief.pdf",
+              "field": "id"
+            },
+            "name": "Experience Lab — review brief",
+            "width": 800,
+            "height": 600,
+            "size": {
+              "$media": "experience-lab-brief.pdf",
+              "field": "size"
+            },
+            "id": "fb5002ba-ee38-58f1-9eaf-5e7072e747e0"
+          }
+        },
+        {
+          "type": "attachment",
+          "attrs": {
+            "url": {
+              "$media": "review-checklist.txt",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "review-checklist.txt",
+              "field": "id"
+            },
+            "name": "Experience Lab review checklist.txt",
+            "mime": "text/plain",
+            "size": {
+              "$media": "review-checklist.txt",
+              "field": "size"
+            },
+            "display": "card",
+            "id": "e4204cef-fc10-537f-a786-234147df2ff9"
+          }
+        },
+        {
+          "type": "attachment",
+          "attrs": {
+            "url": {
+              "$media": "experience-lab-brief.pdf",
+              "field": "src"
+            },
+            "attachmentId": {
+              "$media": "experience-lab-brief.pdf",
+              "field": "id"
+            },
+            "name": "Download the review brief.pdf",
+            "mime": "application/pdf",
+            "size": {
+              "$media": "experience-lab-brief.pdf",
+              "field": "size"
+            },
+            "display": "inline",
+            "id": "d4888efa-c7e0-5787-9897-277322738518"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "cb6a0093-ddc7-53df-9a1d-93c37371b9c6"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Iframe source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "iframe",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "a44abba8-0a8e-5bcf-a402-65794f5c3b57"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "b844a3bc-59f9-55e1-9933-2c344968f827"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Figma source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "figma",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "1be39665-b6c2-5ed1-ad16-c90776f9a7f6"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "aec1558c-88a2-5976-bbb5-cd827ca79563"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Framer source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "framer",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "96f4e7d9-8388-5149-8614-652cebc4f4dc"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "bcea2a1e-f740-5bad-9895-f6b00a6b48f5"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Youtube source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "youtube",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "2baaec06-2db6-523b-9cbc-ed0fea388078"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "c95bd5c3-d3cb-5ff0-a871-d61c22c6c78c"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Vimeo source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "vimeo",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "35409120-d424-5ffb-9835-d00678994f26"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "47062d41-0e7c-536d-80a6-2e1c2a3034e9"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Loom source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "loom",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "fc13865d-e717-5e22-ae30-23d1d34a12f8"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 3,
+            "id": "bf0eb45f-8fcd-5ad6-92f7-19e5fcbcae09"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Miro source"
+            }
+          ]
+        },
+        {
+          "type": "embed",
+          "attrs": {
+            "provider": "miro",
+            "src": "",
+            "width": 800,
+            "height": 450,
+            "id": "6d3a2da7-e292-542c-9715-3e87889cac79"
+          }
+        }
+      ]
+    },
+    {
+      "key": "review",
+      "title": "09 / Review the whole experience",
+      "headingId": "ae6eac28-062d-54fa-857c-036f2a9fda98",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "ae6eac28-062d-54fa-857c-036f2a9fda98"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "09 / Review the whole experience"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Mark a check complete only after observing the result on the device."
+            },
+            {
+              "type": "footnoteReference",
+              "attrs": {
+                "data-id": "e8557c43-dc31-51a5-8bd0-34126f89d969",
+                "referenceNumber": 1
+              }
+            }
+          ],
+          "attrs": {
+            "id": "1b75ad1e-8984-5b6f-a1c3-233bbc039734"
+          }
+        },
+        {
+          "type": "taskList",
+          "content": [
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Open every element toolbar and use one control."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "f832a9d5-6591-5d01-9895-cf9c5d2eb2b0"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Edit text and media metadata, save and reload."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "485a9269-fb58-555b-801d-072bd615cafd"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Reorder an image and a playlist item."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "b5ee692f-6afa-55d3-9bec-3252ec451425"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Test media playback, seeking and captions."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "262bd353-050e-53ce-a6e1-66bf18d21737"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Check adjacent grids and dense columns on touch."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "029bb9f8-37be-58d7-8ac6-363e8b73e8f4"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Compare Build and Preview."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "e08de275-56bf-577d-8c14-1910dab3d3ee"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Open the PDF, download a file and edit both diagrams."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "5138c852-fbe5-58d8-804e-ffe4b24413a2"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "taskItem",
+              "attrs": {
+                "checked": false
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Add provider URLs and test their embedded content."
+                    }
+                  ],
+                  "attrs": {
+                    "id": "2532aa3a-fd57-5fdc-954e-18693b351c5c"
+                  }
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "a7195582-8ef5-59d8-a858-fca813333d61"
+          }
+        },
+        {
+          "type": "table",
+          "content": [
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Journey"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "14289623-1c96-5936-86c0-f99e4a022660"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Desktop"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "cb4fed94-533a-52b8-8387-7d4aaab45a58"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "iPad"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "ee301244-6c04-58b9-91ff-52f4dc2092bc"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableHeader",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Phone"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "4990ad2b-e395-5f4e-ac41-af03d0ff8f8f"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Load builder"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "46770c6b-d7c9-585d-ae4d-16dd9404d33c"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "f42a3dcc-6189-5621-94f1-63344f218b31"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "c5327045-2d45-570b-b0c5-679e17313b5c"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "b24ff9b0-f589-5955-894d-4c9cbf5540ef"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Select and edit"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "fc7a4fb4-51d3-5318-a459-68ddb69e397f"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "c10829da-088f-59e0-93e6-9e34ae5c112c"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "8da1bdfd-eb67-5687-897e-5c88fa9f36fa"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "e844b6e0-b13d-5a5a-9536-d0f5df3f4924"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Save and reload"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "e458b562-f266-5978-9b48-7c5d3e047ab3"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "8310f23a-1e54-5ec8-8e31-a69a11aa244d"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "62ca3af0-a37d-58db-83ba-d59c6b2a19bc"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "e310536c-c824-59a0-bd01-c7a45f89c57b"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Media and documents"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "46d6408e-9ae0-5cf6-a91c-c79dfbcef23a"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "cb1da201-c946-5fb6-9ce1-8b60704a5027"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "28e8e9f0-ade0-54a8-b454-e5f8057458a4"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "22e26adf-c36a-5031-89cc-952e149d717f"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "content": [
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Preview"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "dbb0106d-1ebe-522f-9469-cb5bfa8b966d"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "7d2bc8c8-ce2d-5cf8-b027-808437f2fcc9"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "0f25d2c8-7a7a-52a7-8d8e-41fded664e5e"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pending"
+                        }
+                      ],
+                      "attrs": {
+                        "id": "ff46ed57-35a8-5ffa-b8db-9680e28bb188"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "attrs": {
+            "id": "63774a9e-5b89-5841-8f80-3973621a4d27"
+          }
+        },
+        {
+          "type": "pageBreak",
+          "attrs": {
+            "id": "303cdc35-2eb4-54ab-87be-c382805f6cb6"
+          }
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2,
+            "id": "3ec7f9b3-ce64-5212-9fad-ec2c168af591"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Review notes"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Observation: describe what happened."
+            }
+          ],
+          "attrs": {
+            "id": "b3401c56-d9d1-5068-b167-471ac233838e"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Expected behaviour: describe the intended experience."
+            }
+          ],
+          "attrs": {
+            "id": "738ec304-0f0e-52bc-8883-8943fc3ec310"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Reproduction: record the element, device, browser and steps."
+            }
+          ],
+          "attrs": {
+            "id": "22e85cb8-2454-51ef-8d75-333a05f0ce37"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Decision: keep, refine or fix."
+            }
+          ],
+          "attrs": {
+            "id": "27e8270a-d9a2-5999-88e0-2b8e641b2fbc"
+          }
+        }
+      ]
+    },
+    {
+      "key": "conclusion",
+      "title": "10 / Next iteration",
+      "headingId": "34d02685-5298-55a6-84d6-a57d07ce7a92",
+      "aliases": [],
+      "nodes": [
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1,
+            "id": "34d02685-5298-55a6-84d6-a57d07ce7a92"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "10 / Next iteration"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Review the complete project before changing individual components. Prioritise problems that repeat across element families, then retest the same journey."
+            }
+          ],
+          "attrs": {
+            "id": "ef871874-252e-5ed8-b6b2-bb07e2e79253"
+          }
+        },
+        {
+          "type": "callout",
+          "attrs": {
+            "type": "note",
+            "id": "b57e676c-a004-5424-941e-cd8f5a0b97a4"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "This fixture includes every insertion family exposed by the portfolio menu. Seven external provider blocks cover empty/source-entry states until valid URLs are supplied. Workspace-only relations such as Bases, subpages and mentions are outside the portable portfolio contract."
+                }
+              ],
+              "attrs": {
+                "id": "4ae508d4-d197-510a-99ae-4c517864f297"
+              }
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "All device checks remain pending until performed. The importer verifies document storage, not visual behaviour."
+            }
+          ],
+          "attrs": {
+            "id": "b142d6f3-09e8-5a95-b98f-4abe1424d512"
+          }
+        }
+      ]
+    }
+  ],
+  "footnotes": [
+    {
+      "type": "footnote",
+      "attrs": {
+        "id": "fn:1",
+        "data-id": "e8557c43-dc31-51a5-8bd0-34126f89d969"
+      },
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "This is a synthetic quality-review fixture. Passing tests must be recorded from actual observations, not inferred from the sample content."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

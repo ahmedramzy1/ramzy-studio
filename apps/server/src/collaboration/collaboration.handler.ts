@@ -93,15 +93,16 @@ export class CollaborationHandler {
             const fragment = doc.getXmlFragment('default');
 
             if (operation === 'replace') {
-              if (fragment.length > 0) {
-                fragment.delete(0, fragment.length);
-              }
-
               const newDoc = TiptapTransformer.toYdoc(
                 prosemirrorJson,
                 'default',
                 tiptapExtensions,
               );
+              // Validate/convert before touching the current document. An
+              // unsupported node must not turn a rejected save into data loss.
+              if (fragment.length > 0) {
+                fragment.delete(0, fragment.length);
+              }
               Y.applyUpdate(doc, Y.encodeStateAsUpdate(newDoc));
             } else {
               const newContent = prosemirrorJson.content || [];

@@ -93,7 +93,8 @@ const FootnoteReference = Node.create({
     return [
       "sup",
       { id: `fnref:${referenceNumber}` },
-      ["a", attrs, HTMLAttributes.referenceNumber],
+      // DOMOutputSpec children must be text, not numeric attributes or null.
+      ["a", attrs, String(referenceNumber ?? "")],
     ];
   },
 

@@ -1,4 +1,11 @@
 import {
+  CollectionFrame,
+  CollectionTitle,
+  CollectionEmpty,
+  CollectionFeedback,
+} from "../collection/collection-shell";
+import collection from "../collection/collection-shell.module.css";
+import {
   Button,
   Group,
   Modal,
@@ -56,6 +63,7 @@ export default function MediaPlaylistView({
   const [playKey, setPlayKey] = useState("");
   const [playNonce, setPlayNonce] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [dropActive, setDropActive] = useState(false);
   const [removeCandidateKey, setRemoveCandidateKey] = useState<string | null>(
     null,
@@ -315,12 +323,21 @@ export default function MediaPlaylistView({
     const accepted = filterMediaFiles(Array.from(files), kind);
     if (!accepted.length) return;
 
+    setUploadError("");
     setUploading(true);
     try {
       const result = await ingestMediaBatch(accepted, kind, pageId);
+      if (result.successful.length < accepted.length)
+        setUploadError(
+          "Some files could not be added. Add those files again to retry.",
+        );
       if (!result.successful.length) return;
       const next = [...items, ...result.successful];
       setItems(next, result.successful[0]?.key || next[0]?.key || "");
+    } catch {
+      setUploadError(
+        "Files could not be uploaded. Use Add media to try again.",
+      );
     } finally {
       setUploading(false);
       setDropActive(false);
@@ -382,361 +399,338 @@ export default function MediaPlaylistView({
       }}
     >
       {editable && <BlockDragHandle label={`Drag ${kind} playlist block`} />}
-      <Stack
-        gap="sm"
-        py="xs"
-        style={{
-          outline: dropActive ? "2px solid #3B5BFF" : undefined,
-          outlineOffset: dropActive ? 6 : undefined,
-          borderRadius: dropActive ? 8 : undefined,
-        }}
-      >
-        {(editable || node.attrs.title) && (
-          <TextInput
-            value={node.attrs.title || ""}
-            onChange={(event) =>
-              updateAttributes({ title: event.currentTarget.value })
-            }
-            readOnly={!editable}
-            placeholder={
-              kind === "video"
-                ? "Video playlist title…"
-                : "Audio playlist title…"
-            }
-            variant={editable ? "default" : "unstyled"}
-            styles={{
-              input: { fontFamily: BODY, fontSize: 16, fontWeight: 650 },
+      <CollectionFrame dropActive={dropActive}>
+        <CollectionTitle
+          value={node.attrs.title || ""}
+          editable={editable}
+          label={
+            kind === "video" ? "Video playlist title" : "Audio playlist title"
+          }
+          onChange={(title) => updateAttributes({ title })}
+        />
+        <CollectionFeedback message={uploadError} />
+        <div className={collection.body}>
+          {active ? (
+            kind === "video" ? (
+              <RamzyVideoPlayer
+                key={active.key}
+                src={getFileUrl(active.src)}
+                poster={activePoster}
+                captions={(active.captions || []).map((track) => ({
+                  ...track,
+                  src: getFileUrl(track.src),
+                }))}
+                title={active.title || "Video"}
+                autoPlay={isPlayingRequest}
+                playRequestToken={playNonce}
+                loop={false}
+                onEnded={() => playNext(false)}
+                onPrevious={playPrevious}
+                onNext={() => playNext(true)}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                playlistTitle={node.attrs.title || "Video playlist"}
+                playlistTrackCount={items.length}
+                playlistIndex={activeIndex}
+              />
+            ) : (
+              <RamzyAudioPlayer
+                key={active.key}
+                src={getFileUrl(active.src)}
+                title={active.title || "Audio"}
+                artist={active.artist}
+                description={active.description || active.album}
+                artwork={activeArtwork}
+                autoPlay={isPlayingRequest}
+                playRequestToken={playNonce}
+                loop={false}
+                onEnded={() => playNext(false)}
+                onPrevious={playPrevious}
+                onNext={() => playNext(true)}
+                hasPrevious={hasPrevious}
+                hasNext={hasNext}
+                playlistTitle={node.attrs.title || "Audio playlist"}
+                playlistTrackCount={items.length}
+                playlistIndex={activeIndex}
+              />
+            )
+          ) : editable ? (
+            <CollectionEmpty
+              label={kind === "video" ? "Add videos" : "Add audio"}
+              helper={
+                dropActive
+                  ? "Drop files to add them."
+                  : "Choose files or drop them here."
+              }
+              uploading={uploading}
+              onAdd={() => inputRef.current?.click()}
+            />
+          ) : null}
+
+          {items.length > 0 && node.attrs.showQueue !== false && (
+            <RamzyPlaylist
+              items={queueItems}
+              activeKey={active?.key}
+              playingKey={playKey}
+              editable={editable}
+              kind={kind}
+              layout={
+                node.attrs.queueLayout === "compact" ? "compact" : "detailed"
+              }
+              onSelect={select}
+              onPlay={play}
+              onMove={move}
+              onReorder={reorder}
+              onRemove={setRemoveCandidateKey}
+              onEditDetails={openDetails}
+              onReplaceMedia={(key) => {
+                setReplaceCandidateKey(key);
+                replaceInputRef.current?.click();
+              }}
+              onChangeArtwork={(key) => {
+                setArtworkCandidateKey(key);
+                artworkInputRef.current?.click();
+              }}
+              onGenerateCaptions={(key) => void generateItemCaptions(key)}
+              onManageCaptions={setCaptionsCandidateKey}
+              onDownload={downloadItem}
+              onDuplicate={duplicateItem}
+              onMoveToStart={(key) => moveItemToEdge(key, "start")}
+              onMoveToEnd={(key) => moveItemToEdge(key, "end")}
+              maxHeight={kind === "video" ? 390 : 420}
+            />
+          )}
+
+          {editable && (
+            <>
+              <button
+                type="button"
+                hidden
+                data-ramzy-element-action="add-media"
+                disabled={uploading}
+                onClick={() => inputRef.current?.click()}
+              />
+            </>
+          )}
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept={mediaAccept(kind)}
+            multiple
+            style={{ display: "none" }}
+            onChange={(event) => {
+              if (event.target.files?.length)
+                void uploadFiles(event.target.files);
+              event.currentTarget.value = "";
             }}
           />
-        )}
 
-        {active ? (
-          kind === "video" ? (
-            <RamzyVideoPlayer
-              key={active.key}
-              src={getFileUrl(active.src)}
-              poster={activePoster}
-              captions={(active.captions || []).map((track) => ({
-                ...track,
-                src: getFileUrl(track.src),
-              }))}
-              title={active.title || "Video"}
-              autoPlay={isPlayingRequest}
-              playRequestToken={playNonce}
-              loop={false}
-              onEnded={() => playNext(false)}
-              onPrevious={playPrevious}
-              onNext={() => playNext(true)}
-              hasPrevious={hasPrevious}
-              hasNext={hasNext}
-              playlistTitle={node.attrs.title || "Video playlist"}
-              playlistTrackCount={items.length}
-              playlistIndex={activeIndex}
-            />
-          ) : (
-            <RamzyAudioPlayer
-              key={active.key}
-              src={getFileUrl(active.src)}
-              title={active.title || "Audio"}
-              artist={active.artist}
-              description={active.description || active.album}
-              artwork={activeArtwork}
-              autoPlay={isPlayingRequest}
-              playRequestToken={playNonce}
-              loop={false}
-              onEnded={() => playNext(false)}
-              onPrevious={playPrevious}
-              onNext={() => playNext(true)}
-              hasPrevious={hasPrevious}
-              hasNext={hasNext}
-              playlistTitle={node.attrs.title || "Audio playlist"}
-              playlistTrackCount={items.length}
-              playlistIndex={activeIndex}
-            />
-          )
-        ) : (
-          <div
-            style={{
-              minHeight: kind === "video" ? 320 : 180,
-              aspectRatio: kind === "video" ? "16 / 9" : undefined,
-              border: "1px dashed var(--mantine-color-default-border)",
-              borderRadius: 8,
-              display: "grid",
-              placeItems: "center",
-              background: "var(--mantine-color-default-hover)",
+          <input
+            ref={artworkInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(event) => {
+              if (artworkCandidateKey) {
+                void replaceItemArtwork(
+                  artworkCandidateKey,
+                  event.currentTarget.files?.[0],
+                );
+              }
+              event.currentTarget.value = "";
             }}
+          />
+
+          <input
+            ref={replaceInputRef}
+            type="file"
+            accept={mediaAccept(kind)}
+            style={{ display: "none" }}
+            onChange={(event) => {
+              if (replaceCandidateKey) {
+                void replaceItemMedia(
+                  replaceCandidateKey,
+                  event.currentTarget.files?.[0],
+                );
+              }
+              event.currentTarget.value = "";
+            }}
+          />
+
+          <Modal
+            opened={!!detailsCandidateKey}
+            onClose={() => setDetailsCandidateKey(null)}
+            title={
+              kind === "video" ? "Edit video details" : "Edit track details"
+            }
+            centered
+            size="md"
           >
-            <Text size="sm" c="dimmed" ff={BODY}>
-              {dropActive
-                ? kind === "video"
-                  ? "Drop videos to add them"
-                  : "Drop audio files to add them"
-                : kind === "video"
-                  ? "Add or drop your first video"
-                  : "Add or drop your first track"}
-            </Text>
-          </div>
-        )}
-
-        {node.attrs.showQueue !== false && (
-          <RamzyPlaylist
-            items={queueItems}
-            activeKey={active?.key}
-            playingKey={playKey}
-            editable={editable}
-            kind={kind}
-            layout={
-              node.attrs.queueLayout === "compact" ? "compact" : "detailed"
-            }
-            onSelect={select}
-            onPlay={play}
-            onMove={move}
-            onReorder={reorder}
-            onRemove={setRemoveCandidateKey}
-            onEditDetails={openDetails}
-            onReplaceMedia={(key) => {
-              setReplaceCandidateKey(key);
-              replaceInputRef.current?.click();
-            }}
-            onChangeArtwork={(key) => {
-              setArtworkCandidateKey(key);
-              artworkInputRef.current?.click();
-            }}
-            onGenerateCaptions={(key) => void generateItemCaptions(key)}
-            onManageCaptions={setCaptionsCandidateKey}
-            onDownload={downloadItem}
-            onDuplicate={duplicateItem}
-            onMoveToStart={(key) => moveItemToEdge(key, "start")}
-            onMoveToEnd={(key) => moveItemToEdge(key, "end")}
-            maxHeight={kind === "video" ? 390 : 420}
-          />
-        )}
-
-        {editable && (
-          <>
-            <button
-              type="button"
-              hidden
-              data-ramzy-element-action="add-media"
-              disabled={uploading}
-              onClick={() => inputRef.current?.click()}
-            />
-          </>
-        )}
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept={mediaAccept(kind)}
-          multiple
-          style={{ display: "none" }}
-          onChange={(event) => {
-            if (event.target.files?.length)
-              void uploadFiles(event.target.files);
-            event.currentTarget.value = "";
-          }}
-        />
-
-        <input
-          ref={artworkInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(event) => {
-            if (artworkCandidateKey) {
-              void replaceItemArtwork(
-                artworkCandidateKey,
-                event.currentTarget.files?.[0],
-              );
-            }
-            event.currentTarget.value = "";
-          }}
-        />
-
-        <input
-          ref={replaceInputRef}
-          type="file"
-          accept={mediaAccept(kind)}
-          style={{ display: "none" }}
-          onChange={(event) => {
-            if (replaceCandidateKey) {
-              void replaceItemMedia(
-                replaceCandidateKey,
-                event.currentTarget.files?.[0],
-              );
-            }
-            event.currentTarget.value = "";
-          }}
-        />
-
-        <Modal
-          opened={!!detailsCandidateKey}
-          onClose={() => setDetailsCandidateKey(null)}
-          title={kind === "video" ? "Edit video details" : "Edit track details"}
-          centered
-          size="md"
-        >
-          <Stack gap="sm">
-            <TextInput
-              label="Title"
-              value={details.title}
-              onChange={(event) =>
-                setDetails((current) => ({
-                  ...current,
-                  title: event.currentTarget.value,
-                }))
-              }
-            />
-            {kind === "audio" && (
-              <>
-                <TextInput
-                  label="Artist"
-                  value={details.artist}
-                  onChange={(event) =>
-                    setDetails((current) => ({
-                      ...current,
-                      artist: event.currentTarget.value,
-                    }))
-                  }
-                />
-                <TextInput
-                  label="Album"
-                  value={details.album}
-                  onChange={(event) =>
-                    setDetails((current) => ({
-                      ...current,
-                      album: event.currentTarget.value,
-                    }))
-                  }
-                />
-              </>
-            )}
-            <TextInput
-              label="Subtitle"
-              value={details.subtitle}
-              onChange={(event) =>
-                setDetails((current) => ({
-                  ...current,
-                  subtitle: event.currentTarget.value,
-                }))
-              }
-            />
-            <Textarea
-              label="Description"
-              minRows={3}
-              value={details.description}
-              onChange={(event) =>
-                setDetails((current) => ({
-                  ...current,
-                  description: event.currentTarget.value,
-                }))
-              }
-            />
-            <Group justify="flex-end" gap="xs">
-              <Button
-                variant="default"
-                onClick={() => setDetailsCandidateKey(null)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={saveDetails}>Save details</Button>
-            </Group>
-          </Stack>
-        </Modal>
-
-        <Modal
-          opened={!!captionsCandidateKey}
-          onClose={() => setCaptionsCandidateKey(null)}
-          title="Manage captions"
-          centered
-          size="md"
-        >
-          <Stack gap="sm">
-            {(
-              items.find((item) => item.key === captionsCandidateKey)
-                ?.captions || []
-            ).map((track) => (
-              <Group key={track.key} justify="space-between" wrap="nowrap">
-                <div>
-                  <Text size="sm" fw={600}>
-                    {track.label}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {track.language}
-                  </Text>
-                </div>
+            <Stack gap="sm">
+              <TextInput
+                label="Title"
+                value={details.title}
+                onChange={(event) =>
+                  setDetails((current) => ({
+                    ...current,
+                    title: event.currentTarget.value,
+                  }))
+                }
+              />
+              {kind === "audio" && (
+                <>
+                  <TextInput
+                    label="Artist"
+                    value={details.artist}
+                    onChange={(event) =>
+                      setDetails((current) => ({
+                        ...current,
+                        artist: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                  <TextInput
+                    label="Album"
+                    value={details.album}
+                    onChange={(event) =>
+                      setDetails((current) => ({
+                        ...current,
+                        album: event.currentTarget.value,
+                      }))
+                    }
+                  />
+                </>
+              )}
+              <TextInput
+                label="Subtitle"
+                value={details.subtitle}
+                onChange={(event) =>
+                  setDetails((current) => ({
+                    ...current,
+                    subtitle: event.currentTarget.value,
+                  }))
+                }
+              />
+              <Textarea
+                label="Description"
+                minRows={3}
+                value={details.description}
+                onChange={(event) =>
+                  setDetails((current) => ({
+                    ...current,
+                    description: event.currentTarget.value,
+                  }))
+                }
+              />
+              <Group justify="flex-end" gap="xs">
                 <Button
-                  size="xs"
-                  variant="subtle"
+                  variant="default"
+                  onClick={() => setDetailsCandidateKey(null)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={saveDetails}>Save details</Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          <Modal
+            opened={!!captionsCandidateKey}
+            onClose={() => setCaptionsCandidateKey(null)}
+            title="Manage captions"
+            centered
+            size="md"
+          >
+            <Stack gap="sm">
+              {(
+                items.find((item) => item.key === captionsCandidateKey)
+                  ?.captions || []
+              ).map((track) => (
+                <Group key={track.key} justify="space-between" wrap="nowrap">
+                  <div>
+                    <Text size="sm" fw={600}>
+                      {track.label}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {track.language}
+                    </Text>
+                  </div>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    color="red"
+                    onClick={() => {
+                      if (!captionsCandidateKey) return;
+                      setItems(
+                        items.map((item) =>
+                          item.key === captionsCandidateKey
+                            ? {
+                                ...item,
+                                captions: (item.captions || []).filter(
+                                  (candidate) => candidate.key !== track.key,
+                                ),
+                              }
+                            : item,
+                        ),
+                      );
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </Group>
+              ))}
+              {!items.find((item) => item.key === captionsCandidateKey)
+                ?.captions?.length && (
+                <Text size="sm" c="dimmed">
+                  No caption tracks yet.
+                </Text>
+              )}
+              <Group justify="flex-end">
+                <Button
+                  variant="default"
+                  onClick={() => setCaptionsCandidateKey(null)}
+                >
+                  Done
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+
+          <Modal
+            opened={!!removeCandidateKey}
+            onClose={() => setRemoveCandidateKey(null)}
+            title="Remove playlist item?"
+            centered
+            size="sm"
+          >
+            <Stack gap="md">
+              <Text size="sm" ff={BODY}>
+                Remove{" "}
+                {items.find((item) => item.key === removeCandidateKey)?.title ||
+                  "this item"}{" "}
+                from this playlist? The uploaded media stays in your library.
+              </Text>
+              <Group justify="flex-end" gap="xs">
+                <Button
+                  variant="default"
+                  onClick={() => setRemoveCandidateKey(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
                   color="red"
-                  onClick={() => {
-                    if (!captionsCandidateKey) return;
-                    setItems(
-                      items.map((item) =>
-                        item.key === captionsCandidateKey
-                          ? {
-                              ...item,
-                              captions: (item.captions || []).filter(
-                                (candidate) => candidate.key !== track.key,
-                              ),
-                            }
-                          : item,
-                      ),
-                    );
-                  }}
+                  onClick={() =>
+                    removeCandidateKey && remove(removeCandidateKey)
+                  }
                 >
                   Remove
                 </Button>
               </Group>
-            ))}
-            {!items.find((item) => item.key === captionsCandidateKey)?.captions
-              ?.length && (
-              <Text size="sm" c="dimmed">
-                No caption tracks yet.
-              </Text>
-            )}
-            <Group justify="flex-end">
-              <Button
-                variant="default"
-                onClick={() => setCaptionsCandidateKey(null)}
-              >
-                Done
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-
-        <Modal
-          opened={!!removeCandidateKey}
-          onClose={() => setRemoveCandidateKey(null)}
-          title="Remove playlist item?"
-          centered
-          size="sm"
-        >
-          <Stack gap="md">
-            <Text size="sm" ff={BODY}>
-              Remove{" "}
-              {items.find((item) => item.key === removeCandidateKey)?.title ||
-                "this item"}{" "}
-              from this playlist? The uploaded media stays in your library.
-            </Text>
-            <Group justify="flex-end" gap="xs">
-              <Button
-                variant="default"
-                onClick={() => setRemoveCandidateKey(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                color="red"
-                onClick={() => removeCandidateKey && remove(removeCandidateKey)}
-              >
-                Remove
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-      </Stack>
+            </Stack>
+          </Modal>
+        </div>
+      </CollectionFrame>
     </NodeViewWrapper>
   );
 }

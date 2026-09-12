@@ -1,0 +1,27 @@
+/* Portfolio-only authoring foundation. Content dimensions and saved attributes
+   remain owned by their nodes and the row layout. */
+.ProseMirror.ramzy-portfolio-editor {
+  --ramzy-element-signal: var(--mantine-color-blue-5);
+}
+.ProseMirror.ramzy-portfolio-editor .ProseMirror-selectednode {
+  outline-color: var(--ramzy-element-signal);
+}
+.ProseMirror.ramzy-portfolio-editor hr.ProseMirror-selectednode {
+  border-color: var(--ramzy-element-signal);
+}
+.ProseMirror.ramzy-portfolio-editor .prosemirror-dropcursor-block,
+.ProseMirror.ramzy-portfolio-editor .prosemirror-dropcursor-inline {
+  background-color: var(--ramzy-element-signal) !important;
+}
+.ProseMirror.ramzy-portfolio-editor > .react-renderer {
+  margin-block: 32px;
+}
+.ProseMirror.ramzy-portfolio-editor button:focus-visible {
+  outline: 2px solid var(--ramzy-element-signal);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ProseMirror.ramzy-portfolio-editor .media-pulse {
+    animation: none;
+  }
+}

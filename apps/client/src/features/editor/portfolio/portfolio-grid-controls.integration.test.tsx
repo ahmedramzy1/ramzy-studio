@@ -530,6 +530,29 @@ describe("portfolio grid resize through browser pointer events", () => {
     editor.destroy();
   });
 
+  it.each(["paragraph", "photoAlbum"] as const)("keeps %s resizing inside the host canvas beside the navigator", async (nodeType) => {
+    vi.stubGlobal("innerWidth", 2048);
+    const { editor, block } = setupProseMirrorBlock(nodeType);
+    const canvas = editor.view.dom.parentElement!;
+    canvas.setAttribute("data-ramzy-portfolio-canvas", "");
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(rect(20, 960));
+    const handle = document.querySelector<HTMLElement>(
+      '.ramzy-grid-resize-handle[data-kind="outer"][data-side="right"]',
+    )!;
+    act(() => {
+      handle.dispatchEvent(pointerEvent("pointerdown", 900, 24));
+      window.dispatchEvent(pointerEvent("pointermove", 1900, 24));
+    });
+    await Promise.resolve();
+    expect(block.style.getPropertyValue("--ramzy-portfolio-block-width")).toBe("960px");
+    const guidePositions = Array.from(document.querySelectorAll<HTMLElement>(".ramzy-block-resize-snap-guide"))
+      .map(guide => parseFloat(guide.style.left));
+    expect(guidePositions.every(left => left >= 20 && left <= 980)).toBe(true);
+    act(() => window.dispatchEvent(pointerEvent("pointerup", 1900, 24)));
+    expect(editor.getJSON().content?.[0].attrs?.portfolioWidth).toBe(960);
+    editor.destroy();
+  });
+
   it("never lets a standalone block exceed the safe full-width boundary", async () => {
     vi.stubGlobal("innerWidth", 2048);
     const { editor, block } = setupProseMirrorBlock("photoAlbum");

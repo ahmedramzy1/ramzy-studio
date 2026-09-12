@@ -3,19 +3,25 @@ import { Fragment, Node as PMNode } from "@tiptap/pm/model";
 import { NodeSelection } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu as BaseBubbleMenu } from "@tiptap/react/menus";
-import { ActionIcon, Button, Menu, ScrollArea, Tooltip } from "@mantine/core";
+import { ActionIcon, Menu, ScrollArea, Tooltip } from "@mantine/core";
 import {
+  IconAdjustmentsHorizontal,
+  IconAlbum,
   IconArrowDown,
   IconArrowLeft,
   IconArrowRight,
   IconArrowUp,
+  IconArrowsHorizontal,
   IconArrowsShuffle,
   IconAlignCenter,
   IconAlignLeft,
   IconAlignRight,
+  IconAspectRatio,
   IconCheck,
-  IconChevronDown,
   IconClipboard,
+  IconClock,
+  IconCode,
+  IconColumns3,
   IconCopy,
   IconCut,
   IconDownload,
@@ -25,12 +31,18 @@ import {
   IconFileTypePdf,
   IconLink,
   IconLinkOff,
+  IconLayoutCards,
   IconListDetails,
   IconListNumbers,
   IconPlayerSkipForward,
   IconPlus,
   IconRefresh,
   IconRepeat,
+  IconSpacingHorizontal,
+  IconSunMoon,
+  IconSwitchHorizontal,
+  IconTag,
+  IconToggleRight,
   IconTrash,
   IconTextWrap,
   IconArrowsMinimize,
@@ -42,6 +54,7 @@ import { NodeSelector } from "@/features/editor/components/bubble-menu/node-sele
 import { TextAlignmentSelector } from "@/features/editor/components/bubble-menu/text-alignment-selector";
 import { CopyButton } from "@/components/common/copy-button";
 import { getFileUrl } from "@/lib/config";
+import { isPortfolioEditor } from "./portfolio-editor-mode";
 
 interface SectionChoice {
   position: number;
@@ -56,7 +69,7 @@ export interface PortfolioTopLevelBlock {
 }
 
 export function hasPortfolioElementMenu(editor: Editor) {
-  return editor.view.dom.classList.contains("ramzy-portfolio-editor");
+  return isPortfolioEditor(editor);
 }
 
 const SPECIALIST_MENU_NODES = [
@@ -83,6 +96,29 @@ const SPECIALIST_MENU_NODES = [
   "youtube",
 ] as const;
 
+const CUSTOM_MENU_NODES = new Set([
+  "attachment",
+  "base",
+  "codeBlock",
+  "embed",
+  "mediaPlaylist",
+  "photoGrid",
+  "photoAlbum",
+  "tabs",
+  "transclusionReference",
+  "transclusionSource",
+  "youtube",
+]);
+
+export function getPortfolioElementMenuOwner(editor: Editor): string | null {
+  const name = getPortfolioTopLevelBlock(editor)?.node.type.name;
+  if (!name) return null;
+  if (CUSTOM_MENU_NODES.has(name)) return "custom";
+  return (SPECIALIST_MENU_NODES as readonly string[]).includes(name)
+    ? name
+    : "generic";
+}
+
 const TEXT_BLOCK_NODES = new Set([
   "blockquote",
   "bulletList",
@@ -92,6 +128,29 @@ const TEXT_BLOCK_NODES = new Set([
   "paragraph",
   "taskList",
 ]);
+
+const DEFAULT_CODE_LANGUAGES = [
+  "css",
+  "html",
+  "javascript",
+  "json",
+  "markdown",
+  "typescript",
+];
+
+export function getPortfolioCodeLanguages(editor: Editor): string[] {
+  const codeBlockExtension = editor.extensionManager?.extensions?.find(
+    (extension) => extension.name === "codeBlock",
+  );
+
+  return (
+    (
+      codeBlockExtension?.options as {
+        lowlight?: { listLanguages?: () => string[] };
+      }
+    )?.lowlight?.listLanguages?.() ?? DEFAULT_CODE_LANGUAGES
+  );
+}
 
 const BLOCK_LABELS: Record<string, string> = {
   attachment: "File",
@@ -119,8 +178,20 @@ export function getPortfolioTopLevelBlock(
   editor: Editor,
 ): PortfolioTopLevelBlock | null {
   const { selection, doc } = editor.state;
+  // Columns are layout containers. Target their direct child, retaining a
+  // composite block (list, table, callout, etc.) when its text is selected.
+  // A row's own NodeSelection still targets that row, including nested rows.
+  let parentDepth = 0;
+  for (let depth = selection.$from.depth; depth > 0; depth--) {
+    if (selection.$from.node(depth).type.name === "column") {
+      parentDepth = depth;
+      break;
+    }
+  }
   const position =
-    selection.$from.depth > 0 ? selection.$from.before(1) : selection.from;
+    selection.$from.depth > parentDepth
+      ? selection.$from.before(parentDepth + 1)
+      : selection.from;
   const node = doc.nodeAt(position);
 
   if (!node) return null;
@@ -128,7 +199,10 @@ export function getPortfolioTopLevelBlock(
   return {
     position,
     node,
-    isSectionHeading: node.type.name === "heading" && node.attrs.level === 1,
+    isSectionHeading:
+      parentDepth === 0 &&
+      node.type.name === "heading" &&
+      node.attrs.level === 1,
   };
 }
 
@@ -210,10 +284,8 @@ export function duplicatePortfolioTopLevelBlock(editor: Editor) {
   const range = getPortfolioTopLevelBlockRange(editor);
   if (!range) return false;
   const copies: PMNode[] = [];
-  editor.state.doc.forEach((node, position) => {
-    if (position >= range.position && position < range.end) {
-      copies.push(cloneNodeWithoutId(node));
-    }
+  editor.state.doc.slice(range.position, range.end).content.forEach((node) => {
+    copies.push(cloneNodeWithoutId(node));
   });
   if (!copies.length) return false;
   editor.view.dispatch(
@@ -232,7 +304,10 @@ export function movePortfolioTopLevelBlock(
   const range = getPortfolioTopLevelBlockRange(editor);
   if (!range) return false;
   const nodes: Array<{ node: PMNode; position: number }> = [];
-  editor.state.doc.forEach((node, position) => nodes.push({ node, position }));
+  const parent = editor.state.doc.resolve(range.position);
+  parent.parent.forEach((node, offset) =>
+    nodes.push({ node, position: parent.start() + offset }),
+  );
 
   if (range.isSectionHeading) {
     const sections = getSections(editor);
@@ -300,13 +375,13 @@ export function movePortfolioBlockToSection(
   const control = getPortfolioTopLevelBlock(editor);
   if (!control || control.isSectionHeading) return false;
   const originalSize = control.node.nodeSize;
-  let target = section.end;
   const tr = editor.state.tr.delete(
     control.position,
     control.position + originalSize,
   );
-  if (control.position < target) target -= originalSize;
-  target = Math.max(0, Math.min(target, tr.doc.content.size));
+  // Deleting the only child of a column inserts a required empty paragraph.
+  // Transaction mapping accounts for that filler; subtracting nodeSize doesn't.
+  const target = tr.mapping.map(section.end);
   tr.insert(target, control.node);
   editor.view.dispatch(tr.scrollIntoView());
   editor.commands.focus();
@@ -394,19 +469,21 @@ export function PortfolioElementActions({ editor }: { editor: Editor }) {
     editor,
     selector: ({ editor: currentEditor }) => {
       const block = getPortfolioTopLevelBlock(currentEditor);
+      const parent = block
+        ? currentEditor.state.doc.resolve(block.position)
+        : null;
       return block
         ? {
             position: block.position,
             isSectionHeading: block.isSectionHeading,
             sections: getSections(currentEditor),
-            canMoveUp: block.position > 0,
+            canMoveUp: block.position > parent!.start(),
             canMoveDown:
               (block.isSectionHeading
                 ? getSections(currentEditor).find(
                     (section) => section.position === block.position,
                   )?.end
-                : block.position + block.node.nodeSize) !==
-              currentEditor.state.doc.content.size,
+                : block.position + block.node.nodeSize) !== parent!.end(),
           }
         : null;
     },
@@ -587,10 +664,7 @@ export function PortfolioGenericElementMenu({ editor }: { editor: Editor }) {
       ) {
         return false;
       }
-      if (SPECIALIST_MENU_NODES.some((name) => editor.isActive(name))) {
-        return false;
-      }
-      return Boolean(getPortfolioTopLevelBlock(editor));
+      return getPortfolioElementMenuOwner(editor) === "generic";
     },
     [editor],
   );
@@ -642,7 +716,7 @@ export function PortfolioGenericElementMenu({ editor }: { editor: Editor }) {
       style={{ zIndex: 200, position: "relative" }}
     >
       <div className={classes.toolbar} data-ramzy-element-toolbar>
-        {current?.supportsTextTools ? (
+        {current?.supportsTextTools && (
           <>
             <NodeSelector
               editor={editor}
@@ -669,44 +743,53 @@ export function PortfolioGenericElementMenu({ editor }: { editor: Editor }) {
               }}
             />
           </>
-        ) : (
-          <span className={classes.elementLabel}>
-            {current?.label || "Element"}
-          </span>
         )}
         {current?.isSectionHeading && (
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => {
-              const navigationLabel = window.prompt(
-                "Navigation label (leave blank to use the section title)",
-                current.navigationLabel,
-              );
-              if (navigationLabel !== null) {
-                updatePortfolioTopLevelBlockAttributes(editor, {
-                  navigationLabel: navigationLabel.trim() || null,
-                });
-              }
-            }}
-          >
-            Navigation label
-          </Button>
+          <Tooltip label="Navigation label" position="top" withinPortal={false}>
+            <ActionIcon
+              size="lg"
+              variant="subtle"
+              aria-label="Navigation label"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                const navigationLabel = window.prompt(
+                  "Navigation label (leave blank to use the section title)",
+                  current.navigationLabel,
+                );
+                if (navigationLabel !== null) {
+                  updatePortfolioTopLevelBlockAttributes(editor, {
+                    navigationLabel: navigationLabel.trim() || null,
+                  });
+                }
+              }}
+            >
+              <IconTag size={18} />
+            </ActionIcon>
+          </Tooltip>
         )}
         {current?.name === "details" && (
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() =>
-              updatePortfolioTopLevelBlockAttributes(editor, {
-                open: !current.open,
-              })
-            }
+          <Tooltip
+            label={current.open ? "Open by default" : "Closed by default"}
+            position="top"
+            withinPortal={false}
           >
-            {current.open ? "Open by default" : "Closed by default"}
-          </Button>
+            <ActionIcon
+              size="lg"
+              variant="subtle"
+              aria-label={
+                current.open ? "Open by default" : "Closed by default"
+              }
+              className={current.open ? classes.active : undefined}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                updatePortfolioTopLevelBlockAttributes(editor, {
+                  open: !current.open,
+                })
+              }
+            >
+              <IconToggleRight size={18} />
+            </ActionIcon>
+          </Tooltip>
         )}
         {current?.name === "mathBlock" && (
           <>
@@ -769,16 +852,23 @@ export function PortfolioGenericElementMenu({ editor }: { editor: Editor }) {
           </>
         )}
         {current?.name === "pageBreak" && (
-          <Button
-            size="compact-sm"
-            variant="subtle"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() =>
-              replacePortfolioTopLevelBlock(editor, "horizontalRule")
-            }
+          <Tooltip
+            label="Convert to divider"
+            position="top"
+            withinPortal={false}
           >
-            Convert to divider
-          </Button>
+            <ActionIcon
+              size="lg"
+              variant="subtle"
+              aria-label="Convert to divider"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() =>
+                replacePortfolioTopLevelBlock(editor, "horizontalRule")
+              }
+            >
+              <IconSwitchHorizontal size={18} />
+            </ActionIcon>
+          </Tooltip>
         )}
         {current?.name === "horizontalRule" && (
           <>
@@ -789,9 +879,20 @@ export function PortfolioGenericElementMenu({ editor }: { editor: Editor }) {
               width={230}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  Divider style
-                </Button>
+                <Tooltip
+                  label="Divider style"
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label="Divider style"
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconAdjustmentsHorizontal size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Label>Line</Menu.Label>
@@ -884,17 +985,33 @@ export function PortfolioGenericElementMenu({ editor }: { editor: Editor }) {
                 ))}
               </Menu.Dropdown>
             </Menu>
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => replacePortfolioTopLevelBlock(editor, "pageBreak")}
+            <Tooltip
+              label="Convert to page break"
+              position="top"
+              withinPortal={false}
             >
-              Convert to page break
-            </Button>
+              <ActionIcon
+                size="lg"
+                variant="subtle"
+                aria-label="Convert to page break"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  replacePortfolioTopLevelBlock(editor, "pageBreak")
+                }
+              >
+                <IconSwitchHorizontal size={18} />
+              </ActionIcon>
+            </Tooltip>
           </>
         )}
-        <div className={classes.divider} />
+        {(current?.supportsTextTools ||
+          current?.isSectionHeading ||
+          current?.name === "details" ||
+          current?.name === "mathBlock" ||
+          current?.name === "pageBreak" ||
+          current?.name === "horizontalRule") && (
+          <div className={classes.divider} />
+        )}
         <PortfolioElementActions editor={editor} />
       </div>
     </BaseBubbleMenu>
@@ -911,19 +1028,7 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
       ) {
         return false;
       }
-      return (
-        editor.isActive("attachment") ||
-        editor.isActive("base") ||
-        editor.isActive("codeBlock") ||
-        editor.isActive("embed") ||
-        editor.isActive("mediaPlaylist") ||
-        editor.isActive("photoGrid") ||
-        editor.isActive("photoAlbum") ||
-        editor.isActive("tabs") ||
-        editor.isActive("transclusionReference") ||
-        editor.isActive("transclusionSource") ||
-        editor.isActive("youtube")
-      );
+      return getPortfolioElementMenuOwner(editor) === "custom";
     },
     [editor],
   );
@@ -1039,21 +1144,7 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
     },
   });
 
-  const codeBlockExtension = editor.extensionManager.extensions.find(
-    (extension) => extension.name === "codeBlock",
-  );
-  const codeLanguages = (
-    codeBlockExtension?.options as {
-      lowlight?: { listLanguages?: () => string[] };
-    }
-  )?.lowlight?.listLanguages?.() ?? [
-    "css",
-    "html",
-    "javascript",
-    "json",
-    "markdown",
-    "typescript",
-  ];
+  const codeLanguages = getPortfolioCodeLanguages(editor);
 
   return (
     <BaseBubbleMenu
@@ -1068,7 +1159,6 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
       <div className={classes.toolbar} data-ramzy-element-toolbar>
         {current?.type === "sync-source" ? (
           <>
-            <span className={classes.elementLabel}>Synced block source</span>
             <Tooltip label="Copy synced block" position="top">
               <ActionIcon
                 size="lg"
@@ -1098,7 +1188,6 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
           </>
         ) : current?.type === "sync-reference" ? (
           <>
-            <span className={classes.elementLabel}>Synced block</span>
             <Tooltip label="Refresh synced block" position="top">
               <ActionIcon
                 size="lg"
@@ -1142,7 +1231,6 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
           </>
         ) : current?.type === "base" ? (
           <>
-            <span className={classes.elementLabel}>Database</span>
             <Tooltip label="Open source database" position="top">
               <ActionIcon
                 size="lg"
@@ -1174,15 +1262,17 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
           </>
         ) : current?.type === "tabs" ? (
           <>
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              leftSection={<IconPlus size={16} />}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => triggerPortfolioElementAction(editor, "add-tab")}
-            >
-              Add tab
-            </Button>
+            <Tooltip label="Add tab" position="top" withinPortal={false}>
+              <ActionIcon
+                size="lg"
+                variant="subtle"
+                aria-label="Add tab"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => triggerPortfolioElementAction(editor, "add-tab")}
+              >
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Rename active tab" position="top">
               <ActionIcon
                 size="lg"
@@ -1293,9 +1383,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={180}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  {current.width}px
-                </Button>
+                <Tooltip
+                  label={`Video width: ${current.width}px`}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={`Video width: ${current.width}px`}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconArrowsHorizontal size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 {[480, 640, 800, 1200].map((width) => (
@@ -1316,22 +1417,29 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
                 ))}
               </Menu.Dropdown>
             </Menu>
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => {
-                const value = window.prompt(
-                  "Start time in seconds",
-                  String(current.start),
-                );
-                if (value === null) return;
-                const start = Math.max(0, Math.round(Number(value) || 0));
-                updatePortfolioTopLevelBlockAttributes(editor, { start });
-              }}
+            <Tooltip
+              label={`Start time: ${current.start}s`}
+              position="top"
+              withinPortal={false}
             >
-              Start {current.start}s
-            </Button>
+              <ActionIcon
+                size="lg"
+                variant="subtle"
+                aria-label={`Start time: ${current.start}s`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  const value = window.prompt(
+                    "Start time in seconds",
+                    String(current.start),
+                  );
+                  if (value === null) return;
+                  const start = Math.max(0, Math.round(Number(value) || 0));
+                  updatePortfolioTopLevelBlockAttributes(editor, { start });
+                }}
+              >
+                <IconClock size={18} />
+              </ActionIcon>
+            </Tooltip>
           </>
         ) : current?.type === "embed" ? (
           <>
@@ -1416,9 +1524,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={180}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  {current.width}px
-                </Button>
+                <Tooltip
+                  label={`Embed width: ${current.width}px`}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={`Embed width: ${current.width}px`}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconArrowsHorizontal size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 {[
@@ -1468,14 +1587,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={220}
             >
               <Menu.Target>
-                <Button
-                  size="compact-sm"
-                  variant="subtle"
-                  rightSection={<IconChevronDown size={14} />}
-                  onMouseDown={(event) => event.preventDefault()}
+                <Tooltip
+                  label={`Language: ${current.language || "Auto-detect"}`}
+                  position="top"
+                  withinPortal={false}
                 >
-                  {current.language || "Auto-detect"}
-                </Button>
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={`Language: ${current.language || "Auto-detect"}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconCode size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 <ScrollArea.Autosize mah={320} type="scroll">
@@ -1566,9 +1691,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={170}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  {current.theme === "light" ? "Light" : "Dark"}
-                </Button>
+                <Tooltip
+                  label={`${current.theme === "light" ? "Light" : "Dark"} theme`}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={`${current.theme === "light" ? "Light" : "Dark"} theme`}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconSunMoon size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item
@@ -1697,9 +1833,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={170}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  {current.display === "inline" ? "Inline" : "Card"}
-                </Button>
+                <Tooltip
+                  label={`File display: ${current.display === "inline" ? "Inline" : "Card"}`}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={`File display: ${current.display === "inline" ? "Inline" : "Card"}`}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconLayoutCards size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 {(["card", "inline"] as const).map((display) => (
@@ -1753,15 +1900,25 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
           </>
         ) : current?.type === "playlist" ? (
           <>
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              leftSection={<IconPlus size={16} />}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => triggerPortfolioElementAction(editor, "add-media")}
+            <Tooltip
+              label={current.kind === "video" ? "Add videos" : "Add tracks"}
+              position="top"
+              withinPortal={false}
             >
-              {current.kind === "video" ? "Add videos" : "Add tracks"}
-            </Button>
+              <ActionIcon
+                size="lg"
+                variant="subtle"
+                aria-label={
+                  current.kind === "video" ? "Add videos" : "Add tracks"
+                }
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  triggerPortfolioElementAction(editor, "add-media")
+                }
+              >
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label="Autoplay next" position="top">
               <ActionIcon
                 size="lg"
@@ -1874,17 +2031,38 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
           </>
         ) : current?.type === "photos" ? (
           <>
-            <Button
-              size="compact-sm"
-              variant="subtle"
-              leftSection={<IconPlus size={16} />}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() =>
-                triggerPortfolioElementAction(editor, "add-photos")
-              }
-            >
-              Add photos
-            </Button>
+            <Tooltip label="Add photos" position="top" withinPortal={false}>
+              <ActionIcon
+                size="lg"
+                variant="subtle"
+                aria-label="Add photos"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  triggerPortfolioElementAction(editor, "add-photos")
+                }
+              >
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Tooltip>
+            {current.kind === "album" && (
+              <Tooltip
+                label="Edit album details"
+                position="top"
+                withinPortal={false}
+              >
+                <ActionIcon
+                  size="lg"
+                  variant="subtle"
+                  aria-label="Edit album details"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() =>
+                    triggerPortfolioElementAction(editor, "edit-album-details")
+                  }
+                >
+                  <IconEdit size={18} />
+                </ActionIcon>
+              </Tooltip>
+            )}
             {current.kind === "grid" && (
               <Menu
                 withinPortal={false}
@@ -1893,11 +2071,28 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
                 width={175}
               >
                 <Menu.Target>
-                  <Button size="compact-sm" variant="subtle">
-                    {current.columns
-                      ? `${current.columns} columns`
-                      : "Auto layout"}
-                  </Button>
+                  <Tooltip
+                    label={
+                      current.columns
+                        ? `Grid columns: ${current.columns}`
+                        : "Grid columns: Auto layout"
+                    }
+                    position="top"
+                    withinPortal={false}
+                  >
+                    <ActionIcon
+                      size="lg"
+                      variant="subtle"
+                      aria-label={
+                        current.columns
+                          ? `Grid columns: ${current.columns}`
+                          : "Grid columns: Auto layout"
+                      }
+                      onMouseDown={(event) => event.preventDefault()}
+                    >
+                      <IconColumns3 size={18} />
+                    </ActionIcon>
+                  </Tooltip>
                 </Menu.Target>
                 <Menu.Dropdown>
                   {[0, 1, 2, 3, 4].map((columns) => (
@@ -1929,9 +2124,22 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={180}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  {current.fit === "contain" ? "Fit" : "Fill"}
-                </Button>
+                <Tooltip
+                  label={current.fit === "contain" ? "Fit image" : "Fill frame"}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={
+                      current.fit === "contain" ? "Fit image" : "Fill frame"
+                    }
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconAspectRatio size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item
@@ -1994,9 +2202,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
               width={190}
             >
               <Menu.Target>
-                <Button size="compact-sm" variant="subtle">
-                  Spacing {current.gap}px
-                </Button>
+                <Tooltip
+                  label={`Spacing: ${current.gap}px`}
+                  position="top"
+                  withinPortal={false}
+                >
+                  <ActionIcon
+                    size="lg"
+                    variant="subtle"
+                    aria-label={`Spacing: ${current.gap}px`}
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
+                    <IconSpacingHorizontal size={18} />
+                  </ActionIcon>
+                </Tooltip>
               </Menu.Target>
               <Menu.Dropdown>
                 {[0, 8, 16, 24].map((gap) => (
@@ -2022,9 +2241,20 @@ export function PortfolioCustomElementMenu({ editor }: { editor: Editor }) {
                 width={200}
               >
                 <Menu.Target>
-                  <Button size="compact-sm" variant="subtle">
-                    Album settings
-                  </Button>
+                  <Tooltip
+                    label="Album settings"
+                    position="top"
+                    withinPortal={false}
+                  >
+                    <ActionIcon
+                      size="lg"
+                      variant="subtle"
+                      aria-label="Album settings"
+                      onMouseDown={(event) => event.preventDefault()}
+                    >
+                      <IconAlbum size={18} />
+                    </ActionIcon>
+                  </Tooltip>
                 </Menu.Target>
                 <Menu.Dropdown>
                   <Menu.Label>Thumbnails</Menu.Label>
