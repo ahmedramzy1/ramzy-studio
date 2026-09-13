@@ -3,6 +3,7 @@
 // Ported from ahmedramzy.com v8.0.0 and adapted to Studio's persisted items.
 
 import React, { useState } from "react";
+import classes from "./ramzy-playlist.module.css";
 import { Menu } from "@mantine/core";
 import {
   IconArrowBarToDown,
@@ -196,6 +197,8 @@ export default function RamzyPlaylist({
   return (
     <div
       data-ramzy-playlist="true"
+      data-editable={editable || undefined}
+      className={classes.root}
       style={{
         borderTop: `1px solid ${c.borderDefault}`,
         background: c.bgSurface,
@@ -203,7 +206,14 @@ export default function RamzyPlaylist({
         ...style,
       }}
     >
+      <div className={classes.queueHeading}>
+        <span className={classes.queueTitle}>Up next</span>
+        <span className={classes.queueCount}>
+          {items.length} {items.length === 1 ? "item" : "items"}
+        </span>
+      </div>
       <div
+        className={classes.columnHeader}
         aria-hidden="true"
         style={{
           display: "grid",
@@ -228,6 +238,7 @@ export default function RamzyPlaylist({
       </div>
 
       <div
+        className={classes.scroll}
         style={{ maxHeight, overflowY: "auto", overscrollBehavior: "contain" }}
       >
         {items.map((item, index) => {
@@ -290,6 +301,7 @@ export default function RamzyPlaylist({
                 setDraggedKey(null);
                 setOverKey(null);
               }}
+              className={classes.row}
               style={{
                 display: "grid",
                 gridTemplateColumns: editable
@@ -331,6 +343,7 @@ export default function RamzyPlaylist({
                     setDraggedKey(null);
                     setOverKey(null);
                   }}
+                  className={classes.gripButton}
                   style={{
                     width: 28,
                     height: 40,
@@ -351,6 +364,7 @@ export default function RamzyPlaylist({
               )}
 
               <div
+                className={classes.artwork}
                 style={{
                   width: compact ? 44 : 54,
                   height: compact ? 44 : 54,
@@ -408,7 +422,7 @@ export default function RamzyPlaylist({
                 </div>
               </div>
 
-              <div style={{ minWidth: 0 }}>
+              <div className={classes.titleCell} style={{ minWidth: 0 }}>
                 <div
                   style={{
                     display: "flex",
@@ -442,6 +456,7 @@ export default function RamzyPlaylist({
                   )}
                 </div>
                 <div
+                  className={classes.metaLine}
                   style={{
                     marginTop: 4,
                     display: "flex",
@@ -455,7 +470,10 @@ export default function RamzyPlaylist({
                     textOverflow: "ellipsis",
                   }}
                 >
-                  {item.sourceLabel && <span>{item.sourceLabel}</span>}
+                  {item.sourceLabel && <span className={classes.sourceLabel}>{item.sourceLabel}</span>}
+                  <span className={classes.inlineDuration}>
+                    {formatDuration(item.durationSeconds, item.durationLabel)}
+                  </span>
                   {item.sourceLabel && item.subtitle && (
                     <span style={{ opacity: 0.5 }}>•</span>
                   )}
@@ -541,6 +559,7 @@ export default function RamzyPlaylist({
 
               {!compact && (
                 <div
+                  className={classes.date}
                   style={{
                     fontFamily: FONT.body,
                     fontSize: 12,
@@ -553,6 +572,7 @@ export default function RamzyPlaylist({
               )}
               {!compact && (
                 <div
+                  className={classes.duration}
                   style={{
                     textAlign: "right",
                     fontFamily: FONT.mono,
@@ -579,6 +599,7 @@ export default function RamzyPlaylist({
                       title="Item actions"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => event.stopPropagation()}
+                      className={classes.actionButton}
                       style={{
                         width: 34,
                         height: 34,

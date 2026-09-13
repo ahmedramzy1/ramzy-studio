@@ -148,3 +148,54 @@
 .body > .empty {
   margin: 0;
 }
+
+
+/* Media playlists adapt to their actual rendered canvas, not the browser
+ * viewport. This keeps Build correct when admin rails reduce the canvas. */
+.mediaPlaylist {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.mediaPlaylist > * {
+  min-width: 0;
+}
+
+@container collection (min-width: 800px) {
+  .mediaPlaylist {
+    grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+    gap: 16px;
+  }
+
+  .mediaPlaylist :global([data-ramzy-playlist="true"]) {
+    align-self: stretch;
+    max-height: min(520px, 58cqi);
+  }
+
+  .mediaPlaylist :global([data-ramzy-playlist="true"] > div:last-of-type) {
+    max-height: min(452px, calc(58cqi - 50px)) !important;
+  }
+}
+
+@container collection (max-width: 520px) {
+  .body {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .header {
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .title {
+    min-height: 44px;
+    padding-block: 10px;
+    font-size: 14px;
+  }
+
+  .empty {
+    min-height: 132px;
+    padding: 20px 12px;
+  }
+}

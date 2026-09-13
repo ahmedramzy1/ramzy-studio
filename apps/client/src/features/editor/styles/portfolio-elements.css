@@ -2,6 +2,8 @@
    remain owned by their nodes and the row layout. */
 .ProseMirror.ramzy-portfolio-editor {
   --ramzy-element-signal: var(--ramzy-element-focus, var(--mantine-color-blue-5));
+  container: ramzy-document / inline-size;
+  min-width: 0;
 }
 .ProseMirror.ramzy-portfolio-editor .ProseMirror-selectednode {
   outline-color: var(--ramzy-element-signal);
@@ -37,4 +39,65 @@
 .ProseMirror.ramzy-portfolio-editor ::selection {
   background: var(--mantine-primary-color-light);
   color: inherit;
+}
+
+
+/* Responsive content safety is based on the document canvas. The admin shell
+ * can make that canvas narrow even on a wide desktop viewport. */
+.ProseMirror.ramzy-portfolio-editor :is(
+  .react-renderer,
+  [data-type="columns"],
+  [data-type="column"],
+  [data-type="tabs"],
+  [data-tabs-content],
+  figure,
+  iframe,
+  video,
+  audio,
+  pre
+) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ProseMirror.ramzy-portfolio-editor :is(
+  p,
+  li,
+  blockquote,
+  figcaption,
+  td,
+  th
+) {
+  overflow-wrap: anywhere;
+}
+
+.ProseMirror.ramzy-portfolio-editor [data-type="tabs"] {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+@container ramzy-document (max-width: 720px) {
+  .ProseMirror.ramzy-portfolio-editor > .react-renderer {
+    margin-block: 24px;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor :is(figure, iframe, video, audio) {
+    width: 100%;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor blockquote {
+    padding-left: 0.75rem;
+  }
+}
+
+@container ramzy-document (max-width: 420px) {
+  .ProseMirror.ramzy-portfolio-editor > .react-renderer {
+    margin-block: 20px;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor :is(button, [role="button"], a) {
+    touch-action: manipulation;
+  }
 }

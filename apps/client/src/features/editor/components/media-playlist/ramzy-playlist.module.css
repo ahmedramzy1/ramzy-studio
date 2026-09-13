@@ -1,0 +1,123 @@
+.root {
+  min-width: 0;
+  container: ramzy-playlist / inline-size;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--ramzy-radius-bordered, 8px);
+}
+
+.queueHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.queueTitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--mantine-color-text);
+  font: 600 14px/20px var(--mantine-font-family);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueCount {
+  flex: none;
+  color: var(--mantine-color-dimmed);
+  font: 400 11px/18px var(--mantine-font-family-monospace);
+  white-space: nowrap;
+}
+
+.columnHeader,
+.row {
+  min-width: 0;
+}
+
+.scroll {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.titleCell,
+.metaLine {
+  min-width: 0;
+}
+
+.inlineDuration {
+  display: none;
+  margin-left: auto;
+  color: var(--mantine-color-dimmed);
+  font-family: var(--mantine-font-family-monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+@container ramzy-playlist (max-width: 620px) {
+  .columnHeader {
+    display: none !important;
+  }
+
+  .row {
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    min-height: 64px !important;
+    padding: 8px 10px !important;
+  }
+
+  .root[data-editable="true"] .row {
+    grid-template-columns: 28px 44px minmax(0, 1fr) 34px !important;
+    padding-left: 6px !important;
+  }
+
+  .date,
+  .duration {
+    display: none !important;
+  }
+
+  .inlineDuration {
+    display: inline;
+  }
+}
+
+@container ramzy-playlist (max-width: 360px) {
+  .queueHeading {
+    padding-inline: 10px;
+  }
+
+  .row {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+  }
+
+  .root[data-editable="true"] .row {
+    grid-template-columns: 24px 40px minmax(0, 1fr) 32px !important;
+  }
+
+  .artwork {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .sourceLabel {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .row {
+    min-height: 64px;
+  }
+
+  .actionButton,
+  .gripButton {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none !important;
+  }
+}

@@ -287,7 +287,7 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 
 /* Stack columns vertically on small viewports. Custom desktop span weights are
  * intentionally neutralized so every stacked cell keeps full mobile width. */
-@media (max-width: 680px) {
+@container ramzy-document (max-width: 680px) {
   div[data-type="columns"] {
     flex-direction: column;
   }
@@ -392,7 +392,7 @@ div[data-type="columns"][data-width-mode="wide"] {
   width: var(--ramzy-grid-preview-column-width) !important;
 }
 
-@media (max-width: $mantine-breakpoint-sm) {
+@container ramzy-document (max-width: 680px) {
   div[data-type="columns"][data-width-mode="wide"] {
     margin-left: -1rem;
     margin-right: -1rem;
@@ -573,5 +573,13 @@ body.ramzy-portfolio-dnd-active .prosemirror-dropcursor-inline {
     width: 100%;
     max-width: 100%;
     transform: none;
+  }
+}
+
+
+@container ramzy-document (max-width: 420px) {
+  .ProseMirror.ramzy-portfolio-editor div[data-type="columns"] {
+    --ramzy-columns-gap: 1.25rem;
+    margin-block: 1.25rem;
   }
 }
