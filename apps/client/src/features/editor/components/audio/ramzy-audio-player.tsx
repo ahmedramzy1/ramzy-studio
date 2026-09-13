@@ -486,7 +486,7 @@ export default function RamzyAudioPlayer({
         <style>{`
           [data-ramzy-media-player="audio"] button:hover:not(:disabled) { background: ${mode === "light" ? "rgba(29,29,27,.06)" : "rgba(255,255,255,.07)"}; }
           [data-ramzy-media-player="audio"] button:focus-visible { outline: 2px solid ${SIGNAL}; outline-offset: 2px; }
-          @container ramzy-audio (max-width: 580px) {
+          @container ramzy-audio (max-width: 640px) {
             [data-ramzy-media-player="audio"] { padding: 16px !important; }
             [data-ramzy-audio-header="true"] { grid-template-columns: 72px minmax(0,1fr) auto !important; gap: 12px !important; }
             [data-ramzy-audio-artwork="true"] { width: 72px !important; height: 72px !important; }

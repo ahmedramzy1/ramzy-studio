@@ -68,6 +68,7 @@ describe("portfolio responsive composition", () => {
     );
 
     expect(audio).toContain('container: "ramzy-audio / inline-size"');
+    expect(audio).toContain("@container ramzy-audio (max-width: 640px)");
     expect(audio).toContain("@container ramzy-audio (max-width: 380px)");
     expect(video).toContain('container: "ramzy-video / inline-size"');
     expect(video).toContain("@container ramzy-video (max-width: 390px)");
