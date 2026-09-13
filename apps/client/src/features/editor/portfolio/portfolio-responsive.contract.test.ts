@@ -37,7 +37,7 @@ describe("portfolio responsive composition", () => {
 
     expect(collection).toContain("@container collection (min-width: 800px)");
     expect(collection).toContain("grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr)");
-    expect(collection).toContain("--ramzy-playlist-pair-height");
+    expect(collection).toContain("--ramzy-playlist-pair-height: clamp(440px, 48cqi, 500px)");
     expect(collection).toContain("height: var(--ramzy-playlist-pair-height) !important");
     expect(playlist).toContain("@container ramzy-playlist (max-width: 620px)");
     expect(playlist).toContain("grid-template-rows: auto auto minmax(0, 1fr)");
@@ -53,8 +53,8 @@ describe("portfolio responsive composition", () => {
     );
 
     expect(table).toContain("@container ramzy-document (max-width: 720px)");
-    expect(table).toContain("table:not(:has(tr > :nth-child(4)))");
-    expect(table).toContain("table:has(tr > :nth-child(4))");
+    expect(table).toContain("table:not(:has(colgroup > col:nth-child(4)))");
+    expect(table).toContain("table:has(colgroup > col:nth-child(4))");
   });
 
   it("adapts audio and video controls to their rendered player width", () => {
