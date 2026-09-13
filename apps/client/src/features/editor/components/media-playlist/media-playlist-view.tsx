@@ -411,7 +411,10 @@ export default function MediaPlaylistView({
           onChange={(title) => updateAttributes({ title })}
         />
         <CollectionFeedback message={uploadError} />
-        <div className={`${collection.body} ${collection.mediaPlaylist}`}>
+        <div
+          className={`${collection.body} ${collection.mediaPlaylist}`}
+          data-kind={kind}
+        >
           {active ? (
             kind === "video" ? (
               <RamzyVideoPlayer

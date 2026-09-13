@@ -8,6 +8,7 @@ interface InsertionTarget {
   emptyParagraph: boolean;
   left: number;
   top: number;
+  compact: boolean;
 }
 
 // Resolve a whole block, never a table cell, media item or nested inline node.
@@ -65,11 +66,13 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
       row = row.parentElement;
     const rowRect = row.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
+    const compact = overlayRect.width > 0 && overlayRect.width <= 760;
     return {
       ...(found as { position: number; end: number; emptyParagraph: boolean }),
       dom,
-      left: rowRect.left - overlayRect.left - 20,
+      left: rowRect.left - overlayRect.left - (compact ? 8 : 20),
       top: rect.top - overlayRect.top,
+      compact,
     };
   }, [editor]);
 
@@ -274,9 +277,9 @@ export function PortfolioInsertionControls({ editor }: { editor: Editor }) {
             left: control.left,
             top: control.top,
             display: "flex",
-            flexDirection: "row",
+            flexDirection: control.compact ? "column" : "row",
             transform: "translateX(-100%)",
-            gap: 8,
+            gap: control.compact ? 6 : 8,
             pointerEvents: "auto",
           }}
           onPointerEnter={() => {

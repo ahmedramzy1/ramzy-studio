@@ -329,3 +329,55 @@
   }
   > tbody > tr > .selectedCell::after { border-radius: inherit; }
 }
+
+
+/* Small canvases use the table's actual column count. Compact two/three-column
+   tables reflow into the available measure; genuinely wide tables keep semantic
+   columns and scroll inside their own rounded surface instead of escaping the page. */
+@container ramzy-document (max-width: 720px) {
+  .tableWrapper,
+  .tableWrapper.tableWrapperNoOverflow {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tableWrapper table:not(:has(tr > :nth-child(4))) {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100%;
+    table-layout: fixed;
+  }
+
+  .tableWrapper table:not(:has(tr > :nth-child(4))) col {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  .tableWrapper table:has(tr > :nth-child(4)) {
+    width: max-content !important;
+    min-width: min(640px, 170cqi) !important;
+  }
+
+  .ProseMirror table :is(td, th) {
+    min-width: 0;
+    padding: clamp(6px, 1.6cqi, 8px);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@container ramzy-document (max-width: 420px) {
+  .ProseMirror table {
+    font-size: 0.9375em;
+  }
+
+  .tableWrapper {
+    margin-block: 0.75rem;
+  }
+}
