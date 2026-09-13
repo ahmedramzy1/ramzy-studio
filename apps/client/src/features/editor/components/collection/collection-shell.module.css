@@ -169,12 +169,10 @@
 
   .mediaPlaylist :global([data-ramzy-playlist="true"]) {
     align-self: stretch;
-    max-height: min(520px, 58cqi);
+    height: min(520px, 58cqi);
+    max-height: none;
   }
 
-  .mediaPlaylist :global([data-ramzy-playlist="true"] > div:last-of-type) {
-    max-height: min(452px, calc(58cqi - 50px)) !important;
-  }
 }
 
 @container collection (max-width: 520px) {

@@ -8,6 +8,8 @@ import { Menu } from "@mantine/core";
 import {
   IconArrowBarToDown,
   IconArrowBarToUp,
+  IconArrowDown,
+  IconArrowUp,
   IconCopy,
   IconDownload,
   IconDots,
@@ -260,9 +262,6 @@ export default function RamzyPlaylist({
               tabIndex={0}
               aria-current={active ? "true" : undefined}
               onClick={() => {
-                if (!pending) onSelect?.(item.key);
-              }}
-              onDoubleClick={() => {
                 if (!pending) onPlay?.(item.key);
               }}
               onKeyDown={(event) => {
@@ -670,6 +669,20 @@ export default function RamzyPlaylist({
                       onClick={() => onDuplicate?.(item.key)}
                     >
                       Duplicate item
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconArrowUp size={16} />}
+                      disabled={index === 0}
+                      onClick={() => onMove?.(item.key, -1)}
+                    >
+                      Move up
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<IconArrowDown size={16} />}
+                      disabled={index === items.length - 1}
+                      onClick={() => onMove?.(item.key, 1)}
+                    >
+                      Move down
                     </Menu.Item>
                     <Menu.Item
                       leftSection={<IconArrowBarToUp size={16} />}

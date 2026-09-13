@@ -769,6 +769,7 @@ export default function RamzyVideoPlayer({
       }}
       style={{
         position: pseudoFullscreen || floatingMounted ? "fixed" : "absolute",
+        container: "ramzy-video / inline-size",
         inset: pseudoFullscreen ? 0 : floatingMounted ? undefined : 0,
         right: floatingMounted ? 20 : undefined,
         bottom: floatingMounted ? 20 : undefined,
@@ -1041,6 +1042,7 @@ export default function RamzyVideoPlayer({
       />
 
       <div
+        data-ramzy-video-controls="true"
         style={{
           position: "absolute",
           left: 0,
@@ -1159,6 +1161,7 @@ export default function RamzyVideoPlayer({
         </div>
 
         <div
+          data-ramzy-video-control-row="true"
           style={{
             display: "flex",
             alignItems: "center",
@@ -1174,15 +1177,18 @@ export default function RamzyVideoPlayer({
           >
             <Icon name={playing ? "pause" : "play"} size={27} />
           </button>
-          <RamzyVolumeControl
+          <span data-ramzy-video-volume="true" style={{ display: "contents" }}>
+            <RamzyVolumeControl
             value={volume}
             muted={isMuted}
             mode={mode}
             tone="inverse"
             onChange={setPlayerVolume}
             onToggleMute={toggleMute}
-          />
+            />
+          </span>
           <span
+            data-ramzy-video-time="true"
             style={{
               marginLeft: 4,
               fontFamily: FONT.body,
@@ -1199,6 +1205,7 @@ export default function RamzyVideoPlayer({
           <div style={{ flex: 1 }} />
           {captions.length > 0 && (
             <button
+              data-ramzy-video-secondary-control="true"
               type="button"
               aria-label={
                 captionsEnabled ? "Turn captions off" : "Turn captions on"
@@ -1284,6 +1291,7 @@ export default function RamzyVideoPlayer({
           </div>
           {"pictureInPictureEnabled" in document && (
             <button
+              data-ramzy-video-pip="true"
               type="button"
               aria-label="Picture in picture"
               style={controlButton}
@@ -1315,6 +1323,22 @@ export default function RamzyVideoPlayer({
           }
           [data-ramzy-media-player="video"] button:hover { background: rgba(255,255,255,.10) !important; }
           [data-ramzy-media-player="video"] button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+          @container ramzy-video (max-width: 560px) {
+            [data-ramzy-video-controls="true"] { padding: 30px 10px 6px !important; }
+            [data-ramzy-video-control-row="true"] { min-height: 44px !important; gap: 0 !important; }
+            [data-ramzy-video-control-row="true"] button { width: 44px !important; height: 44px !important; }
+            [data-ramzy-video-volume="true"] [role="slider"] { width: 0 !important; opacity: 0 !important; }
+            [data-ramzy-video-time="true"] { margin-left: 0 !important; font-size: 11px !important; }
+            [data-ramzy-video-pip="true"] { display: none !important; }
+          }
+          @container ramzy-video (max-width: 390px) {
+            [data-ramzy-video-controls="true"] { padding-inline: 6px !important; }
+            [data-ramzy-video-time="true"] { max-width: 72px; overflow: hidden; text-overflow: ellipsis; }
+            [data-ramzy-video-secondary-control="true"] { display: none !important; }
+          }
+          @container ramzy-video (max-width: 320px) {
+            [data-ramzy-video-time="true"] { display: none !important; }
+          }
         `}</style>
     </div>
   );

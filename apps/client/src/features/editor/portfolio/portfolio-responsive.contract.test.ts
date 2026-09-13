@@ -38,7 +38,25 @@ describe("portfolio responsive composition", () => {
     expect(collection).toContain("@container collection (min-width: 800px)");
     expect(collection).toContain("grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr)");
     expect(playlist).toContain("@container ramzy-playlist (max-width: 620px)");
+    expect(playlist).toContain("grid-template-rows: auto auto minmax(0, 1fr)");
+    expect(playlist).toContain("grid-template-columns: 44px 44px minmax(0, 1fr) 44px");
     expect(playlist).toContain("min-height: 44px");
     expect(view).toContain("collection.mediaPlaylist");
+  });
+
+  it("adapts audio and video controls to their rendered player width", () => {
+    const audio = readFileSync(
+      "src/features/editor/components/audio/ramzy-audio-player.tsx",
+      "utf8",
+    );
+    const video = readFileSync(
+      "src/features/editor/components/video/ramzy-video-player.tsx",
+      "utf8",
+    );
+
+    expect(audio).toContain('container: "ramzy-audio / inline-size"');
+    expect(audio).toContain("@container ramzy-audio (max-width: 380px)");
+    expect(video).toContain('container: "ramzy-video / inline-size"');
+    expect(video).toContain("@container ramzy-video (max-width: 390px)");
   });
 });

@@ -373,7 +373,9 @@ export default function RamzyAudioPlayer({
         onClick={(event) => event.stopPropagation()}
         style={{
           width: "100%",
+          minWidth: 0,
           boxSizing: "border-box",
+          container: "ramzy-audio / inline-size",
           padding: 24,
           border: `1px solid ${c.borderDefault}`,
           borderRadius: "var(--ramzy-radius-bordered, 8px)",
@@ -413,8 +415,8 @@ export default function RamzyAudioPlayer({
           onError={() => setPlaying(false)}
         />
 
-        <div style={{ display: "grid", gridTemplateColumns: artwork ? "104px minmax(0, 1fr) auto" : "minmax(0,1fr) auto", gap: 20, alignItems: "center" }}>
-          {artwork && <img src={artwork} alt="" style={{ width: 104, height: 104, borderRadius: "var(--ramzy-radius-bordered, 8px)", objectFit: "cover", boxShadow: "0 8px 24px rgba(0,0,0,.14)" }} />}
+        <div data-ramzy-audio-header="true" style={{ display: "grid", gridTemplateColumns: artwork ? "104px minmax(0, 1fr) auto" : "minmax(0,1fr) auto", gap: 20, alignItems: "center" }}>
+          {artwork && <img data-ramzy-audio-artwork="true" src={artwork} alt="" style={{ width: 104, height: 104, borderRadius: "var(--ramzy-radius-bordered, 8px)", objectFit: "cover", boxShadow: "0 8px 24px rgba(0,0,0,.14)" }} />}
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: FONT.body, fontSize: 21, fontWeight: 720, lineHeight: 1.18, letterSpacing: "-.015em", color: c.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</div>
             {secondary && <div style={{ marginTop: 7, fontFamily: FONT.body, fontSize: 14, fontWeight: artist ? 550 : 400, lineHeight: 1.4, color: c.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{secondary}</div>}
@@ -424,8 +426,9 @@ export default function RamzyAudioPlayer({
         </div>
 
         {waveform && (
-          <div style={{ marginTop: 20 }}>
+          <div data-ramzy-audio-waveform="true" style={{ marginTop: 20 }}>
             <div
+              data-ramzy-audio-waveform-surface="true"
               role="slider"
               aria-label="Audio waveform and progress"
               aria-valuemin={0}
@@ -465,16 +468,16 @@ export default function RamzyAudioPlayer({
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(170px,1fr) auto minmax(170px,1fr)", alignItems: "center", gap: 14, marginTop: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", minWidth: 0 }}><RamzyVolumeControl value={volume} muted={muted} mode={mode} alwaysVisible onChange={setPlayerVolume} onToggleMute={toggleMute} /></div>
-          <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+        <div data-ramzy-audio-controls="true" style={{ display: "grid", gridTemplateColumns: "minmax(170px,1fr) auto minmax(170px,1fr)", alignItems: "center", gap: 14, marginTop: 16 }}>
+          <div data-ramzy-audio-volume="true" style={{ display: "flex", alignItems: "center", minWidth: 0 }}><RamzyVolumeControl value={volume} muted={muted} mode={mode} alwaysVisible onChange={setPlayerVolume} onToggleMute={toggleMute} /></div>
+          <div data-ramzy-audio-transport="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
             <button type="button" disabled={!hasPrevious} aria-label="Previous track" style={{ ...iconButton, opacity: hasPrevious ? 1 : 0.3, cursor: hasPrevious ? "pointer" : "default" }} onClick={() => hasPrevious && onPrevious?.()}><AudioIcon name="previous" size={22} /></button>
             <button type="button" aria-label="Back 10 seconds" style={iconButton} onClick={() => seekSeconds(-10)}><AudioIcon name="rewind" size={25} /></button>
             <button type="button" aria-label={playing ? "Pause" : "Play"} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); togglePlayback(); }} style={{ ...iconButton, width: 62, height: 62, margin: "0 5px", background: SIGNAL, color: "#fff", boxShadow: "0 8px 24px rgba(59,91,255,.28)" }}><AudioIcon name={playing ? "pause" : "play"} size={29} /></button>
             <button type="button" aria-label="Forward 10 seconds" style={iconButton} onClick={() => seekSeconds(10)}><AudioIcon name="forward" size={25} /></button>
             <button type="button" disabled={!hasNext} aria-label="Next track" style={{ ...iconButton, opacity: hasNext ? 1 : 0.3, cursor: hasNext ? "pointer" : "default" }} onClick={() => hasNext && onNext?.()}><AudioIcon name="next" size={22} /></button>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
+          <div data-ramzy-audio-extras="true" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}>
             <button type="button" aria-label="Playback speed" title="Playback speed" onClick={cycleSpeed} style={{ minWidth: 52, height: 38, padding: "0 10px", border: `1px solid ${c.borderDefault}`, borderRadius: 999, background: c.bgElevated, color: c.textSecondary, fontFamily: FONT.body, fontSize: 13, fontWeight: 650, cursor: "pointer" }}>{speed}×</button>
             <button type="button" aria-label="Repeat" aria-pressed={localLoop} onClick={() => setLocalLoop((value) => !value)} style={{ ...iconButton, color: localLoop ? c.signalText : c.textSecondary, background: localLoop ? c.signalBg : "transparent" }}><AudioIcon name="loop" size={22} /></button>
           </div>
@@ -483,6 +486,29 @@ export default function RamzyAudioPlayer({
         <style>{`
           [data-ramzy-media-player="audio"] button:hover:not(:disabled) { background: ${mode === "light" ? "rgba(29,29,27,.06)" : "rgba(255,255,255,.07)"}; }
           [data-ramzy-media-player="audio"] button:focus-visible { outline: 2px solid ${SIGNAL}; outline-offset: 2px; }
+          @container ramzy-audio (max-width: 580px) {
+            [data-ramzy-media-player="audio"] { padding: 16px !important; }
+            [data-ramzy-audio-header="true"] { grid-template-columns: 72px minmax(0,1fr) auto !important; gap: 12px !important; }
+            [data-ramzy-audio-artwork="true"] { width: 72px !important; height: 72px !important; }
+            [data-ramzy-audio-waveform="true"] { margin-top: 12px !important; }
+            [data-ramzy-audio-waveform-surface="true"] { height: 128px !important; }
+            [data-ramzy-audio-controls="true"] { grid-template-columns: minmax(0,1fr) auto !important; gap: 6px 10px !important; margin-top: 8px !important; }
+            [data-ramzy-audio-transport="true"] { grid-column: 1 / -1; grid-row: 1; }
+            [data-ramzy-audio-volume="true"] { grid-column: 1; grid-row: 2; overflow: hidden; }
+            [data-ramzy-audio-extras="true"] { grid-column: 2; grid-row: 2; }
+          }
+          @container ramzy-audio (max-width: 380px) {
+            [data-ramzy-media-player="audio"] { padding: 12px !important; }
+            [data-ramzy-audio-header="true"] { grid-template-columns: 56px minmax(0,1fr) !important; gap: 10px !important; }
+            [data-ramzy-audio-artwork="true"] { width: 56px !important; height: 56px !important; }
+            [data-ramzy-audio-header="true"] > :last-child { grid-column: 2; }
+            [data-ramzy-audio-waveform-surface="true"] { height: 96px !important; }
+            [data-ramzy-audio-transport="true"] { gap: 0 !important; }
+            [data-ramzy-audio-transport="true"] button { width: 40px !important; height: 44px !important; margin-inline: 0 !important; }
+            [data-ramzy-audio-transport="true"] button[aria-label="Play"],
+            [data-ramzy-audio-transport="true"] button[aria-label="Pause"] { width: 56px !important; height: 56px !important; margin-inline: 2px !important; }
+            [data-ramzy-audio-volume="true"] [role="slider"] { width: 0 !important; opacity: 0 !important; }
+          }
         `}</style>
       </div>
 

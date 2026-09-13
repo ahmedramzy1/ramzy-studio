@@ -1,5 +1,7 @@
 .root {
   min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   container: ramzy-playlist / inline-size;
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--ramzy-radius-bordered, 8px);
@@ -37,6 +39,8 @@
 }
 
 .scroll {
+  min-height: 0;
+  overflow-y: auto;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -67,8 +71,10 @@
   }
 
   .root[data-editable="true"] .row {
-    grid-template-columns: 28px 44px minmax(0, 1fr) 34px !important;
-    padding-left: 6px !important;
+    grid-template-columns: 44px 44px minmax(0, 1fr) 44px !important;
+    gap: 8px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
   }
 
   .date,
@@ -91,7 +97,8 @@
   }
 
   .root[data-editable="true"] .row {
-    grid-template-columns: 24px 40px minmax(0, 1fr) 32px !important;
+    grid-template-columns: 44px 40px minmax(0, 1fr) 44px !important;
+    gap: 6px !important;
   }
 
   .artwork {
@@ -111,7 +118,13 @@
 
   .actionButton,
   .gripButton {
+    width: 44px !important;
     min-width: 44px;
+    height: 44px !important;
+    min-height: 44px;
+  }
+
+  .root :global(.mantine-Menu-item) {
     min-height: 44px;
   }
 }
