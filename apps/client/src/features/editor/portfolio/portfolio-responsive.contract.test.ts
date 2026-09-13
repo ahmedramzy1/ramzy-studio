@@ -38,6 +38,7 @@ describe("portfolio responsive composition", () => {
     expect(collection).toContain("@container collection (min-width: 800px)");
     expect(collection).toContain("grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr)");
     expect(playlist).toContain("@container ramzy-playlist (max-width: 620px)");
+    expect(playlist).toContain("min-height: 44px");
     expect(view).toContain("collection.mediaPlaylist");
   });
 });
