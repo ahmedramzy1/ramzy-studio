@@ -55,6 +55,15 @@ describe("portfolio responsive composition", () => {
     expect(table).toContain("@container ramzy-document (max-width: 720px)");
     expect(table).toContain("table:not(:has(colgroup > col:nth-child(4)))");
     expect(table).toContain("table:has(colgroup > col:nth-child(4))");
+    expect(table).toContain("table-layout: auto");
+    expect(table).not.toContain(
+      "table:not(:has(colgroup > col:nth-child(4))) col",
+    );
+    expect(table).toContain("overflow-wrap: break-word");
+    expect(table).toContain("word-break: normal");
+    expect(table).toContain(
+      "table:has(colgroup > col:nth-child(3)):not(:has(colgroup > col:nth-child(4)))",
+    );
   });
 
   it("adapts audio and video controls to their rendered player width", () => {
