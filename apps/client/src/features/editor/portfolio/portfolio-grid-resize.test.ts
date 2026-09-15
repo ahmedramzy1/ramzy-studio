@@ -7,6 +7,7 @@ import {
   nearestPortfolioGridWidthMode,
   portfolioColumnRatioGuides,
   portfolioResizeGuideWidths,
+  portfolioResizeTargets,
   portfolioGridModeLabel,
   resizedColumnPixelWidths,
   resizedColumnWeights,
@@ -16,6 +17,35 @@ import {
 } from "./portfolio-grid-resize";
 
 describe("portfolio grid resizing", () => {
+  it("anchors the 8px edge rhythm to the actual 980px reading width", () => {
+    expect(portfolioResizeGuideWidths(980, 1040)).toEqual([
+      980, 996, 1012, 1028,
+    ]);
+  });
+
+  it("uses the same exact bounded targets for guides and snaps, including off-grid modes", () => {
+    const modes = { normal: 980, wide: 1120, full: 1397 };
+    const targets = portfolioResizeTargets(980, 1397, modes);
+    expect(targets).toContain(1120);
+    expect(targets).not.toContain(1124);
+    for (let desired = 980; desired <= 1397; desired++) {
+      const snap = snapPortfolioBlockWidth(desired, targets, modes);
+      const visible = visiblePortfolioResizeGuideWidths(
+        targets,
+        snap.width,
+        modes,
+      );
+      expect(visible).toContain(snap.width);
+      expect(visible.every((width) => targets.includes(width))).toBe(true);
+      for (const width of visible) {
+        expect(snapPortfolioBlockWidth(width, targets, modes).width).toBe(
+          width,
+        );
+      }
+    }
+    expect(snapPortfolioBlockWidth(1120, targets, modes).mode).toBe("wide");
+  });
+
   it("resizes only the adjacent columns and preserves the row total", () => {
     const next = resizedColumnWeights([300, 300, 300], 0, 60);
     expect(next).toEqual([1.2, 0.8, 1]);
@@ -102,12 +132,7 @@ describe("portfolio grid resizing", () => {
     const guides = portfolioResizeGuideWidths(240, 1440);
 
     expect(visiblePortfolioResizeGuideWidths(guides, 1038, modes)).toEqual([
-      800,
-      1024,
-      1040,
-      1056,
-      1120,
-      1440,
+      800, 1024, 1040, 1056, 1120, 1440,
     ]);
   });
 

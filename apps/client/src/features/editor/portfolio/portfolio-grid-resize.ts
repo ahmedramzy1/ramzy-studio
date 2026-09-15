@@ -50,9 +50,8 @@ export function portfolioResizeGuideWidths(
     return [];
   }
 
-  const firstGridWidth =
-    Math.ceil(minimumWidth / PORTFOLIO_RESIZE_WIDTH_STEP) *
-    PORTFOLIO_RESIZE_WIDTH_STEP;
+  // Anchor the edge rhythm to Normal, not an unrelated zero-width origin.
+  const firstGridWidth = minimumWidth;
   const gridWidths: number[] = [];
   for (
     let width = firstGridWidth;
@@ -63,6 +62,27 @@ export function portfolioResizeGuideWidths(
   }
 
   return uniqueSortedWidths(gridWidths);
+}
+
+export function portfolioResizeTargets(
+  minimumWidth: number,
+  maximumWidth: number,
+  modes: Record<PortfolioGridWidthMode, number>,
+): number[] {
+  const anchors = uniqueSortedWidths([
+    minimumWidth,
+    maximumWidth,
+    ...Object.values(modes),
+  ]).filter((width) => width >= minimumWidth && width <= maximumWidth);
+  // Exact mode anchors replace a nearby rhythm point instead of adding a
+  // nearly coincident guide/extra tiny snap. Both drawing and snapping use this.
+  const rhythm = portfolioResizeGuideWidths(minimumWidth, maximumWidth).filter(
+    (width) =>
+      anchors.every(
+        (anchor) => Math.abs(anchor - width) >= PORTFOLIO_RESIZE_WIDTH_STEP / 2,
+      ),
+  );
+  return uniqueSortedWidths([...rhythm, ...anchors]);
 }
 
 /**
@@ -81,8 +101,7 @@ export function visiblePortfolioResizeGuideWidths(
 
   const closestIndex = sorted.reduce(
     (closest, width, index) =>
-      Math.abs(width - currentWidth) <
-      Math.abs(sorted[closest] - currentWidth)
+      Math.abs(width - currentWidth) < Math.abs(sorted[closest] - currentWidth)
         ? index
         : closest,
     0,
@@ -92,10 +111,8 @@ export function visiblePortfolioResizeGuideWidths(
     Math.max(0, closestIndex - safeRadius),
     closestIndex + safeRadius + 1,
   );
-  const minimum = sorted[0];
-  const maximum = sorted[sorted.length - 1];
-  const modes = Object.values(modeWidths).filter(
-    (width) => width >= minimum && width <= maximum,
+  const modes = Object.values(modeWidths).filter((width) =>
+    sorted.includes(Math.round(width)),
   );
   return uniqueSortedWidths([...local, ...modes]);
 }

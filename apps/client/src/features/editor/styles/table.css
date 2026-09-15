@@ -98,7 +98,7 @@
 .ProseMirror.ramzy-portfolio-editor table :is(td, th) > :first-child {
   margin-top: 0;
 }
-.ProseMirror.ramzy-portfolio-editor table :is(td, th) > :last-child {
+.ProseMirror.ramzy-portfolio-editor table :is(td, th) > :nth-last-child(1 of :not(.ProseMirror-widget)) {
   margin-bottom: 0;
 }
 
@@ -364,6 +364,16 @@
     table-layout: auto;
   }
 
+  /* Saved desktop pixel widths must not force a compact lane wider. Keep
+     the attributes intact; restore them automatically outside this query. */
+  .tableWrapper table:not(:has(colgroup > col:nth-child(4))) col {
+    width: auto !important;
+  }
+
+  .tableWrapper table:not(:has(colgroup > col:nth-child(4))) :is(td, th) {
+    overflow-wrap: anywhere;
+  }
+
   .tableWrapper table:has(colgroup > col:nth-child(4)) {
     width: max-content !important;
     min-width: min(640px, 170cqi) !important;
@@ -379,12 +389,6 @@
 }
 
 @container (max-width: 420px) {
-  .tableWrapper table:has(colgroup > col:nth-child(3)):not(:has(colgroup > col:nth-child(4))) {
-    width: max-content !important;
-    min-width: min(520px, 150cqi) !important;
-    table-layout: fixed;
-  }
-
   .ProseMirror table {
     font-size: 0.9375em;
   }

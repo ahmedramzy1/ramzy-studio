@@ -17,8 +17,12 @@ describe("portfolio responsive composition", () => {
     );
 
     expect(elements).toContain("container: ramzy-document / inline-size");
-    expect(typography).toContain("@container ramzy-document (max-width: 720px)");
-    expect(columns.match(/@container ramzy-document/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(typography).toContain(
+      "@container ramzy-document (max-width: 720px)",
+    );
+    expect(
+      columns.match(/@container ramzy-document/g)?.length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("gives media playlists a wide sidecar and compact queue contract", () => {
@@ -36,21 +40,26 @@ describe("portfolio responsive composition", () => {
     );
 
     expect(collection).toContain("@container collection (min-width: 800px)");
-    expect(collection).toContain("grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr)");
-    expect(collection).toContain("--ramzy-playlist-pair-height: clamp(440px, 48cqi, 500px)");
-    expect(collection).toContain("height: var(--ramzy-playlist-pair-height) !important");
+    expect(collection).toContain(
+      "grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr)",
+    );
+    expect(collection).toContain(
+      "--ramzy-playlist-pair-height: clamp(440px, 48cqi, 500px)",
+    );
+    expect(collection).toContain(
+      "height: var(--ramzy-playlist-pair-height) !important",
+    );
     expect(playlist).toContain("@container ramzy-playlist (max-width: 620px)");
     expect(playlist).toContain("grid-template-rows: auto auto minmax(0, 1fr)");
-    expect(playlist).toContain("grid-template-columns: 44px 44px minmax(0, 1fr) 44px");
+    expect(playlist).toContain(
+      "grid-template-columns: 44px 44px minmax(0, 1fr) 44px",
+    );
     expect(playlist).toContain("min-height: 44px");
     expect(view).toContain("collection.mediaPlaylist");
   });
 
   it("fits compact tables and scrolls genuinely wide tables", () => {
-    const table = readFileSync(
-      "src/features/editor/styles/table.css",
-      "utf8",
-    );
+    const table = readFileSync("src/features/editor/styles/table.css", "utf8");
     const columns = readFileSync(
       "src/features/editor/styles/columns.css",
       "utf8",
@@ -62,12 +71,10 @@ describe("portfolio responsive composition", () => {
     expect(table).toContain("table:not(:has(colgroup > col:nth-child(4)))");
     expect(table).toContain("table:has(colgroup > col:nth-child(4))");
     expect(table).toContain("table-layout: auto");
-    expect(table).not.toContain(
-      "table:not(:has(colgroup > col:nth-child(4))) col",
-    );
+    expect(table).toContain("table:not(:has(colgroup > col:nth-child(4))) col");
     expect(table).toContain("overflow-wrap: break-word");
     expect(table).toContain("word-break: normal");
-    expect(table).toContain(
+    expect(table).not.toContain(
       "table:has(colgroup > col:nth-child(3)):not(:has(colgroup > col:nth-child(4)))",
     );
   });

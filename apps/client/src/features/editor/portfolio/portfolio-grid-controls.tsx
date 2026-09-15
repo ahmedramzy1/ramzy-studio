@@ -15,7 +15,7 @@ import {
   nearestPortfolioGridWidthMode,
   formatPortfolioColumnRatio,
   portfolioColumnRatioGuides,
-  portfolioResizeGuideWidths,
+  portfolioResizeTargets,
   portfolioGridModeLabel,
   resizedColumnPixelWidths,
   resizedColumnWeights,
@@ -74,6 +74,7 @@ type RowResizeSession = {
   handle: HTMLElement;
   side: "left" | "right";
   startWidth: number;
+  center: number;
   delta: number;
   widths: Record<PortfolioGridWidthMode, number>;
   minimumWidth: number;
@@ -358,10 +359,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       );
       const desired = snapped.width;
       session.latestWidth = desired;
-      session.snappedWidth =
-        Math.abs(desired - bounded) > 0.5 || snapped.mode !== null
-          ? desired
-          : null;
+      session.snappedWidth = desired;
       session.nextMode = nearestPortfolioGridWidthMode(desired, session.widths);
       setPortfolioGridResizePreview(editor, {
         kind: "block",
@@ -375,8 +373,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
             : `${Math.round(desired)} px`
           : `${Math.round(desired)} px`,
       );
-      const center =
-        session.active.element.getBoundingClientRect().left + desired / 2;
+      const center = session.center;
       setSnapGuides(
         visiblePortfolioResizeGuideWidths(
           session.guideWidths,
@@ -671,13 +668,11 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       ),
     );
     // Include the exact 100% measure even when it falls between grid increments.
-    const guideWidths = [
-      ...new Set([
-        minimumWidth,
-        ...portfolioResizeGuideWidths(minimumWidth, maximumWidth),
-        maximumWidth,
-      ]),
-    ].sort((a, b) => a - b);
+    const guideWidths = portfolioResizeTargets(
+      minimumWidth,
+      maximumWidth,
+      widths,
+    );
     const center = active.element.getBoundingClientRect().left + startWidth / 2;
     sessionRef.current = {
       kind: "row",
@@ -687,6 +682,7 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       handle,
       side: handle.dataset.side === "left" ? "left" : "right",
       startWidth,
+      center,
       delta: 0,
       widths,
       minimumWidth,
