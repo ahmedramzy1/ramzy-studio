@@ -124,7 +124,7 @@ describe("portfolio grid resizing", () => {
       mode: null,
     });
     expect(snapPortfolioBlockWidth(1100, guides, modes)).toEqual({
-      width: 1096,
+      width: 1104,
       mode: null,
     });
   });

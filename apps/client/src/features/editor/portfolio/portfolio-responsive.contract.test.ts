@@ -51,6 +51,10 @@ describe("portfolio responsive composition", () => {
       "src/features/editor/styles/table.css",
       "utf8",
     );
+    const columns = readFileSync(
+      "src/features/editor/styles/columns.css",
+      "utf8",
+    );
 
     expect(columns).toContain("container: ramzy-column / inline-size");
     expect(table).toContain("@container (max-width: 720px)");
