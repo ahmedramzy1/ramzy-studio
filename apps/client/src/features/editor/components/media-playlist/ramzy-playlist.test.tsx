@@ -121,7 +121,7 @@ describe("RamzyPlaylist item actions", () => {
 
     expect(root.getAttribute("data-has-actions")).toBe("true");
     expect(row.style.gridTemplateColumns).toBe(
-      "54px minmax(0, 1fr) 118px 78px 44px",
+      "54px minmax(0,1fr) 118px 78px 44px",
     );
     expect(action.getAttribute("aria-haspopup")).toBe("menu");
   });
