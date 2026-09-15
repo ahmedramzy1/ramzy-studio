@@ -169,12 +169,17 @@ export default function RamzyPlaylist({
 }: RamzyPlaylistProps) {
   const c = dsTheme(mode);
   const compact = layout === "compact";
+  const hasItemActions = editable || Boolean(onPlay || onDownload);
   const editableColumns = compact
     ? "32px 44px minmax(0,1fr) 44px"
     : "32px 54px minmax(0,1fr) 118px 78px 44px";
   const readonlyColumns = compact
-    ? "44px minmax(0,1fr) 44px"
-    : "54px minmax(0,1fr) 118px 78px 44px";
+    ? hasItemActions
+      ? "44px minmax(0,1fr) 44px"
+      : "44px minmax(0,1fr)"
+    : hasItemActions
+      ? "54px minmax(0,1fr) 118px 78px 44px"
+      : "54px minmax(0,1fr) 118px 78px";
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
 
@@ -200,6 +205,7 @@ export default function RamzyPlaylist({
     <div
       data-ramzy-playlist="true"
       data-editable={editable || undefined}
+      data-has-actions={hasItemActions || undefined}
       className={classes.root}
       style={{
         borderTop: `1px solid ${c.borderDefault}`,
@@ -236,7 +242,7 @@ export default function RamzyPlaylist({
         <span>Title</span>
         {!compact && <span>Date added</span>}
         {!compact && <span style={{ textAlign: "right" }}>Duration</span>}
-        <span />
+        {hasItemActions && <span />}
       </div>
 
       <div
@@ -584,7 +590,7 @@ export default function RamzyPlaylist({
                 </div>
               )}
 
-              {(!pending || failed) && (
+              {hasItemActions && (!pending || failed) && (
                 <Menu
                   withinPortal
                   position="bottom-end"
@@ -599,6 +605,7 @@ export default function RamzyPlaylist({
                       title="Item actions"
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
                       className={classes.actionButton}
                       style={{
                         width: 36,
@@ -620,6 +627,7 @@ export default function RamzyPlaylist({
                   <Menu.Dropdown
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                   >
                     {onPlay && (
                       <Menu.Item

@@ -84,10 +84,14 @@
   }
 
   .row {
-    grid-template-columns: 44px minmax(0, 1fr) 44px !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
     gap: 10px !important;
     min-height: 64px !important;
     padding: 8px 10px !important;
+  }
+
+  .root[data-has-actions="true"] .row {
+    grid-template-columns: 44px minmax(0, 1fr) 44px !important;
   }
 
   .root[data-editable="true"] .row {
@@ -113,6 +117,10 @@
   }
 
   .row {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+  }
+
+  .root[data-has-actions="true"] .row {
     grid-template-columns: 40px minmax(0, 1fr) 44px !important;
   }
 
