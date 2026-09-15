@@ -170,11 +170,11 @@ export default function RamzyPlaylist({
   const c = dsTheme(mode);
   const compact = layout === "compact";
   const editableColumns = compact
-    ? "32px 44px minmax(0,1fr) 38px"
-    : "32px 54px minmax(0,1fr) 118px 78px 38px";
+    ? "32px 44px minmax(0,1fr) 44px"
+    : "32px 54px minmax(0,1fr) 118px 78px 44px";
   const readonlyColumns = compact
-    ? "44px minmax(0,1fr)"
-    : "54px minmax(0,1fr) 118px 78px";
+    ? "44px minmax(0,1fr) 44px"
+    : "54px minmax(0,1fr) 118px 78px 44px";
   const [draggedKey, setDraggedKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
 
@@ -222,7 +222,7 @@ export default function RamzyPlaylist({
           gridTemplateColumns: editable ? editableColumns : readonlyColumns,
           gap: 12,
           alignItems: "center",
-          padding: editable ? "10px 14px 8px 8px" : "10px 14px 8px",
+          padding: editable ? "10px 8px 8px" : "10px 8px 8px",
           fontFamily: FONT.mono,
           fontSize: 10,
           letterSpacing: ".06em",
@@ -236,7 +236,7 @@ export default function RamzyPlaylist({
         <span>Title</span>
         {!compact && <span>Date added</span>}
         {!compact && <span style={{ textAlign: "right" }}>Duration</span>}
-        {editable && <span />}
+        <span />
       </div>
 
       <div
@@ -309,7 +309,7 @@ export default function RamzyPlaylist({
                 gap: 12,
                 alignItems: "center",
                 minHeight: compact ? 58 : 72,
-                padding: editable ? "8px 14px 8px 8px" : "8px 14px",
+                padding: editable ? "8px 8px" : "8px",
                 borderBottom:
                   index === items.length - 1
                     ? 0
@@ -584,12 +584,13 @@ export default function RamzyPlaylist({
                 </div>
               )}
 
-              {editable && (!pending || failed) && (
+              {(!pending || failed) && (
                 <Menu
-                  withinPortal={false}
+                  withinPortal
                   position="bottom-end"
                   shadow="md"
                   width={220}
+                  zIndex={10050}
                 >
                   <Menu.Target>
                     <button
@@ -600,12 +601,12 @@ export default function RamzyPlaylist({
                       onClick={(event) => event.stopPropagation()}
                       className={classes.actionButton}
                       style={{
-                        width: 34,
-                        height: 34,
+                        width: 36,
+                        height: 36,
                         border: 0,
                         borderRadius: 6,
                         background: "transparent",
-                        color: c.textTertiary,
+                        color: c.textSecondary,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -613,99 +614,123 @@ export default function RamzyPlaylist({
                         padding: 0,
                       }}
                     >
-                      <IconDots size={18} />
+                      <IconDots size={20} stroke={2} />
                     </button>
                   </Menu.Target>
-                  <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
-                    <Menu.Item
-                      leftSection={<IconEdit size={16} />}
-                      onClick={() => onEditDetails?.(item.key)}
-                    >
-                      Edit details
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<IconRefresh size={16} />}
-                      onClick={() => onReplaceMedia?.(item.key)}
-                    >
-                      Replace {kind}
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={
-                        kind === "video" ? (
-                          <IconPhotoEdit size={16} />
-                        ) : (
-                          <IconFileMusic size={16} />
-                        )
-                      }
-                      onClick={() => onChangeArtwork?.(item.key)}
-                    >
-                      {kind === "video" ? "Change thumbnail" : "Change artwork"}
-                    </Menu.Item>
-                    {kind === "video" && (
+                  <Menu.Dropdown
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {onPlay && (
+                      <Menu.Item
+                        leftSection={<Icon name="play" size={16} />}
+                        onClick={() => onPlay(item.key)}
+                      >
+                        Play
+                      </Menu.Item>
+                    )}
+                    {editable && (
                       <>
+                        {onPlay && <Menu.Divider />}
                         <Menu.Item
-                          leftSection={<IconSubtitles size={16} />}
-                          onClick={() => onGenerateCaptions?.(item.key)}
+                          leftSection={<IconEdit size={16} />}
+                          onClick={() => onEditDetails?.(item.key)}
                         >
-                          Generate captions
+                          Edit details
                         </Menu.Item>
                         <Menu.Item
-                          leftSection={<IconSubtitles size={16} />}
-                          onClick={() => onManageCaptions?.(item.key)}
+                          leftSection={<IconRefresh size={16} />}
+                          onClick={() => onReplaceMedia?.(item.key)}
                         >
-                          Manage captions
+                          Replace {kind}
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={
+                            kind === "video" ? (
+                              <IconPhotoEdit size={16} />
+                            ) : (
+                              <IconFileMusic size={16} />
+                            )
+                          }
+                          onClick={() => onChangeArtwork?.(item.key)}
+                        >
+                          {kind === "video" ? "Change thumbnail" : "Change artwork"}
+                        </Menu.Item>
+                        {kind === "video" && (
+                          <>
+                            <Menu.Item
+                              leftSection={<IconSubtitles size={16} />}
+                              onClick={() => onGenerateCaptions?.(item.key)}
+                            >
+                              Generate captions
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconSubtitles size={16} />}
+                              onClick={() => onManageCaptions?.(item.key)}
+                            >
+                              Manage captions
+                            </Menu.Item>
+                          </>
+                        )}
+                      </>
+                    )}
+                    {onDownload && (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Item
+                          leftSection={<IconDownload size={16} />}
+                          onClick={() => onDownload(item.key)}
+                        >
+                          Download
                         </Menu.Item>
                       </>
                     )}
-                    <Menu.Divider />
-                    <Menu.Item
-                      leftSection={<IconDownload size={16} />}
-                      onClick={() => onDownload?.(item.key)}
-                    >
-                      Download
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<IconCopy size={16} />}
-                      onClick={() => onDuplicate?.(item.key)}
-                    >
-                      Duplicate item
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<IconArrowUp size={16} />}
-                      disabled={index === 0}
-                      onClick={() => onMove?.(item.key, -1)}
-                    >
-                      Move up
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<IconArrowDown size={16} />}
-                      disabled={index === items.length - 1}
-                      onClick={() => onMove?.(item.key, 1)}
-                    >
-                      Move down
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<IconArrowBarToUp size={16} />}
-                      disabled={index === 0}
-                      onClick={() => onMoveToStart?.(item.key)}
-                    >
-                      Move to top
-                    </Menu.Item>
-                    <Menu.Item
-                      leftSection={<IconArrowBarToDown size={16} />}
-                      disabled={index === items.length - 1}
-                      onClick={() => onMoveToEnd?.(item.key)}
-                    >
-                      Move to bottom
-                    </Menu.Item>
-                    <Menu.Divider />
-                    <Menu.Item
-                      color="red"
-                      leftSection={<IconTrash size={16} />}
-                      onClick={() => onRemove?.(item.key)}
-                    >
-                      Remove from playlist
-                    </Menu.Item>
+                    {editable && (
+                      <>
+                        <Menu.Item
+                          leftSection={<IconCopy size={16} />}
+                          onClick={() => onDuplicate?.(item.key)}
+                        >
+                          Duplicate item
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconArrowUp size={16} />}
+                          disabled={index === 0}
+                          onClick={() => onMove?.(item.key, -1)}
+                        >
+                          Move up
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconArrowDown size={16} />}
+                          disabled={index === items.length - 1}
+                          onClick={() => onMove?.(item.key, 1)}
+                        >
+                          Move down
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconArrowBarToUp size={16} />}
+                          disabled={index === 0}
+                          onClick={() => onMoveToStart?.(item.key)}
+                        >
+                          Move to top
+                        </Menu.Item>
+                        <Menu.Item
+                          leftSection={<IconArrowBarToDown size={16} />}
+                          disabled={index === items.length - 1}
+                          onClick={() => onMoveToEnd?.(item.key)}
+                        >
+                          Move to bottom
+                        </Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item
+                          color="red"
+                          leftSection={<IconTrash size={16} />}
+                          onClick={() => onRemove?.(item.key)}
+                        >
+                          Remove from playlist
+                        </Menu.Item>
+                      </>
+                    )}
                   </Menu.Dropdown>
                 </Menu>
               )}

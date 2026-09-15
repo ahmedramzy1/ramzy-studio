@@ -50,6 +50,26 @@
   min-width: 0;
 }
 
+.actionButton,
+.gripButton {
+  position: relative;
+  z-index: 1;
+}
+
+.actionButton {
+  justify-self: end;
+}
+
+.actionButton:focus-visible,
+.gripButton:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+
+.actionButton[aria-expanded="true"] {
+  background: var(--mantine-color-default-hover) !important;
+}
+
 .inlineDuration {
   display: none;
   margin-left: auto;
@@ -64,7 +84,7 @@
   }
 
   .row {
-    grid-template-columns: 44px minmax(0, 1fr) !important;
+    grid-template-columns: 44px minmax(0, 1fr) 44px !important;
     gap: 10px !important;
     min-height: 64px !important;
     padding: 8px 10px !important;
@@ -93,7 +113,7 @@
   }
 
   .row {
-    grid-template-columns: 40px minmax(0, 1fr) !important;
+    grid-template-columns: 40px minmax(0, 1fr) 44px !important;
   }
 
   .root[data-editable="true"] .row {
