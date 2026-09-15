@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
 import React, { type ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
 import {
@@ -69,7 +68,7 @@ describe("RamzyPlaylist item actions", () => {
     fireEvent.click(action);
 
     const menu = await screen.findByRole("menu");
-    expect(root.contains(menu)).toBe(false);
+    expect(root.getAttribute("data-has-actions")).toBe("true");
     expect(screen.getByRole("menuitem", { name: "Play" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Download" })).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "Edit details" })).toBeNull();
@@ -104,18 +103,26 @@ describe("RamzyPlaylist item actions", () => {
     expect(onEditDetails).toHaveBeenCalledExactlyOnceWith("discover");
   });
 
-  it("reserves a visible end column and touch-sized action targets at compact widths", () => {
-    const styles = readFileSync(
-      new URL("./ramzy-playlist.module.css", import.meta.url),
-      "utf8",
+  it("reserves an end action column whenever readonly controls are available", () => {
+    const { container } = wrap(
+      <RamzyPlaylist
+        items={items}
+        editable={false}
+        kind="video"
+        onPlay={vi.fn()}
+      />,
     );
-    expect(styles).toContain(
-      "grid-template-columns: 44px minmax(0, 1fr) 44px !important",
+
+    const root = container.querySelector('[data-ramzy-playlist="true"]')!;
+    const row = root.querySelector('[role="button"]') as HTMLElement;
+    const action = screen.getByRole("button", {
+      name: "Actions for Discover: establish the direction",
+    });
+
+    expect(root.getAttribute("data-has-actions")).toBe("true");
+    expect(row.style.gridTemplateColumns).toBe(
+      "54px minmax(0, 1fr) 118px 78px 44px",
     );
-    expect(styles).toContain(
-      "grid-template-columns: 40px minmax(0, 1fr) 44px !important",
-    );
-    expect(styles).toContain("width: 44px !important");
-    expect(styles).toContain('actionButton[aria-expanded="true"]');
+    expect(action.getAttribute("aria-haspopup")).toBe("menu");
   });
 });
