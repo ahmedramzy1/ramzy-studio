@@ -12,6 +12,7 @@ import {
   resizedColumnWeights,
   snapPortfolioBlockWidth,
   snapPortfolioColumnRatio,
+  visiblePortfolioResizeGuideWidths,
 } from "./portfolio-grid-resize";
 
 describe("portfolio grid resizing", () => {
@@ -79,7 +80,7 @@ describe("portfolio grid resizing", () => {
     expect(portfolioGridModeLabel("normal")).toBe("Centered");
   });
 
-  it("builds a bounded grid with 16px between symmetric edge positions", () => {
+  it("builds a bounded grid with 8px between symmetric edge positions", () => {
     const modes = { normal: 800, wide: 1120, full: 1440 } as const;
     const guides = portfolioResizeGuideWidths(240, 1440);
 
@@ -87,13 +88,27 @@ describe("portfolio grid resizing", () => {
     expect(guides).toContain(1024);
     expect(guides).toContain(MAX_PORTFOLIO_BLOCK_WIDTH);
     expect(Math.max(...guides)).toBe(MAX_PORTFOLIO_BLOCK_WIDTH);
-    expect(PORTFOLIO_RESIZE_WIDTH_STEP).toBe(32);
-    expect(PORTFOLIO_RESIZE_EDGE_STEP).toBe(16);
+    expect(PORTFOLIO_RESIZE_WIDTH_STEP).toBe(16);
+    expect(PORTFOLIO_RESIZE_EDGE_STEP).toBe(8);
     expect(
       guides.every(
-        (width, index) => index === 0 || width - guides[index - 1] === 32,
+        (width, index) => index === 0 || width - guides[index - 1] === 16,
       ),
     ).toBe(true);
+  });
+
+  it("shows only nearby snap increments plus durable width modes", () => {
+    const modes = { normal: 800, wide: 1120, full: 1440 } as const;
+    const guides = portfolioResizeGuideWidths(240, 1440);
+
+    expect(visiblePortfolioResizeGuideWidths(guides, 1038, modes)).toEqual([
+      800,
+      1024,
+      1040,
+      1056,
+      1120,
+      1440,
+    ]);
   });
 
   it("always snaps outer resizing to the nearest equal-width step", () => {
@@ -101,15 +116,15 @@ describe("portfolio grid resizing", () => {
     const guides = portfolioResizeGuideWidths(240, 1440);
 
     expect(snapPortfolioBlockWidth(1038, guides, modes)).toEqual({
-      width: 1024,
+      width: 1040,
       mode: null,
     });
     expect(snapPortfolioBlockWidth(1070, guides, modes)).toEqual({
-      width: 1056,
+      width: 1072,
       mode: null,
     });
     expect(snapPortfolioBlockWidth(1100, guides, modes)).toEqual({
-      width: 1088,
+      width: 1096,
       mode: null,
     });
   });

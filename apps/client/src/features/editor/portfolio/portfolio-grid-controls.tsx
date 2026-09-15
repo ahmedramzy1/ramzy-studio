@@ -21,6 +21,7 @@ import {
   resizedColumnWeights,
   snapPortfolioBlockWidth,
   snapPortfolioColumnRatio,
+  visiblePortfolioResizeGuideWidths,
   type PortfolioColumnRatioGuide,
   type PortfolioGridWidthMode,
 } from "./portfolio-grid-resize";
@@ -377,7 +378,11 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       const center =
         session.active.element.getBoundingClientRect().left + desired / 2;
       setSnapGuides(
-        session.guideWidths.flatMap((width) => [
+        visiblePortfolioResizeGuideWidths(
+          session.guideWidths,
+          desired,
+          session.widths,
+        ).flatMap((width) => [
           {
             key: `width-${width}-left`,
             left: center - width / 2,
@@ -692,7 +697,11 @@ export function PortfolioGridControls({ editor }: { editor: Editor }) {
       nextMode,
     };
     setSnapGuides(
-      guideWidths.flatMap((width) => [
+      visiblePortfolioResizeGuideWidths(
+        guideWidths,
+        startWidth,
+        widths,
+      ).flatMap((width) => [
         {
           key: `width-${width}-left`,
           left: center - width / 2,

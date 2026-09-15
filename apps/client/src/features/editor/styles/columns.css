@@ -241,6 +241,7 @@ div[data-type="columns"][data-layout="three_with_sidebars"]
 .ProseMirror.ramzy-portfolio-editor
   div[data-type="columns"]
   > div[data-type="column"] {
+  container: ramzy-column / inline-size;
   padding-left: 0;
   padding-right: 0;
 }

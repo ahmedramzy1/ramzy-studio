@@ -52,7 +52,9 @@ describe("portfolio responsive composition", () => {
       "utf8",
     );
 
-    expect(table).toContain("@container ramzy-document (max-width: 720px)");
+    expect(columns).toContain("container: ramzy-column / inline-size");
+    expect(table).toContain("@container (max-width: 720px)");
+    expect(table).not.toContain("@container ramzy-document");
     expect(table).toContain("table:not(:has(colgroup > col:nth-child(4)))");
     expect(table).toContain("table:has(colgroup > col:nth-child(4))");
     expect(table).toContain("table-layout: auto");

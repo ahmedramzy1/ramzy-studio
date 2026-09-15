@@ -2,8 +2,11 @@ export type PortfolioGridWidthMode = "normal" | "wide" | "full";
 
 export const MIN_PORTFOLIO_COLUMN_WIDTH = 96;
 export const MAX_PORTFOLIO_BLOCK_WIDTH = 1440;
-export const PORTFOLIO_RESIZE_EDGE_STEP = 16;
+// The drag edge follows the shared 8px spacing foundation. Because outer
+// resizing is symmetric, each snap changes total block width by 16px.
+export const PORTFOLIO_RESIZE_EDGE_STEP = 8;
 export const PORTFOLIO_RESIZE_WIDTH_STEP = PORTFOLIO_RESIZE_EDGE_STEP * 2;
+export const PORTFOLIO_VISIBLE_GUIDE_RADIUS = 1;
 export const PORTFOLIO_COLUMN_RATIO_STEP_PERCENT = 5;
 
 const PORTFOLIO_COLUMN_RATIO_TARGETS = Array.from(
@@ -60,6 +63,41 @@ export function portfolioResizeGuideWidths(
   }
 
   return uniqueSortedWidths(gridWidths);
+}
+
+/**
+ * Keep the snap model precise without painting every possible position.
+ * The nearest increment and one neighbour on each side remain visible, while
+ * the three durable width modes stay available as structural anchors.
+ */
+export function visiblePortfolioResizeGuideWidths(
+  guideWidths: number[],
+  currentWidth: number,
+  modeWidths: Record<PortfolioGridWidthMode, number>,
+  radius = PORTFOLIO_VISIBLE_GUIDE_RADIUS,
+): number[] {
+  const sorted = uniqueSortedWidths(guideWidths);
+  if (!sorted.length) return uniqueSortedWidths(Object.values(modeWidths));
+
+  const closestIndex = sorted.reduce(
+    (closest, width, index) =>
+      Math.abs(width - currentWidth) <
+      Math.abs(sorted[closest] - currentWidth)
+        ? index
+        : closest,
+    0,
+  );
+  const safeRadius = Math.max(0, Math.floor(radius));
+  const local = sorted.slice(
+    Math.max(0, closestIndex - safeRadius),
+    closestIndex + safeRadius + 1,
+  );
+  const minimum = sorted[0];
+  const maximum = sorted[sorted.length - 1];
+  const modes = Object.values(modeWidths).filter(
+    (width) => width >= minimum && width <= maximum,
+  );
+  return uniqueSortedWidths([...local, ...modes]);
 }
 
 export function snapPortfolioBlockWidth(

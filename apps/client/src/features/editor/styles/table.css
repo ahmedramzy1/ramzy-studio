@@ -8,6 +8,16 @@
   }
 }
 
+/* Keep a table bound to the lane that contains it. The lane becomes the
+   responsive query container; the wrapper owns any necessary horizontal
+   scrolling instead of letting the table escape across adjacent columns. */
+.ProseMirror.ramzy-portfolio-editor .tableWrapper {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .table-dnd-preview {
   padding: 0;
   background-color: rgba(255, 255, 255, 0.3);
@@ -334,7 +344,7 @@
 /* Small canvases use the table's actual column count. Compact two/three-column
    tables reflow into the available measure; genuinely wide tables keep semantic
    columns and scroll inside their own rounded surface instead of escaping the page. */
-@container ramzy-document (max-width: 720px) {
+@container (max-width: 720px) {
   .tableWrapper,
   .tableWrapper.tableWrapperNoOverflow {
     width: 100%;
@@ -368,7 +378,7 @@
   }
 }
 
-@container ramzy-document (max-width: 420px) {
+@container (max-width: 420px) {
   .tableWrapper table:has(colgroup > col:nth-child(3)):not(:has(colgroup > col:nth-child(4))) {
     width: max-content !important;
     min-width: min(520px, 150cqi) !important;
