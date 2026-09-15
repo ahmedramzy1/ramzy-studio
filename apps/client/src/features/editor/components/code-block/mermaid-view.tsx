@@ -9,11 +9,13 @@ import DOMPurify from "dompurify";
 
 interface MermaidViewProps {
   props: NodeViewProps;
+  colorScheme?: "light" | "dark";
 }
 
-export default function MermaidView({ props }: MermaidViewProps) {
+export default function MermaidView({ props, colorScheme }: MermaidViewProps) {
   const { t } = useTranslation();
-  const computedColorScheme = useComputedColorScheme();
+  const hostTheme = useComputedColorScheme("light");
+  const computedColorScheme = colorScheme ?? hostTheme;
   const { node } = props;
   const [preview, setPreview] = useState<string>("");
 
@@ -28,14 +30,16 @@ export default function MermaidView({ props }: MermaidViewProps) {
 
   // Re-render the diagram whenever the node content or theme changes.
   useEffect(() => {
+    let cancelled = false;
     const id = `mermaid-${uuidv4()}`;
     if (node.textContent.length > 0) {
       mermaid
         .render(id, node.textContent)
         .then((item) => {
-          setPreview(item.svg);
+          if (!cancelled) setPreview(item.svg);
         })
         .catch((err) => {
+          if (cancelled) return;
           if (props.editor.isEditable) {
             setPreview(
               `<div class="${classes.error}">${t("Mermaid diagram error:")} ${DOMPurify.sanitize(err)}</div>`,
@@ -47,6 +51,7 @@ export default function MermaidView({ props }: MermaidViewProps) {
           }
         });
     }
+    return () => { cancelled = true; };
   }, [node.textContent, computedColorScheme]);
 
   return (

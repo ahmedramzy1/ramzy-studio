@@ -1,3 +1,4 @@
+import { textColorVariables } from "@/features/editor/theme/editor-colors";
 import {
   Badge,
   createTheme,
@@ -110,6 +111,7 @@ export const mantineCssResolver: CSSVariablesResolver = (theme) => ({
   },
   light: {
     ...v8CssVariablesResolver(theme).light,
+    ...textColorVariables("light"),
     "--mantine-color-dimmed": "#4b5563",
     "--mantine-color-dark-light-color": "#4e5359",
     "--mantine-color-dark-light-hover": "var(--mantine-color-gray-light-hover)",
@@ -146,6 +148,7 @@ export const mantineCssResolver: CSSVariablesResolver = (theme) => ({
   },
   dark: {
     ...v8CssVariablesResolver(theme).dark,
+    ...textColorVariables("dark"),
     "--mantine-color-dark-light-color": "var(--mantine-color-gray-4)",
     "--mantine-color-dark-light-hover": "var(--mantine-color-default-hover)",
   },

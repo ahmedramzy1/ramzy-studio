@@ -21,10 +21,15 @@ import { BubbleMenu } from "@tiptap/react/menus";
 import { isCellSelection, isEditorReady, isTextSelected } from "@docmost/editor-ext";
 import { useTranslation } from "react-i18next";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 export const TableMenu = React.memo(
   ({ editor }: EditorMenuProps): JSX.Element => {
     const { t } = useTranslation();
+    const portfolioMode = hasPortfolioElementMenu(editor);
     const shouldShow = useCallback(
       ({ state }: ShouldShowProps) => {
         if (!state) {
@@ -244,20 +249,27 @@ export const TableMenu = React.memo(
 
           <div className={classes.divider} />
 
-          <Tooltip
-            position="top"
-            label={t("Delete table")}
-            withinPortal={false}
-          >
-            <ActionIcon
-              onClick={deleteTable}
-              variant="subtle"
-              size="lg"
-              aria-label={t("Delete table")}
+          {!portfolioMode && (
+            <Tooltip
+              position="top"
+              label={t("Delete table")}
+              withinPortal={false}
             >
-              <IconTrashX size={18} />
-            </ActionIcon>
-          </Tooltip>
+              <ActionIcon
+                onClick={deleteTable}
+                variant="subtle"
+                size="lg"
+                aria-label={t("Delete table")}
+              >
+                <IconTrashX size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {portfolioMode && (
+            <>
+              <PortfolioElementActions editor={editor} />
+            </>
+          )}
         </div>
       </BubbleMenu>
     );

@@ -17,6 +17,10 @@ interface RowHandleProps {
   anchorPos: number;
   tableNode: ProseMirrorNode;
   tablePos: number;
+  visible?: boolean;
+  quiet?: boolean;
+  portfolio?: boolean;
+  selected?: boolean;
 }
 
 export const RowHandle = React.memo(function RowHandle({
@@ -25,6 +29,10 @@ export const RowHandle = React.memo(function RowHandle({
   anchorPos,
   tableNode,
   tablePos,
+  visible = true,
+  quiet = false,
+  portfolio = false,
+  selected = false,
 }: RowHandleProps) {
   const { t } = useTranslation();
   // See ColumnHandle for the rationale: keep the last valid cell DOM cached
@@ -50,8 +58,9 @@ export const RowHandle = React.memo(function RowHandle({
   const [handleEl, setHandleEl] = useState<HTMLDivElement | null>(null);
 
   const { refs, floatingStyles, middlewareData } = useFloating({
+    strategy: portfolio ? "fixed" : "absolute",
     placement: "left",
-    middleware: [offset(-4), hide()],
+    middleware: [offset(portfolio ? -8 : -4), hide()],
     whileElementsMounted: autoUpdate,
   });
   const isReferenceHidden = !!middlewareData.hide?.referenceHidden;
@@ -84,6 +93,7 @@ export const RowHandle = React.memo(function RowHandle({
       onOpen={onOpen}
       onClose={onClose}
       withinPortal
+      zIndex={portfolio ? 10001 : undefined}
       shadow="md"
     >
       <Menu.Target>
@@ -94,9 +104,17 @@ export const RowHandle = React.memo(function RowHandle({
           }}
           style={{
             ...floatingStyles,
-            ...(isReferenceHidden ? { visibility: "hidden" as const } : {}),
+            ...((!visible && !quiet && !selected) || isReferenceHidden
+              ? { visibility: "hidden" as const }
+              : {}),
           }}
-          className={clsx(classes.handle, classes.rowHandle)}
+          className={clsx(
+            classes.handle,
+            classes.rowHandle,
+            portfolio && classes.portfolioHandle,
+          )}
+          data-active={visible || selected || menuOpened || undefined}
+          data-ramzy-table-handle="row"
           role="button"
           tabIndex={0}
           aria-label={t("Row actions")}

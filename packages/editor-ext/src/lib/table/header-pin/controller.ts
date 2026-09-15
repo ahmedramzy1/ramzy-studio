@@ -55,6 +55,7 @@ export class TablePinController {
   private wrapper: HTMLElement;
   private table: HTMLTableElement;
   private fitsObserver?: IntersectionObserver;
+  private sizeObserver?: ResizeObserver;
   private mode: PinMode = 'off';
   private cachedHeaderRow: HTMLTableRowElement | null = null;
 
@@ -69,6 +70,9 @@ export class TablePinController {
       { root: this.wrapper, threshold: 1 },
     );
     this.fitsObserver.observe(this.table);
+    this.sizeObserver = new ResizeObserver(() => this.refresh());
+    this.sizeObserver.observe(this.wrapper);
+    this.sizeObserver.observe(this.table);
   }
 
   private getHeaderRow(): HTMLTableRowElement | null {
@@ -85,7 +89,25 @@ export class TablePinController {
       return;
     }
     if (isLayoutInert(entry.boundingClientRect)) return;
-    this.apply(entry.isIntersecting ? 'native' : 'fallback');
+    this.evaluateMode();
+  }
+
+  private evaluateMode() {
+    // Intersection with the viewport is not a horizontal-fit measurement.
+    // Responsive CSS can retain overflow:auto even on the "no overflow"
+    // class. Sticky would then pin against the table's own scroll wrapper,
+    // shifting a header down before the document has reached the pin line.
+    const fits = this.table.scrollWidth <= this.wrapper.clientWidth + 1;
+    this.apply(fits ? 'native' : 'fallback');
+    const style = getComputedStyle(this.wrapper);
+    if (
+      fits &&
+      [style.overflowX, style.overflowY].some((value) =>
+        /^(auto|scroll|hidden)$/.test(value),
+      )
+    )
+      this.apply('fallback');
+    if (this.mode === 'fallback') this.updateFallbackOffset();
   }
 
   private isEligible(): boolean {
@@ -131,10 +153,14 @@ export class TablePinController {
     if (!headerRow) return;
     const rowHeight = headerRow.getBoundingClientRect().height;
 
-    const active = tableRect.top < pinTop && tableRect.bottom > pinTop + rowHeight;
+    const active =
+      tableRect.top < pinTop && tableRect.bottom > pinTop + rowHeight;
 
     if (active) {
-      const offset = Math.min(pinTop - tableRect.top, tableRect.height - rowHeight);
+      const offset = Math.min(
+        pinTop - tableRect.top,
+        tableRect.height - rowHeight,
+      );
       this.wrapper.style.setProperty(PIN_OFFSET_VAR, `${offset}px`);
     } else {
       this.wrapper.style.removeProperty(PIN_OFFSET_VAR);
@@ -149,17 +175,14 @@ export class TablePinController {
       this.apply('off');
       return;
     }
-    if (this.mode === 'off') {
-      // Eligibility just flipped back on; re-trigger the observer so it
-      // emits the current intersection state.
-      this.fitsObserver?.unobserve(this.table);
-      this.fitsObserver?.observe(this.table);
-    }
+    this.evaluateMode();
   }
 
   destroy() {
     this.fitsObserver?.disconnect();
     this.fitsObserver = undefined;
+    this.sizeObserver?.disconnect();
+    this.sizeObserver = undefined;
     this.apply('off');
     pinOffsetWatcher.release();
   }
@@ -169,7 +192,9 @@ const controllers = new WeakMap<HTMLElement, TablePinController>();
 
 export function attach(wrapper: HTMLElement) {
   if (controllers.has(wrapper)) return;
-  const table = wrapper.querySelector(':scope > table') as HTMLTableElement | null;
+  const table = wrapper.querySelector(
+    ':scope > table',
+  ) as HTMLTableElement | null;
   if (!table) return;
   controllers.set(wrapper, new TablePinController(wrapper, table));
 }
@@ -181,6 +206,8 @@ export function detach(wrapper: HTMLElement) {
   controllers.delete(wrapper);
 }
 
-export function getController(wrapper: HTMLElement): TablePinController | undefined {
+export function getController(
+  wrapper: HTMLElement,
+): TablePinController | undefined {
   return controllers.get(wrapper);
 }

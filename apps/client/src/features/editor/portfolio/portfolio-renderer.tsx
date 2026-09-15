@@ -8,8 +8,12 @@ import { mainExtensions } from "@/features/editor/extensions/extensions";
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
+import { PortfolioBlockWidth } from "./portfolio-grid-resize-preview-extension";
+
+const portfolioReadonlyExtensions = [...mainExtensions, PortfolioBlockWidth];
 
 export interface RamzyStudioPortfolioRendererProps {
+  colorScheme?: "light" | "dark";
   content: JSONContent | null | undefined;
   pageId?: string;
   shareId?: string;
@@ -44,6 +48,7 @@ export function RamzyStudioPortfolioRenderer({
   session,
   apiUrl,
   withProviders = true,
+  colorScheme,
 }: RamzyStudioPortfolioRendererProps) {
   const hostConfig = useMemo(() => {
     if (session) {
@@ -87,7 +92,7 @@ export function RamzyStudioPortfolioRenderer({
     <TransclusionLookupProvider shareId={shareId}>
       <RamzyPortfolioRenderer
         content={content}
-        baseExtensions={mainExtensions}
+        baseExtensions={portfolioReadonlyExtensions}
         pageId={pageId}
         printMode={printMode}
         onCreate={onCreate}
@@ -99,5 +104,5 @@ export function RamzyStudioPortfolioRenderer({
     return renderer;
   }
 
-  return <PortfolioRuntimeProviders>{renderer}</PortfolioRuntimeProviders>;
+  return <PortfolioRuntimeProviders colorScheme={colorScheme}>{renderer}</PortfolioRuntimeProviders>;
 }

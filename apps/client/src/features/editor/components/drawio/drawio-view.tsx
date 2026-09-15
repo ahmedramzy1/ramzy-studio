@@ -186,7 +186,7 @@ export default function DrawioView(props: NodeViewProps) {
       </Modal.Root>
 
       <Card
-        radius="md"
+        radius="var(--ramzy-radius-bordered, 8px)"
         onClick={(e) => e.detail === 2 && handleOpen()}
         p="xs"
         style={{

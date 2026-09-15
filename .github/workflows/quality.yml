@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - ramzy/phase1-integration
+      - ramzy/aura-capability-rebuild
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -46,11 +47,11 @@ jobs:
       - name: Lint runtime build configuration
         run: pnpm --filter ./apps/client exec eslint vite.portfolio-runtime.config.ts
 
-      - name: Test portfolio draft save contract
-        run: pnpm --filter ./apps/client exec vitest run src/features/editor/portfolio/portfolio-draft-save.test.ts
+      - name: Test editor and media regression contracts
+        run: pnpm --filter ./apps/client exec vitest run
 
-      - name: Test media authoring contract
-        run: pnpm --filter ./apps/client exec vitest run src/features/editor/components/media/media-authoring-actions.test.ts src/features/editor/components/media/media-session.test.ts
+      - name: Test complete Experience Lab document mount
+        run: pnpm --filter ./apps/client exec vitest run --config vitest.experience-lab.config.ts
 
       - name: Build client
         run: pnpm --filter ./apps/client run build
@@ -92,7 +93,7 @@ jobs:
         run: pnpm run editor-ext:build
 
       - name: Test portfolio server contract
-        run: pnpm --filter ./apps/server exec jest src/integrations/portfolio/portfolio.controller.spec.ts --runInBand
+        run: pnpm --filter ./apps/server exec jest src/integrations/portfolio/portfolio.controller.spec.ts src/collaboration/experience-lab-schema.spec.ts --runInBand
 
       - name: Build server
         run: pnpm --filter ./apps/server run build
@@ -100,7 +101,8 @@ jobs:
   publish-runtime:
     if: >-
       github.event_name == 'push' &&
-      github.ref == 'refs/heads/ramzy/phase1-integration'
+      (github.ref == 'refs/heads/ramzy/phase1-integration' ||
+       github.ref == 'refs/heads/ramzy/aura-capability-rebuild')
     needs: [editor-client, server]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -111,7 +113,7 @@ jobs:
       - name: Checkout validated integration commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -149,7 +151,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .github/portfolio-runtime-publish-failure.log
           git commit -m "Record portfolio runtime publish failure"
-          git push origin HEAD:ramzy/phase1-integration
+          git push origin "HEAD:${GITHUB_REF_NAME}"
           exit 1
 
       - name: Remove stale runtime publish failure log after recovery
@@ -161,7 +163,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git rm .github/portfolio-runtime-publish-failure.log
             git commit -m "Clear portfolio runtime publish failure"
-            git push origin HEAD:ramzy/phase1-integration
+            git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
       - name: Fail workflow when publish failed

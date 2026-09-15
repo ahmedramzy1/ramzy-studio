@@ -3,6 +3,7 @@ import "@/features/editor/styles/portfolio-embedded.css";
 
 export {
   RamzyStudioPortfolioEditor,
+  type RamzyStudioPortfolioHeaderActions,
   type RamzyStudioPortfolioEditorProps,
 } from "@/portfolio-runtime/portfolio-editor-with-history";
 

@@ -1,7 +1,7 @@
 .ProseMirror {
   .codeBlock {
     padding: 4px;
-    border-radius: var(--mantine-radius-default);
+    border-radius: var(--ramzy-radius-bordered, 8px);
     background-color: light-dark(var(--mantine-color-gray-0),  var(--mantine-color-dark-8));
     }
 
@@ -9,7 +9,7 @@
     padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
     margin: 4px;
     font-family: "JetBrainsMono", var(--mantine-font-family-monospace);
-    border-radius: var(--mantine-radius-default);
+    border-radius: var(--ramzy-radius-bordered, 8px);
     tab-size: 4;
 
     @mixin light {
@@ -112,4 +112,21 @@
       color: var(--mantine-color-text);
     }
   }
+}
+
+/* Explicit code appearance overrides the ambient theme as one unit. */
+.ProseMirror .codeBlock,
+.ProseMirror .codeBlock pre {
+  background-color: var(--ramzy-code-bg);
+  color: var(--ramzy-code-text);
+}
+.ProseMirror .codeBlock pre {
+  .hljs-comment, .hljs-quote { color: var(--ramzy-code-comment); }
+  .hljs-variable, .hljs-template-variable, .hljs-attribute, .hljs-tag,
+  .hljs-name, .hljs-regexp, .hljs-link, .hljs-selector-id, .hljs-selector-class,
+  .hljs-string, .hljs-symbol, .hljs-bullet { color: var(--ramzy-code-red); }
+  .hljs-number, .hljs-meta, .hljs-built_in, .hljs-builtin-name, .hljs-literal,
+  .hljs-type, .hljs-params { color: var(--ramzy-code-number); }
+  .hljs-title, .hljs-section { color: var(--ramzy-code-title); }
+  .hljs-keyword, .hljs-selector-tag { color: var(--ramzy-code-keyword); }
 }

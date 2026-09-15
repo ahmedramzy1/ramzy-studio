@@ -1,7 +1,15 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
 
-export type MediaPlaylistKind = "audio" | "video";
+export type MediaPlaylistKind = 'audio' | 'video';
+
+export interface VideoCaptionTrack {
+  key: string;
+  src: string;
+  attachmentId?: string;
+  label: string;
+  language: string;
+}
 
 export interface MediaPlaylistItem {
   key: string;
@@ -11,9 +19,10 @@ export interface MediaPlaylistItem {
   subtitle?: string;
   artwork?: string;
   artworkAttachmentId?: string;
-  artworkSource?: "embedded" | "custom";
+  artworkSource?: 'embedded' | 'custom';
   poster?: string;
   posterAttachmentId?: string;
+  captions?: VideoCaptionTrack[];
   artist?: string;
   album?: string;
   description?: string;
@@ -31,6 +40,9 @@ export interface MediaPlaylistAttributes {
   activeKey?: string;
   autoplay?: boolean;
   loop?: boolean;
+  shuffle?: boolean;
+  showQueue?: boolean;
+  queueLayout?: 'detailed' | 'compact';
 }
 
 export interface MediaPlaylistOptions {
@@ -38,11 +50,13 @@ export interface MediaPlaylistOptions {
   HTMLAttributes: Record<string, any>;
 }
 
-declare module "@tiptap/core" {
+declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     mediaPlaylist: {
       setMediaPlaylist: (
-        attributes: Partial<MediaPlaylistAttributes> & { kind: MediaPlaylistKind },
+        attributes: Partial<MediaPlaylistAttributes> & {
+          kind: MediaPlaylistKind;
+        },
       ) => ReturnType;
     };
   }
@@ -59,8 +73,8 @@ function parseItems(raw: string | null): MediaPlaylistItem[] {
 }
 
 export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
-  name: "mediaPlaylist",
-  group: "block",
+  name: 'mediaPlaylist',
+  group: 'block',
   atom: true,
   isolating: true,
   defining: true,
@@ -76,46 +90,73 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
   addAttributes() {
     return {
       kind: {
-        default: "audio",
+        default: 'audio',
         parseHTML: (element) =>
-          element.getAttribute("data-kind") === "video" ? "video" : "audio",
+          element.getAttribute('data-kind') === 'video' ? 'video' : 'audio',
         renderHTML: (attributes: MediaPlaylistAttributes) => ({
-          "data-kind": attributes.kind,
+          'data-kind': attributes.kind,
         }),
       },
       title: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-title") || "",
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-title') || '',
         renderHTML: (attributes: MediaPlaylistAttributes) => ({
-          "data-title": attributes.title || "",
+          'data-title': attributes.title || '',
         }),
       },
       items: {
         default: [],
-        parseHTML: (element) => parseItems(element.getAttribute("data-items")),
+        parseHTML: (element) => parseItems(element.getAttribute('data-items')),
         renderHTML: (attributes: MediaPlaylistAttributes) => ({
-          "data-items": JSON.stringify(attributes.items || []),
+          'data-items': JSON.stringify(attributes.items || []),
         }),
       },
       activeKey: {
-        default: "",
-        parseHTML: (element) => element.getAttribute("data-active-key") || "",
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-active-key') || '',
         renderHTML: (attributes: MediaPlaylistAttributes) => ({
-          "data-active-key": attributes.activeKey || "",
+          'data-active-key': attributes.activeKey || '',
         }),
       },
       autoplay: {
         default: false,
-        parseHTML: (element) => element.getAttribute("data-autoplay") === "true",
+        parseHTML: (element) =>
+          element.getAttribute('data-autoplay') === 'true',
         renderHTML: (attributes: MediaPlaylistAttributes) => ({
-          "data-autoplay": attributes.autoplay ? "true" : "false",
+          'data-autoplay': attributes.autoplay ? 'true' : 'false',
         }),
       },
       loop: {
         default: false,
-        parseHTML: (element) => element.getAttribute("data-loop") === "true",
+        parseHTML: (element) => element.getAttribute('data-loop') === 'true',
         renderHTML: (attributes: MediaPlaylistAttributes) => ({
-          "data-loop": attributes.loop ? "true" : "false",
+          'data-loop': attributes.loop ? 'true' : 'false',
+        }),
+      },
+      shuffle: {
+        default: false,
+        parseHTML: (element) => element.getAttribute('data-shuffle') === 'true',
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          'data-shuffle': attributes.shuffle ? 'true' : 'false',
+        }),
+      },
+      showQueue: {
+        default: true,
+        parseHTML: (element) =>
+          element.getAttribute('data-show-queue') !== 'false',
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          'data-show-queue': attributes.showQueue === false ? 'false' : 'true',
+        }),
+      },
+      queueLayout: {
+        default: 'detailed',
+        parseHTML: (element) =>
+          element.getAttribute('data-queue-layout') === 'compact'
+            ? 'compact'
+            : 'detailed',
+        renderHTML: (attributes: MediaPlaylistAttributes) => ({
+          'data-queue-layout':
+            attributes.queueLayout === 'compact' ? 'compact' : 'detailed',
         }),
       },
     };
@@ -127,9 +168,9 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
 
   renderHTML({ HTMLAttributes }) {
     return [
-      "div",
+      'div',
       mergeAttributes(
-        { "data-ramzy-media-playlist": "true" },
+        { 'data-ramzy-media-playlist': 'true' },
         this.options.HTMLAttributes,
         HTMLAttributes,
       ),
@@ -145,11 +186,15 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
             type: this.name,
             attrs: {
               kind: attrs.kind,
-              title: attrs.title || "",
+              title: attrs.title || '',
               items: attrs.items || [],
-              activeKey: attrs.activeKey || "",
+              activeKey: attrs.activeKey || '',
               autoplay: attrs.autoplay || false,
               loop: attrs.loop || false,
+              shuffle: attrs.shuffle || false,
+              showQueue: attrs.showQueue !== false,
+              queueLayout:
+                attrs.queueLayout === 'compact' ? 'compact' : 'detailed',
             },
           }),
     };
@@ -162,9 +207,9 @@ export const MediaPlaylist = Node.create<MediaPlaylistOptions>({
     }
 
     return ({ node }) => {
-      const dom = document.createElement("div");
-      dom.setAttribute("data-ramzy-media-playlist", "true");
-      dom.textContent = `${node.attrs.kind === "video" ? "Video" : "Audio"} playlist`;
+      const dom = document.createElement('div');
+      dom.setAttribute('data-ramzy-media-playlist', 'true');
+      dom.textContent = `${node.attrs.kind === 'video' ? 'Video' : 'Audio'} playlist`;
       return { dom };
     };
   },

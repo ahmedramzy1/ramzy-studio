@@ -4,6 +4,7 @@
 data
 # compiled output
 dist
+/apps/client/dist-portfolio-runtime/
 /node_modules
 
 # Logs

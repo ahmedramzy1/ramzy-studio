@@ -19,7 +19,7 @@
     align-items: center;
     justify-content: center;
     background-color: var(--mantine-color-body);
-    border-radius: var(--mantine-radius-default);
+    border-radius: var(--ramzy-radius-bordered, 8px);
     cursor: pointer;
     padding: 15px;
     height: 25px;

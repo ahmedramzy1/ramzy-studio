@@ -40,9 +40,14 @@ import { IAttachment } from "@/features/attachments/types/attachment.types";
 import { modals } from "@mantine/modals";
 import { useAltTextControl } from "@/features/editor/components/common/use-alt-text-control.tsx";
 import classes from "../common/toolbar-menu.module.css";
+import {
+  hasPortfolioElementMenu,
+  PortfolioElementActions,
+} from "@/features/editor/portfolio/portfolio-element-menu";
 
 export function DrawioMenu({ editor }: EditorMenuProps) {
   const { t } = useTranslation();
+  const portfolioMode = hasPortfolioElementMenu(editor);
   const [opened, { open, close }] = useDisclosure(false);
   const [initialXML, setInitialXML] = useState<string>("");
   const drawioRef = useRef<DrawIoEmbedRef>(null);
@@ -272,7 +277,7 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
         updateDelay={0}
         getReferencedVirtualElement={getReferencedVirtualElement}
         options={{
-          placement: "top",
+          placement: portfolioMode ? "bottom" : "top",
           offset: 8,
           flip: false,
         }}
@@ -351,16 +356,24 @@ export function DrawioMenu({ editor }: EditorMenuProps) {
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip position="top" label={t("Delete")} withinPortal={false}>
-            <ActionIcon
-              onClick={handleDelete}
-              size="lg"
-              aria-label={t("Delete")}
-              variant="subtle"
-            >
-              <IconTrash size={18} />
-            </ActionIcon>
-          </Tooltip>
+          {!portfolioMode && (
+            <Tooltip position="top" label={t("Delete")} withinPortal={false}>
+              <ActionIcon
+                onClick={handleDelete}
+                size="lg"
+                aria-label={t("Delete")}
+                variant="subtle"
+              >
+                <IconTrash size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {portfolioMode && (
+            <>
+              <div className={classes.divider} />
+              <PortfolioElementActions editor={editor} />
+            </>
+          )}
           </div>
         )}
       </BaseBubbleMenu>

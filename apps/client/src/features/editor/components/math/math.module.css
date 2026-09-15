@@ -2,8 +2,8 @@
     display: inline-block;
     white-space: pre-wrap;
     word-break: break-word;
-    caret-color: rgb(55, 53, 47);
-    border-radius: 4px;
+    caret-color: currentColor;
+    border-radius: var(--ramzy-radius-bordered, 8px);
     transition: background-color 0.2s;
     padding: 0 0.25rem;
     margin: 0 0.1rem;
@@ -26,8 +26,8 @@
     padding: 0.05rem;
     white-space: pre-wrap;
     word-break: break-word;
-    caret-color: rgb(55, 53, 47);
-    border-radius: 4px;
+    caret-color: currentColor;
+    border-radius: var(--ramzy-radius-bordered, 8px);
     transition: background-color 0.2s;
     margin: 0 0.1rem;
     overflow-x: auto;

@@ -1,5 +1,5 @@
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from "@tiptap/react";
-import { ActionIcon, Group, Select, Tooltip } from "@mantine/core";
+import { ActionIcon, Group, Select, Tooltip, useComputedColorScheme } from "@mantine/core";
 import { CopyButton } from "@/components/common/copy-button";
 import { useEffect, useState } from "react";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
@@ -7,6 +7,7 @@ import classes from "./code-block.module.css";
 import React from "react";
 import { Suspense } from "react";
 import { useTranslation } from "react-i18next";
+import { isPortfolioEditor } from "@/features/editor/portfolio/portfolio-editor-mode";
 
 const MermaidView = React.lazy(
   () => import("@/features/editor/components/code-block/mermaid-view.tsx"),
@@ -15,11 +16,15 @@ const MermaidView = React.lazy(
 export default function CodeBlockView(props: NodeViewProps) {
   const { t } = useTranslation();
   const { node, updateAttributes, extension, editor, getPos } = props;
-  const { language } = node.attrs;
+  const { language, wrap, lineNumbers, theme, collapsed } = node.attrs;
+  const hostTheme = useComputedColorScheme("light");
+  const codeTheme = theme === "light" || theme === "dark" ? theme : hostTheme;
+  const dark = codeTheme === "dark";
   const [languageValue, setLanguageValue] = useState<string | null>(
     language || null,
   );
   const [isSelected, setIsSelected] = useState(false);
+  const portfolioMode = isPortfolioEditor(editor);
 
   useEffect(() => {
     const updateSelection = () => {
@@ -46,58 +51,104 @@ export default function CodeBlockView(props: NodeViewProps) {
   }
 
   return (
-    <NodeViewWrapper className="codeBlock">
-      <Group
-        justify="flex-end"
-        contentEditable={false}
-        className={classes.menuGroup}
-      >
-        <Select
-          placeholder="auto"
-          checkIconPosition="right"
-          data={extension.options.lowlight.listLanguages().sort()}
-          value={languageValue}
-          onChange={changeLanguage}
-          searchable
-          style={{ maxWidth: "130px" }}
-          classNames={{ input: classes.selectInput }}
-          disabled={!editor.isEditable}
-        />
+    <NodeViewWrapper
+      className="codeBlock"
+      data-code-theme={codeTheme}
+      style={{
+        "--ramzy-code-bg": dark ? "var(--mantine-color-dark-8)" : "var(--mantine-color-gray-0)",
+        "--ramzy-code-text": dark ? "var(--mantine-color-dark-1)" : "var(--mantine-color-gray-9)",
+        "--ramzy-code-comment": dark ? "var(--mantine-color-dark-2)" : "var(--mantine-color-gray-7)",
+        "--ramzy-code-red": dark ? "var(--mantine-color-red-3)" : "var(--mantine-color-red-7)",
+        "--ramzy-code-number": dark ? "var(--mantine-color-cyan-3)" : "var(--mantine-color-blue-7)",
+        "--ramzy-code-title": dark ? "var(--mantine-color-yellow-3)" : "var(--mantine-color-pink-7)",
+        "--ramzy-code-keyword": dark ? "var(--mantine-color-violet-3)" : "var(--mantine-color-violet-7)",
+        borderRadius: "var(--ramzy-radius-bordered, 8px)",
+      } as React.CSSProperties}
+    >
+      {!portfolioMode && (
+        <Group
+          justify="flex-end"
+          contentEditable={false}
+          className={classes.menuGroup}
+        >
+          <Select
+            placeholder="auto"
+            checkIconPosition="right"
+            data={extension.options.lowlight.listLanguages().sort()}
+            value={languageValue}
+            onChange={changeLanguage}
+            searchable
+            style={{ maxWidth: "130px" }}
+            classNames={{ input: classes.selectInput }}
+            disabled={!editor.isEditable}
+          />
 
-        <CopyButton value={node?.textContent} timeout={2000}>
-          {({ copied, copy }) => (
-            <Tooltip
-              label={copied ? t("Copied") : t("Copy")}
-              withArrow
-              position="right"
-            >
-              <ActionIcon
-                color={copied ? "teal" : "gray"}
-                variant="subtle"
-                onClick={copy}
+          <CopyButton value={node?.textContent} timeout={2000}>
+            {({ copied, copy }) => (
+              <Tooltip
+                label={copied ? t("Copied") : t("Copy")}
+                withArrow
+                position="right"
               >
-                {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
-      </Group>
+                <ActionIcon
+                  color={copied ? "teal" : "gray"}
+                  variant="subtle"
+                  onClick={copy}
+                >
+                  {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        </Group>
+      )}
 
       <pre
         spellCheck="false"
+        style={{
+          display: lineNumbers ? "flex" : undefined,
+          maxHeight: collapsed ? 240 : undefined,
+          overflow: collapsed ? "auto" : undefined,
+          whiteSpace: wrap ? "pre-wrap" : "pre",
+          overflowWrap: wrap ? "anywhere" : undefined,
+        }}
         hidden={
           ((language === "mermaid" && !editor.isEditable) ||
             (language === "mermaid" && !isSelected)) &&
           node.textContent.length > 0
         }
       >
+        {lineNumbers && (
+          <span
+            contentEditable={false}
+            aria-hidden="true"
+            style={{
+              display: "block",
+              paddingRight: 14,
+              marginRight: 14,
+              borderRight: "1px solid rgba(127,127,127,.25)",
+              textAlign: "right",
+              userSelect: "none",
+              color: "var(--ramzy-code-comment)",
+            }}
+          >
+            {Array.from(
+              { length: Math.max(1, node.textContent.split("\n").length) },
+              (_, index) => `${index + 1}\n`,
+            )}
+          </span>
+        )}
         {/* @ts-ignore */}
-        <NodeViewContent as="code" className={`language-${language}`} />
+        <NodeViewContent
+          as={"code" as any}
+          className={`language-${language}`}
+          style={{ flex: lineNumbers ? 1 : undefined, minWidth: 0 }}
+        />
       </pre>
 
       {language === "mermaid" && (
         <Suspense fallback={null}>
-          <MermaidView props={props} />
+          <MermaidView props={props} colorScheme={codeTheme} />
         </Suspense>
       )}
     </NodeViewWrapper>

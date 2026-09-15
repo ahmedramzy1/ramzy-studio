@@ -17,6 +17,10 @@ interface ColumnHandleProps {
   anchorPos: number;
   tableNode: ProseMirrorNode;
   tablePos: number;
+  visible?: boolean;
+  quiet?: boolean;
+  portfolio?: boolean;
+  selected?: boolean;
 }
 
 export const ColumnHandle = React.memo(function ColumnHandle({
@@ -25,6 +29,10 @@ export const ColumnHandle = React.memo(function ColumnHandle({
   anchorPos,
   tableNode,
   tablePos,
+  visible = true,
+  quiet = false,
+  portfolio = false,
+  selected = false,
 }: ColumnHandleProps) {
   const { t } = useTranslation();
   // Hold the cell DOM in a ref-backed state so we never unmount the handle
@@ -52,8 +60,9 @@ export const ColumnHandle = React.memo(function ColumnHandle({
   const [handleEl, setHandleEl] = useState<HTMLDivElement | null>(null);
 
   const { refs, floatingStyles, middlewareData } = useFloating({
+    strategy: portfolio ? "fixed" : "absolute",
     placement: "top",
-    middleware: [offset(-4), hide()],
+    middleware: [offset(portfolio ? -8 : -4), hide()],
     whileElementsMounted: autoUpdate,
   });
   const isReferenceHidden = !!middlewareData.hide?.referenceHidden;
@@ -89,6 +98,7 @@ export const ColumnHandle = React.memo(function ColumnHandle({
       onOpen={onOpen}
       onClose={onClose}
       withinPortal
+      zIndex={portfolio ? 10001 : undefined}
       shadow="md"
     >
       <Menu.Target>
@@ -99,9 +109,17 @@ export const ColumnHandle = React.memo(function ColumnHandle({
           }}
           style={{
             ...floatingStyles,
-            ...(isReferenceHidden ? { visibility: "hidden" as const } : {}),
+            ...((!visible && !quiet && !selected) || isReferenceHidden
+              ? { visibility: "hidden" as const }
+              : {}),
           }}
-          className={clsx(classes.handle, classes.columnHandle)}
+          className={clsx(
+            classes.handle,
+            classes.columnHandle,
+            portfolio && classes.portfolioHandle,
+          )}
+          data-active={visible || selected || menuOpened || undefined}
+          data-ramzy-table-handle="col"
           role="button"
           tabIndex={0}
           aria-label={t("Column actions")}

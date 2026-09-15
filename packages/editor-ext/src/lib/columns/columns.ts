@@ -1,6 +1,6 @@
 import { Node, mergeAttributes, findParentNode } from "@tiptap/core";
 import { Fragment, Node as PMNode } from "@tiptap/pm/model";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 export type ColumnsLayout =
@@ -21,11 +21,12 @@ export interface ColumnsOptions {
   HTMLAttributes: Record<string, any>;
 }
 
-export type WidthMode = "normal" | "wide";
+export type WidthMode = "normal" | "wide" | "full";
 
 export interface ColumnsAttributes {
   layout?: ColumnsLayout;
   widthMode?: WidthMode;
+  customWidth?: number | null;
   verticalAlign?: ColumnsVerticalAlign;
   gap?: ColumnsGap;
 }
@@ -41,6 +42,14 @@ declare module "@tiptap/core" {
       setColumnsGap: (gap: ColumnsGap) => ReturnType;
     };
   }
+}
+
+/** Resolve a row selected directly or containing the current selection. */
+export function getSelectedColumns(selection: Selection) {
+  if ("node" in selection && (selection as NodeSelection).node.type.name === "columns") {
+    return { node: (selection as NodeSelection).node, pos: selection.from };
+  }
+  return findParentNode((node) => node.type.name === "columns")(selection);
 }
 
 function columnCountFromLayout(layout: string): number {
@@ -95,6 +104,29 @@ export const Columns = Node.create<ColumnsOptions>({
           if (!attributes.widthMode || attributes.widthMode === "normal")
             return {};
           return { "data-width-mode": attributes.widthMode };
+        },
+      },
+      customWidth: {
+        default: null,
+        parseHTML: (element) => {
+          const width = Number.parseFloat(
+            element.getAttribute("data-custom-width") || "",
+          );
+          return Number.isFinite(width) && width > 0 ? width : null;
+        },
+        renderHTML: (attributes: ColumnsAttributes) => {
+          const width = attributes.customWidth;
+          if (
+            typeof width !== "number" ||
+            !Number.isFinite(width) ||
+            width <= 0
+          )
+            return {};
+          const roundedWidth = Math.round(width);
+          return {
+            "data-custom-width": roundedWidth,
+            style: `--ramzy-columns-custom-width: ${roundedWidth}px`,
+          };
         },
       },
       verticalAlign: {
@@ -174,15 +206,18 @@ export const Columns = Node.create<ColumnsOptions>({
       setColumnsWidthMode:
         (widthMode) =>
         ({ commands }) =>
-          commands.updateAttributes("columns", { widthMode }),
+          commands.updateAttributes("columns", {
+            widthMode,
+            customWidth: null,
+          }),
 
       setColumnCount:
         (count: number) =>
         ({ tr, state }) => {
-          const predicate = (node: PMNode) => node.type.name === "columns";
-          const parent = findParentNode(predicate)(state.selection);
+          const parent = getSelectedColumns(state.selection);
           if (!parent) return false;
 
+          const rowSelected = "node" in state.selection && state.selection.from === parent.pos;
           const { node: columnsNode, pos: parentPos } = parent;
           const currentCount = columnsNode.childCount;
           if (count === currentCount || count < 2 || count > 5) return false;
@@ -235,7 +270,9 @@ export const Columns = Node.create<ColumnsOptions>({
           );
           tr.replaceWith(parentPos, parentPos + columnsNode.nodeSize, newNode);
           tr.setSelection(
-            TextSelection.near(tr.doc.resolve(parentPos + 1), 1),
+            rowSelected
+              ? NodeSelection.create(tr.doc, parentPos)
+              : TextSelection.near(tr.doc.resolve(parentPos + 1), 1),
           );
           return true;
         },
@@ -243,11 +280,10 @@ export const Columns = Node.create<ColumnsOptions>({
       setColumnsLayout:
         (layout) =>
         ({ tr, state }) => {
-          const parent = findParentNode(
-            (node: PMNode) => node.type.name === "columns",
-          )(state.selection);
+          const parent = getSelectedColumns(state.selection);
           if (!parent) return false;
 
+          const rowSelected = "node" in state.selection && state.selection.from === parent.pos;
           const newChildren: PMNode[] = [];
           parent.node.forEach((child) => {
             newChildren.push(clearColumnWidth(child));
@@ -259,7 +295,9 @@ export const Columns = Node.create<ColumnsOptions>({
           );
           tr.replaceWith(parent.pos, parent.pos + parent.node.nodeSize, newNode);
           tr.setSelection(
-            TextSelection.near(tr.doc.resolve(parent.pos + 1), 1),
+            rowSelected
+              ? NodeSelection.create(tr.doc, parent.pos)
+              : TextSelection.near(tr.doc.resolve(parent.pos + 1), 1),
           );
           return true;
         },

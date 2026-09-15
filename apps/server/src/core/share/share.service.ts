@@ -12,15 +12,16 @@ import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { TokenService } from '../auth/services/token.service';
 import { jsonToNode } from '../../collaboration/collaboration.util';
 import {
-  getAttachmentIds,
   getProsemirrorContent,
-  isAttachmentNode,
   removeMarkTypeFromDoc,
 } from '../../common/helpers/prosemirror/utils';
 import { Node } from '@tiptap/pm/model';
 import { ShareRepo } from '@docmost/db/repos/share/share.repo';
 import { PagePermissionRepo } from '@docmost/db/repos/page/page-permission.repo';
-import { updateAttachmentAttr } from './share.util';
+import {
+  getShareAttachmentIds,
+  rewriteShareAttachmentUrls,
+} from './share.util';
 import { Page } from '@docmost/db/types/entity.types';
 import { validate as isValidUUID } from 'uuid';
 import { sql } from 'kysely';
@@ -446,13 +447,13 @@ export class ShareService {
    * call into this single helper so the two paths can never drift on
    * sanitization rules.
    */
-  private async prepareContentForShare(
+  async prepareContentForShare(
     content: unknown,
     attachmentOwnerPageId: string,
     workspaceId: string,
   ): Promise<Node | null> {
     const pmJson = getProsemirrorContent(content);
-    const attachmentIds = getAttachmentIds(pmJson);
+    const attachmentIds = getShareAttachmentIds(pmJson);
 
     const tokenMap = new Map<string, string>();
     await Promise.all(
@@ -466,14 +467,7 @@ export class ShareService {
       }),
     );
 
-    const doc = jsonToNode(pmJson);
-    doc?.descendants((node: Node) => {
-      if (!isAttachmentNode(node.type.name)) return;
-      const token = tokenMap.get(node.attrs.attachmentId);
-      if (!token) return;
-      updateAttachmentAttr(node, 'src', token);
-      updateAttachmentAttr(node, 'url', token);
-    });
+    const doc = jsonToNode(rewriteShareAttachmentUrls(pmJson, tokenMap));
 
     return doc ? removeMarkTypeFromDoc(doc, 'comment') : null;
   }

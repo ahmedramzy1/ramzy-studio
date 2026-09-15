@@ -3,21 +3,33 @@
   align-items: center;
   gap: 2px;
   padding: 3px;
-  border-radius: 8px;
-  border: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
-  background-color: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
-  box-shadow: 0 2px 12px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.35));
+  border-radius: var(--ramzy-radius-bordered, 8px);
+  border: 1px solid
+    var(--ramzy-element-border, var(--mantine-color-default-border));
+  background-color: var(--ramzy-element-surface, var(--mantine-color-body));
+  box-shadow: var(--ramzy-element-shadow, var(--mantine-shadow-sm));
+  max-width: calc(100vw - 24px);
+  flex-wrap: wrap;
 }
 
 .toolbar :global(.mantine-ActionIcon-root) {
-  --ai-color: light-dark(var(--mantine-color-dark-7), var(--mantine-color-gray-4)) !important;
-  --ai-hover: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-5)) !important;
+  --ai-color: var(--mantine-color-text) !important;
+  --ai-hover: var(--mantine-color-default-hover) !important;
 }
 
 .toolbar .active {
-    --ai-color: light-dark(var(--mantine-color-blue-7), var(--mantine-color-blue-3)) !important;
-    --ai-hover: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-5)) !important;
-    background-color: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-5));
+  --ai-color: light-dark(
+    var(--mantine-color-blue-7),
+    var(--mantine-color-blue-3)
+  ) !important;
+  --ai-hover: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-dark-5)
+  ) !important;
+  background-color: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-dark-5)
+  );
 }
 
 .divider {
@@ -25,5 +37,19 @@
   height: 16px;
   align-self: center;
   margin: 0 2px;
-  background-color: light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-3));
+  background-color: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-3)
+  );
+}
+
+.toolbar :global(button:focus-visible) {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+@media (pointer: coarse) {
+  .toolbar :global(.mantine-ActionIcon-root) {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }

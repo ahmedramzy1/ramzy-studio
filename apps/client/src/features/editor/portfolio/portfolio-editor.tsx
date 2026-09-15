@@ -13,13 +13,18 @@ import {
   type RamzyPortfolioSession,
 } from "@docmost/editor-ext/portfolio";
 import { mainExtensions } from "@/features/editor/extensions/extensions";
-import { handleFileDrop, handlePaste } from "@/features/editor/components/common/editor-paste-handler";
+import {
+  handleFileDrop,
+  handlePaste,
+} from "@/features/editor/components/common/editor-paste-handler";
 import { EditorBubbleMenu } from "@/features/editor/components/bubble-menu/bubble-menu";
 import { EditorLinkMenu } from "@/features/editor/components/link/link-menu";
 import TableMenu from "@/features/editor/components/table/table-menu";
+import { PortfolioTableCellFocus } from "@/features/editor/components/table/handle/lib/active-table-cell";
 import { TableHandlesLayer } from "@/features/editor/components/table/handle/table-handles-layer";
 import ImageMenu from "@/features/editor/components/image/image-menu";
 import VideoMenu from "@/features/editor/components/video/video-menu";
+import AudioMenu from "@/features/editor/components/audio/audio-menu";
 import PdfMenu from "@/features/editor/components/pdf/pdf-menu";
 import CalloutMenu from "@/features/editor/components/callout/callout-menu";
 import SubpagesMenu from "@/features/editor/components/subpages/subpages-menu";
@@ -29,15 +34,31 @@ import ColumnsMenu from "@/features/editor/components/columns/columns-menu";
 import SearchAndReplaceDialog from "@/features/editor/components/search-and-replace/search-and-replace-dialog";
 import { TransclusionLookupProvider } from "@/features/editor/components/transclusion/transclusion-lookup-context";
 import { PortfolioRuntimeProviders } from "@/portfolio-runtime/runtime-providers";
+import { PortfolioInsertionControls } from "./portfolio-insertion-controls";
+import {
+  PortfolioCustomElementMenu,
+  PortfolioGenericElementMenu,
+} from "./portfolio-element-menu";
+import { PortfolioGridNormalizer } from "./portfolio-grid-normalizer";
+import { PortfolioDnd } from "./portfolio-dnd";
+import { PortfolioDndPreview } from "./portfolio-dnd-preview-extension";
+import {
+  PortfolioBlockWidth,
+  PortfolioGridResizePreview,
+} from "./portfolio-grid-resize-preview-extension";
+import { PortfolioGridControls } from "./portfolio-grid-controls";
 import { setPortfolioRuntimeHostConfig } from "@/lib/portfolio-runtime-config";
 import {
   PortfolioDraftSaveError,
   savePortfolioDraft,
 } from "./portfolio-draft-save";
+import { getMountedPortfolioEditorDom } from "./portfolio-editor-mode";
 
 export type RamzyPortfolioSaveState = "idle" | "saving" | "saved" | "error";
 
 export interface RamzyStudioPortfolioEditorProps {
+  /** Host preference; changes update views/portals without recreating the document. */
+  colorScheme?: "light" | "dark";
   pageId: string;
   session: RamzyPortfolioSession;
   initialContent?: JSONContent | null;
@@ -52,11 +73,11 @@ export interface RamzyStudioPortfolioEditorProps {
    */
   onEditorChange?: (editor: Editor | null) => void;
   onUpdate?: (content: JSONContent, editor: Editor) => void;
-  onSessionExpired?: () => void;
-  onSaveStateChange?: (
-    state: RamzyPortfolioSaveState,
-    error?: string,
-  ) => void;
+  onSessionExpired?: () =>
+    | Promise<RamzyPortfolioSession | void>
+    | RamzyPortfolioSession
+    | void;
+  onSaveStateChange?: (state: RamzyPortfolioSaveState, error?: string) => void;
 }
 
 /**
@@ -69,6 +90,7 @@ export interface RamzyStudioPortfolioEditorProps {
  * its normal Hocuspocus/Yjs collaboration path.
  */
 export function RamzyStudioPortfolioEditor({
+  colorScheme,
   pageId,
   session,
   initialContent,
@@ -88,7 +110,7 @@ export function RamzyStudioPortfolioEditor({
   }, [session.accessToken, session.apiUrl, session.collaborationUrl]);
 
   return (
-    <PortfolioRuntimeProviders>
+    <PortfolioRuntimeProviders colorScheme={colorScheme}>
       <TransclusionLookupProvider>
         <DirectPortfolioEditor
           pageId={pageId}
@@ -119,6 +141,7 @@ function DirectPortfolioEditor({
 }: RamzyStudioPortfolioEditorProps) {
   const editorRef = useRef<Editor | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [editorViewReady, setEditorViewReady] = useState(false);
   const mountedRef = useRef(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingContentRef = useRef<JSONContent | null>(null);
@@ -127,7 +150,9 @@ function DirectPortfolioEditor({
   const onSaveStateChangeRef = useRef(onSaveStateChange);
   const onSessionExpiredRef = useRef(onSessionExpired);
   const lastSavedJsonRef = useRef(
-    JSON.stringify(initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }),
+    JSON.stringify(
+      initialContent ?? { type: "doc", content: [{ type: "paragraph" }] },
+    ),
   );
 
   useEffect(() => {
@@ -137,6 +162,26 @@ function DirectPortfolioEditor({
   useEffect(() => {
     onSessionExpiredRef.current = onSessionExpired;
   }, [onSessionExpired]);
+
+  useEffect(() => {
+    setEditorViewReady(false);
+    if (!editor) return;
+
+    let frame: number | null = null;
+    const markReadyWhenMounted = () => {
+      if (editorRef.current !== editor || editor.isDestroyed) return;
+      if (getMountedPortfolioEditorDom(editor)) {
+        setEditorViewReady(true);
+        return;
+      }
+      frame = requestAnimationFrame(markReadyWhenMounted);
+    };
+
+    frame = requestAnimationFrame(markReadyWhenMounted);
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [editor]);
 
   const notifySaveState = useCallback(
     (state: RamzyPortfolioSaveState, error?: string) => {
@@ -154,7 +199,20 @@ function DirectPortfolioEditor({
     };
   }, [notifySaveState]);
 
-  const extensions = useMemo(() => [...mainExtensions, UndoRedo], []);
+  const extensions = useMemo(
+    () => [
+      ...mainExtensions.filter(
+        (extension) => extension.name !== "globalDragHandle",
+      ),
+      PortfolioDndPreview,
+      PortfolioTableCellFocus,
+      PortfolioBlockWidth,
+      PortfolioGridResizePreview,
+      PortfolioGridNormalizer,
+      UndoRedo,
+    ],
+    [],
+  );
 
   const persistDraft = useCallback(
     async (content: JSONContent, version: number) => {
@@ -166,10 +224,22 @@ function DirectPortfolioEditor({
           content,
         });
       } catch (error) {
-        if (error instanceof PortfolioDraftSaveError && error.sessionExpired) {
-          onSessionExpiredRef.current?.();
+        if (
+          !(error instanceof PortfolioDraftSaveError) ||
+          !error.sessionExpired
+        ) {
+          throw error;
         }
-        throw error;
+
+        const refreshedSession = await onSessionExpiredRef.current?.();
+        if (!refreshedSession || !refreshedSession.accessToken) throw error;
+
+        await savePortfolioDraft({
+          apiUrl: refreshedSession.apiUrl,
+          accessToken: refreshedSession.accessToken,
+          pageId,
+          content,
+        });
       }
 
       lastSavedJsonRef.current = JSON.stringify(content);
@@ -201,7 +271,9 @@ function DirectPortfolioEditor({
           if (mountedRef.current && version === saveVersionRef.current) {
             notifySaveState(
               "error",
-              error instanceof Error ? error.message : "Ramzy Studio autosave failed.",
+              error instanceof Error
+                ? error.message
+                : "Ramzy Studio autosave failed.",
             );
           }
         });
@@ -249,14 +321,30 @@ function DirectPortfolioEditor({
       },
       handlePaste: (_view, event) => {
         if (!editorRef.current) return false;
-        return handlePaste(
-          editorRef.current,
-          event,
-          pageId,
-          session.user.id,
-        );
+        return handlePaste(editorRef.current, event, pageId, session.user.id);
       },
-      handleDrop: (_view, event, _slice, moved) => {
+      handleKeyDown: (view, event) => {
+        if (event.key !== "Backspace") return false;
+
+        const { selection, doc } = view.state;
+        if (!selection.empty || selection.$from.depth !== 1) return false;
+
+        const paragraph = selection.$from.parent;
+        if (paragraph.type.name !== "paragraph" || paragraph.content.size > 0) {
+          return false;
+        }
+
+        if (doc.childCount === 1) return false;
+
+        const position = selection.$from.before(1);
+        view.dispatch(
+          view.state.tr
+            .delete(position, position + paragraph.nodeSize)
+            .scrollIntoView(),
+        );
+        return true;
+      },
+      handleDrop: (view, event, _slice, moved) => {
         if (!editorRef.current) return false;
         return handleFileDrop(editorRef.current, event, moved, pageId);
       },
@@ -270,8 +358,13 @@ function DirectPortfolioEditor({
       setEditor(nextEditor);
       onCreate?.(nextEditor);
       onUpdate?.(nextEditor.getJSON(), nextEditor);
+      if ((editable ?? true) && nextEditor.isEmpty) {
+        requestAnimationFrame(() => {
+          if (!nextEditor.isDestroyed) nextEditor.commands.focus("start");
+        });
+      }
     },
-    [onCreate, onUpdate],
+    [editable, onCreate, onUpdate],
   );
 
   const handleUpdate = useCallback(
@@ -284,31 +377,16 @@ function DirectPortfolioEditor({
   );
 
   return (
-    <div className="editor-container" style={{ position: "relative", minHeight: 240 }}>
-      {editor && (editable ?? true) && (
-        <div className="ramzy-portfolio-history-controls" aria-label="Editing history">
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => editor.chain().focus().undo().run()}
-            title="Undo (Ctrl+Z)"
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => editor.chain().focus().redo().run()}
-            title="Redo (Ctrl+Shift+Z)"
-          >
-            Redo
-          </button>
-        </div>
-      )}
-
+    <div
+      className="editor-container"
+      data-ramzy-block-actions-host
+      style={{ position: "relative", minHeight: 240 }}
+    >
       <RamzyPortfolioEditor
         pageId={pageId}
-        content={initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }}
+        content={
+          initialContent ?? { type: "doc", content: [{ type: "paragraph" }] }
+        }
         extensions={extensions}
         editable={editable ?? true}
         ariaLabel="Portfolio document content"
@@ -322,18 +400,29 @@ function DirectPortfolioEditor({
         }}
       />
 
-      {editor && (
+      {editor && editorViewReady && (editable ?? true) && (
+        <>
+          <PortfolioDnd editor={editor} />
+          <PortfolioGridControls editor={editor} />
+          <PortfolioInsertionControls editor={editor} />
+          <PortfolioGenericElementMenu editor={editor} />
+          <PortfolioCustomElementMenu editor={editor} />
+        </>
+      )}
+
+      {editor && editorViewReady && (
         <SearchAndReplaceDialog editor={editor} editable={editable ?? true} />
       )}
 
-      {editor && (editable ?? true) && (
+      {editor && editorViewReady && (editable ?? true) && (
         <>
           <EditorLinkMenu editor={editor} />
           <EditorBubbleMenu editor={editor} />
           <TableMenu editor={editor} />
-          <TableHandlesLayer editor={editor} />
+          <TableHandlesLayer editor={editor} borderOnly />
           <ImageMenu editor={editor} />
           <VideoMenu editor={editor} />
+          <AudioMenu editor={editor} />
           <PdfMenu editor={editor} />
           <CalloutMenu editor={editor} />
           <SubpagesMenu editor={editor} />

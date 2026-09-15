@@ -1,3 +1,4 @@
+import { renderedTextColor } from "@/features/editor/theme/editor-colors";
 import React, { Dispatch, FC, SetStateAction } from "react";
 import { IconCheck, IconChevronDown } from "@tabler/icons-react";
 import {
@@ -291,8 +292,8 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
                         height: rem(28),
                         borderRadius: rem(6),
                         border: editorState[`text_${color}`]
-                          ? "2px solid var(--mantine-color-gray-8)"
-                          : "1px solid var(--mantine-color-gray-4)",
+                          ? "2px solid var(--mantine-color-text)"
+                          : "1px solid var(--mantine-color-default-border)",
                         cursor: "pointer",
                         position: "relative",
                         display: "flex",
@@ -300,7 +301,7 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
                         justifyContent: "center",
                         fontSize: rem(16),
                         fontWeight: 600,
-                        color: color || "var(--mantine-color-gray-8)",
+                        color: color ? renderedTextColor(color) : "var(--mantine-color-text)",
                       }}
                     >
                       A
@@ -357,7 +358,7 @@ export const ColorSelector: FC<ColorSelectorProps> = ({
                         height: rem(28),
                         borderRadius: rem(4),
                         backgroundColor: color || "var(--mantine-color-gray-2)",
-                        border: "1px solid var(--mantine-color-gray-4)",
+                        border: "1px solid var(--mantine-color-default-border)",
                         cursor: "pointer",
                         position: "relative",
                         display: "flex",

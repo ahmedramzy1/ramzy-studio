@@ -117,7 +117,7 @@
   margin-bottom: 1.75rem;
 }
 
-@media (max-width: 720px) {
+@container ramzy-document (max-width: 720px) {
   .ProseMirror.ramzy-portfolio-editor,
   .ProseMirror.ramzy-portfolio-editor p,
   .ProseMirror.ramzy-portfolio-editor li,
@@ -135,5 +135,31 @@
 
   .ProseMirror.ramzy-portfolio-editor h3 {
     font-size: 25px;
+  }
+}
+
+
+@container ramzy-document (max-width: 420px) {
+  .ProseMirror.ramzy-portfolio-editor,
+  .ProseMirror.ramzy-portfolio-editor p,
+  .ProseMirror.ramzy-portfolio-editor li,
+  .ProseMirror.ramzy-portfolio-editor blockquote {
+    font-size: 17px;
+    line-height: 1.55;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor h1 {
+    margin-top: 3.5rem;
+    font-size: clamp(32px, 11cqi, 38px);
+  }
+
+  .ProseMirror.ramzy-portfolio-editor h2 {
+    margin-top: 2.75rem;
+    font-size: 28px;
+  }
+
+  .ProseMirror.ramzy-portfolio-editor h3 {
+    margin-top: 2rem;
+    font-size: 23px;
   }
 }

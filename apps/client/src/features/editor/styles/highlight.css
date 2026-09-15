@@ -77,39 +77,39 @@
 
 /* Color selector trigger button styles */
 .color-selector-trigger[data-text-color="#2563EB"] {
-    color: #2563EB !important;
+    color: var(--ramzy-text-blue) !important;
 }
 
 .color-selector-trigger[data-text-color="#008A00"] {
-    color: #008A00 !important;
+    color: var(--ramzy-text-green) !important;
 }
 
 .color-selector-trigger[data-text-color="#9333EA"] {
-    color: #9333EA !important;
+    color: var(--ramzy-text-purple) !important;
 }
 
 .color-selector-trigger[data-text-color="#E00000"] {
-    color: #E00000 !important;
+    color: var(--ramzy-text-red) !important;
 }
 
 .color-selector-trigger[data-text-color="#EAB308"] {
-    color: #EAB308 !important;
+    color: var(--ramzy-text-yellow) !important;
 }
 
 .color-selector-trigger[data-text-color="#FFA500"] {
-    color: #FFA500 !important;
+    color: var(--ramzy-text-orange) !important;
 }
 
 .color-selector-trigger[data-text-color="#BA4081"] {
-    color: #BA4081 !important;
+    color: var(--ramzy-text-pink) !important;
 }
 
 .color-selector-trigger[data-text-color="#A8A29E"] {
-    color: #A8A29E !important;
+    color: var(--ramzy-text-gray) !important;
 }
 
 .color-selector-trigger[data-text-color="#92400E"] {
-    color: #92400E !important;
+    color: var(--ramzy-text-brown) !important;
 }
 
 /* Highlight background colors with light-dark support - solid colors for trigger button */

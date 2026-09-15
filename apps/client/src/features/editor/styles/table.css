@@ -8,6 +8,16 @@
   }
 }
 
+/* Keep a table bound to the lane that contains it. The lane becomes the
+   responsive query container; the wrapper owns any necessary horizontal
+   scrolling instead of letting the table escape across adjacent columns. */
+.ProseMirror.ramzy-portfolio-editor .tableWrapper {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .table-dnd-preview {
   padding: 0;
   background-color: rgba(255, 255, 255, 0.3);
@@ -28,10 +38,10 @@
 
     td,
     th {
-      border: 1px solid #ced4da;
+      border: 1px solid var(--mantine-color-default-border);
       box-sizing: border-box;
       min-width: 1em;
-      padding: 3px 5px;
+      padding: 8px;
       position: relative;
       vertical-align: top;
 
@@ -80,6 +90,16 @@
       z-index: 2;
     }
   }
+}
+
+/* Portfolio paragraph margins outrank the generic table reset. Keep outer
+   whitespace symmetric; only spacing BETWEEN content blocks belongs in cells.
+   With no taller neighbour, equal padding naturally centres a single line. */
+.ProseMirror.ramzy-portfolio-editor table :is(td, th) > :first-child {
+  margin-top: 0;
+}
+.ProseMirror.ramzy-portfolio-editor table :is(td, th) > :nth-last-child(1 of :not(.ProseMirror-widget)) {
+  margin-bottom: 0;
 }
 
 /* Table cell background colors with dark mode support */
@@ -272,5 +292,108 @@
 
   .prosemirror-dropcursor-inline {
     display: none;
+  }
+}
+
+[data-ramzy-block-actions-host] .ramzy-active-table-cell {
+  outline: 1px solid var(--mantine-primary-color-filled);
+  outline-offset: -1px;
+}
+[data-ramzy-block-actions-host] .selectedCell:after {
+  background: var(--mantine-primary-color-light);
+  outline: 1px solid var(--mantine-primary-color-filled);
+  outline-offset: -1px;
+}
+[data-ramzy-block-actions-host] .table-dnd-drop-indicator {
+  background: var(--mantine-primary-color-filled);
+}
+
+/* One shared outer radius; separate borders keep the grid at one pixel without
+   clipping the row/column controls or the pinned header. TableMap decorations
+   identify perimeter cells correctly even when a corner spans multiple rows. */
+.ProseMirror .ramzy-rounded-table > table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--ramzy-radius-bordered, 8px);
+  overflow: visible;
+
+  > tbody > tr > :is(td, th) {
+    border: 0;
+    border-right: 1px solid var(--mantine-color-default-border);
+    border-bottom: 1px solid var(--mantine-color-default-border);
+  }
+  > tbody > tr > [data-table-edge~="right"] { border-right: 0; }
+  > tbody > tr > [data-table-edge~="bottom"] { border-bottom: 0; }
+  > tbody > tr > [data-table-edge~="top-left"] {
+    border-top-left-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > [data-table-edge~="top-right"] {
+    border-top-right-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > [data-table-edge~="bottom-left"] {
+    border-bottom-left-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > [data-table-edge~="bottom-right"] {
+    border-bottom-right-radius: calc(var(--ramzy-radius-bordered, 8px) - 1px);
+  }
+  > tbody > tr > .selectedCell::after { border-radius: inherit; }
+}
+
+
+/* Small canvases use the table's actual column count. Compact two/three-column
+   tables reflow into the available measure; genuinely wide tables keep semantic
+   columns and scroll inside their own rounded surface instead of escaping the page. */
+@container (max-width: 720px) {
+  .tableWrapper,
+  .tableWrapper.tableWrapperNoOverflow {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tableWrapper table:not(:has(colgroup > col:nth-child(4))) {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100%;
+    table-layout: auto;
+  }
+
+  /* Saved desktop pixel widths must not force a compact lane wider. Keep
+     the attributes intact; restore them automatically outside this query. */
+  .tableWrapper table:not(:has(colgroup > col:nth-child(4))) col {
+    width: auto !important;
+  }
+
+  .tableWrapper table:not(:has(colgroup > col:nth-child(4))) :is(td, th) {
+    overflow-wrap: anywhere;
+  }
+
+  .tableWrapper table:has(colgroup > col:nth-child(4)) {
+    width: max-content !important;
+    min-width: min(640px, 170cqi) !important;
+  }
+
+  .ProseMirror table :is(td, th) {
+    min-width: 0;
+    padding: clamp(6px, 1.6cqi, 8px);
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: auto;
+  }
+}
+
+@container (max-width: 420px) {
+  .ProseMirror table {
+    font-size: 0.9375em;
+  }
+
+  .tableWrapper {
+    margin-block: 0.75rem;
   }
 }

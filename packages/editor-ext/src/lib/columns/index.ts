@@ -1,4 +1,4 @@
-export { Columns } from "./columns";
+export { Columns, getSelectedColumns } from "./columns";
 export type {
   ColumnsOptions,
   ColumnsAttributes,

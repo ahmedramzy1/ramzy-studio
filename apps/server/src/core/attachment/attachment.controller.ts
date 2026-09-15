@@ -53,6 +53,11 @@ import { EnvironmentService } from '../../integrations/environment/environment.s
 import { TokenService } from '../auth/services/token.service';
 import { JwtAttachmentPayload, JwtType } from '../auth/dto/jwt-payload';
 import * as path from 'path';
+import { readFile, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import ffmpegPath from 'ffmpeg-static';
+import { dir } from 'tmp-promise';
 import {
   AttachmentInfoDto,
   PageIdDto,
@@ -170,6 +175,123 @@ export class AttachmentController {
       }
       this.logger.error(err);
       throw new BadRequestException('Error processing file upload.');
+    }
+  }
+
+  /**
+   * Generate WebVTT captions without running speech recognition in the
+   * browser. FFmpeg extracts a small mono audio stream on the server, then
+   * Whisper returns timestamped captions in the video's original language.
+   * The client persists the returned VTT through the normal attachment path.
+   */
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('files/captions')
+  async generateVideoCaptions(
+    @Body() dto: { attachmentId?: string; language?: string },
+    @AuthUser() user: User,
+    @AuthWorkspace() workspace: Workspace,
+  ) {
+    const attachmentId = dto.attachmentId?.trim();
+    if (!attachmentId || !isValidUUID(attachmentId)) {
+      throw new BadRequestException('A valid video attachment id is required');
+    }
+
+    const attachment = await this.attachmentRepo.findById(attachmentId);
+    if (
+      !attachment ||
+      !attachment.pageId ||
+      attachment.workspaceId !== workspace.id ||
+      !attachment.mimeType?.startsWith('video/')
+    ) {
+      throw new NotFoundException('Video attachment not found');
+    }
+    const page = await this.pageRepo.findById(attachment.pageId);
+    if (!page) throw new NotFoundException('Page not found');
+    await this.pageAccessService.validateCanEdit(page, user);
+
+    const apiKey = this.environmentService.getOpenAiApiKey();
+    if (!apiKey) {
+      throw new BadRequestException(
+        'Automatic captions require OPENAI_API_KEY on the Ramzy Studio server',
+      );
+    }
+    if (!ffmpegPath) {
+      throw new BadRequestException(
+        'The server media processor is unavailable',
+      );
+    }
+
+    const language = dto.language?.trim().toLowerCase();
+    if (language && !/^[a-z]{2,3}(?:-[a-z]{2})?$/.test(language)) {
+      throw new BadRequestException(
+        'Use an ISO language code such as en or ar, or leave language blank',
+      );
+    }
+
+    const temporary = await dir({ unsafeCleanup: true });
+    try {
+      const inputPath = path.join(
+        temporary.path,
+        `source${attachment.fileExt || '.video'}`,
+      );
+      const audioPath = path.join(temporary.path, 'caption-audio.mp3');
+      await writeFile(
+        inputPath,
+        await this.storageService.read(attachment.filePath),
+      );
+      await promisify(execFile)(ffmpegPath, [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        inputPath,
+        '-vn',
+        '-ac',
+        '1',
+        '-ar',
+        '16000',
+        '-b:a',
+        '64k',
+        '-y',
+        audioPath,
+      ]);
+
+      const form = new FormData();
+      form.append('model', 'whisper-1');
+      form.append('response_format', 'vtt');
+      if (language) form.append('language', language);
+      form.append(
+        'file',
+        new Blob([await readFile(audioPath)], { type: 'audio/mpeg' }),
+        'caption-audio.mp3',
+      );
+
+      const apiBase = (
+        this.environmentService.getOpenAiApiUrl() || 'https://api.openai.com/v1'
+      ).replace(/\/$/, '');
+      const response = await fetch(`${apiBase}/audio/transcriptions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: form,
+      });
+      const vtt = await response.text();
+      if (!response.ok || !vtt.trim().startsWith('WEBVTT')) {
+        this.logger.error(
+          `Caption generation failed (${response.status}): ${vtt.slice(0, 500)}`,
+        );
+        throw new BadRequestException('Automatic caption generation failed');
+      }
+
+      return {
+        vtt,
+        language: language || 'und',
+        label: language
+          ? `${language.toUpperCase()} captions`
+          : 'Auto captions',
+      };
+    } finally {
+      await temporary.cleanup();
     }
   }
 
